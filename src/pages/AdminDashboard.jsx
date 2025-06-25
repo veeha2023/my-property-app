@@ -11,23 +11,8 @@ import {
 
 
 const AdminDashboard = () => {
-  const defaultProperties = [ // Default properties for new client selections
-    {
-      id: 1, location: "Auckland", checkIn: "2025-04-18", checkOut: "2025-04-20", name: "Executive 2BD - Quadrant Hotel",
-      images: ["https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop", "https://images.unsplash.com/photo-1582719478250-c800x600c-4dc85b?w=800&h=600&fit=crop"],
-      category: "Deluxe", price: 0, currency: "$", selected: true, bedrooms: 2, bathrooms: 1, homeImageIndex: 0
-    },
-    {
-      id: 2, location: "Paihia", checkIn: "2025-04-20", checkOut: "2025-04-21", name: "2BR, 1BT - Family Central Retreat",
-      images: ["https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&h=600&fit=crop", "https://images.unsplash.com/photo-1587985064135-0366536eab42?w=800&h=600&fit=crop"],
-      category: "Deluxe", price: 25.50, currency: "$", selected: false, bedrooms: 2, bathrooms: 1, homeImageIndex: 0
-    },
-    {
-      id: 3, location: "Paihia", checkIn: "2025-04-20", checkOut: "2025-04-21", name: "2BR, 2BT - Bounty Motel Haven",
-      images: ["https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=600&fit=crop", "https://images.unsplash.com/photo-1580977962777-0ac0b95e2a1d?w=800&h=600&fit=crop"],
-      category: "Deluxe", price: 15.75, currency: "$", selected: true, bedrooms: 2, bathrooms: 2, homeImageIndex: 0
-    },
-  ];
+  // Removed default properties to provide a blank slate for new client selections
+  const defaultProperties = [];
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [email, setEmail] = useState('');
@@ -77,7 +62,7 @@ const AdminDashboard = () => {
         // Optionally, set an error state
       } else {
         // Ensure client_properties is an array when setting state
-        const fetchedClients = data.map(client => ({
+        const fetchedClients = (data || []).map(client => ({
           ...client,
           client_properties: client.client_properties || []
         }));
@@ -129,7 +114,7 @@ const AdminDashboard = () => {
     setEditingClient({
       id: null,
       client_name: 'New Client Selection', // Matches Supabase column name
-      client_properties: JSON.parse(JSON.stringify(defaultProperties)), // Deep copy default properties
+      client_properties: [], // Starts with a blank array for properties
       custom_logo_url: null
     });
     setCustomLogoUrl(null); // Clear custom logo state for the form

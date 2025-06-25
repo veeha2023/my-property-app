@@ -511,4 +511,4 @@ const ClientView = () => {
   );
 };
 
-export default ClientView;
+export default PropertyForm;
