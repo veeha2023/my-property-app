@@ -1,415 +1,870 @@
-// src/pages/AdminDashboard.jsx
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient.js'; // Import Supabase client
-import { v4 as uuidv4 } from 'uuid'; // For generating unique IDs
-
-import PropertyForm from '../components/PropertyForm.jsx'; // Import the refactored form
-
+// src/components/PropertyForm.jsx
+// This component is designed to be a controlled component used by AdminDashboard.
+// It receives properties and update functions as props.
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  User, Lock, Plus, Trash2, Edit3, Share2, ClipboardCopy, LogOut // Lucide icons
+  Calendar,
+  MapPin,
+  Check,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Trash2,
+  Edit3,
+  Maximize2,
+  BedDouble, // Icon for bedrooms
+  Bath,      // Icon for bathrooms
+  Image,     // Icon for selecting home image
 } from 'lucide-react';
 
+const PropertyForm = ({
+  properties, // This is the list of properties for the current client selection
+  setProperties, // Callback to update the properties list in the parent (AdminDashboard)
+  customLogoUrl, // Logo for display (not used directly in this component, but can be passed down)
+  onSave,       // Callback to trigger a save in the parent (AdminDashboard) after property changes
+  adminMode = false // Controls whether admin features (add/edit/delete/toggle selection) are visible
+}) => {
+  const accentColor = '#FFD700';
+  const accentColorDark = '#DAA520';
+  const savingsColor = '#10B981';
+  const extraColor = '#EF4444';
 
-const AdminDashboard = () => {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [clients, setClients] = useState([]); // List of all client selections
-  const [editingClient, setEditingClient] = useState(null); // The client currently being edited
-  const [customLogoUrl, setCustomLogoUrl] = useState(null); // Logo for the current client selection being edited/created
+  const [currentImageIndex, setCurrentImageIndex] = useState({});
+  const [expandedImage, setExpandedImage] = useState(null);
+  const [expandedImagePropertyId, setExpandedImagePropertyId] = useState(null);
+  const [newProperty, setNewProperty] = useState({
+    id: null,
+    location: '',
+    checkIn: '',
+    checkOut: '',
+    name: '',
+    images: [],
+    category: 'Deluxe',
+    price: '',
+    currency: '$',
+    bedrooms: '',
+    bathrooms: '',
+    homeImageIndex: 0
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [propertyToDeleteId, setPropertyToDeleteId] = useState(null);
 
-  const accentColor = '#FFD700'; // Define accent color
+  const currencies = ['$', '€', '£', '¥', '₹', 'NZ$', 'AU$', 'CA$'];
 
+  // Initialize currentImageIndex when the 'properties' prop changes
   useEffect(() => {
-    // Listen for authentication state changes from Supabase
-    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAdminLoggedIn(!!session); // True if session exists (user is logged in)
-      if (session) {
-        fetchClients(); // Fetch clients if logged in
-      } else {
-        setClients([]); // Clear clients if logged out
-        setEditingClient(null); // Also clear editing client on logout
+    const initialImageIndices = {};
+    (properties || []).forEach(prop => {
+      if (prop && prop.id !== undefined) {
+        initialImageIndices[prop.id] = prop.homeImageIndex || 0;
       }
     });
-
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAdminLoggedIn(!!session);
-      if (session) {
-        fetchClients();
-      }
-    });
-
-    return () => {
-      if (authListener) {
-        authListener.unsubscribe(); // Cleanup subscription on unmount
-      }
-    };
-  }, []);
+    setCurrentImageIndex(initialImageIndices);
+  }, [properties]);
 
 
-  // Fetch all client selections from Supabase
-  const fetchClients = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('created_at', { ascending: false }); // Order by creation time
-
-      if (error) {
-        console.error("Error fetching clients:", error);
-      } else {
-        const fetchedClients = (data || []).map(client => {
-          let parsedProperties = [];
-          if (typeof client.client_properties === 'string') {
-            try {
-              parsedProperties = JSON.parse(client.client_properties);
-              if (!Array.isArray(parsedProperties)) {
-                parsedProperties = [];
-              }
-            } catch (parseError) {
-              console.error("Error parsing client_properties for client ID", client.id, ":", parseError);
-              parsedProperties = []; // Default to empty array on parse error
-            }
-          } else if (Array.isArray(client.client_properties)) {
-            parsedProperties = client.client_properties;
-          }
-          return {
-            ...client,
-            client_properties: parsedProperties
-          };
-        });
-        setClients(fetchedClients);
-      }
-    } catch (error) {
-      console.error("Unexpected error fetching clients: ", error);
-    }
+  const calculateNights = (checkIn, checkOut) => {
+    if (!checkIn || !checkOut) return 0;
+    const start = new Date(checkIn + 'T00:00:00');
+    const end = new Date(checkOut + 'T00:00:00');
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
-
-  const handleLogin = async () => {
-    setLoginError(''); // Clear previous errors
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const date = new Date(dateString + 'T00:00:00');
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      return date.toLocaleDateString('en-NZ', {
+        day: 'numeric',
+        month: 'short',
+        year: '2-digit'
       });
-
-      if (error) {
-        setLoginError(error.message);
-        console.error("Login error:", error);
-      } else {
-        console.log("Logged in:", data.user);
-        // isAdminLoggedIn state updated by onAuthStateChange listener
-      }
-    } catch (error) {
-      console.error("Unexpected login error:", error);
-      setLoginError('An unexpected error occurred during login.');
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return 'Error';
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Logout error:", error);
-      } else {
-        // isAdminLoggedIn state updated by onAuthStateChange listener
-        setEmail('');
-        setPassword('');
+  const groupPropertiesByLocation = () => {
+    const grouped = {};
+    (properties || []).forEach(property => {
+      if (property && property.location) {
+        if (!grouped[property.location]) {
+          grouped[property.location] = [];
+        }
+        grouped[property.location].push(property);
       }
-    } catch (error) {
-      console.error("Unexpected logout error:", error);
-    }
-  };
-
-  const createNewClientSelection = () => {
-    setEditingClient({
-      id: null, // Indicates a new client
-      client_name: 'New Client Selection',
-      client_properties: [],
-      custom_logo_url: null
     });
-    setCustomLogoUrl(null);
+    return grouped;
   };
 
-  const saveClientSelection = async () => {
-    if (!editingClient) {
-      alert("No client selection to save or editing client is null.");
-      return;
-    }
-    const propertiesToSave = Array.isArray(editingClient.client_properties) ? editingClient.client_properties : [];
-
-    try {
-      const clientDataToSave = {
-        client_name: editingClient.client_name || 'Unnamed Client',
-        client_properties: JSON.stringify(propertiesToSave), // Stringify for JSONB column
-        custom_logo_url: customLogoUrl,
-        last_updated: new Date().toISOString()
-      };
-
-      const { data: userAuthData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userAuthData?.user?.id) {
-          throw new Error("User not authenticated. Cannot save client selection.");
-      }
-      clientDataToSave.user_id = userAuthData.user.id;
-
-      let error = null;
-      let data = null;
-      let isNewClient = !editingClient.id; // Check if it's a new client
-
-      if (editingClient.id) { // Existing client, update
-        const response = await supabase
-          .from('clients')
-          .update(clientDataToSave)
-          .eq('id', editingClient.id)
-          .select();
-        data = response.data;
-        error = response.error;
-      } else { // New client, insert
-        const response = await supabase
-          .from('clients')
-          .insert(clientDataToSave)
-          .select();
-        data = response.data;
-        error = response.error;
-      }
-
-      if (error) {
-        throw error;
-      }
-
-      alert(`Client selection ${isNewClient ? 'created' : 'updated'} successfully!`);
-
-      // IMPORTANT: Only clear editingClient if a new client was just created.
-      // For updates/deletions within an existing client, keep it in editing mode.
-      if (isNewClient) {
-        setEditingClient(null);
-        setCustomLogoUrl(null); // Clear logo only if exiting editing mode completely
-      }
-      fetchClients(); // Refresh the list
-    } catch (error) {
-      console.error("Error saving client selection:", error.message);
-      alert("Failed to save client selection: " + error.message + ". Please check Supabase RLS policies and server logs.");
+  // Toggles the selection status of a property (ONLY in client view)
+  const toggleSelection = (locationId, propertyId) => {
+    if (!adminMode && typeof setProperties === 'function') {
+        setProperties(prevProperties => (prevProperties || []).map(prop => {
+          if (prop && prop.location === locationId) {
+            return { ...prop, selected: prop.id === propertyId };
+          }
+          return prop;
+        }));
+    } else if (adminMode) {
+        // In adminMode, clicking the card itself should not toggle selection.
+        // The edit/delete buttons handle admin interactions.
+        console.log("Admin mode: Property card click does not toggle selection. Use edit/delete buttons.");
+    } else {
+        console.error("PropertyForm: setProperties prop is not a function in toggleSelection.");
     }
   };
 
-  const editClient = (client) => {
-    let parsedProperties = [];
-    if (typeof client.client_properties === 'string') {
-      try {
-        parsedProperties = JSON.parse(client.client_properties);
-        if (!Array.isArray(parsedProperties)) {
-          parsedProperties = [];
+  const nextImage = (propertyId) => {
+    const property = (properties || []).find(p => p.id === propertyId);
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
+
+    setCurrentImageIndex(prev => {
+      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
+      const nextIdx = (currentIdx + 1) % property.images.length;
+      return { ...prev, [propertyId]: nextIdx };
+    });
+  };
+
+  const prevImage = (propertyId) => {
+    const property = (properties || []).find(p => p.id === propertyId);
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
+
+    setCurrentImageIndex(prev => {
+      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
+      const prevIdx = (currentIdx - 1 + property.images.length) % property.images.length;
+      return { ...prev, [propertyId]: prevIdx };
+    });
+  };
+
+  const openExpandedImage = (propertyId, imageIndex) => {
+    const property = (properties || []).find(p => p.id === propertyId);
+    if (property && Array.isArray(property.images) && property.images.length > 0) {
+      setExpandedImage(property.images[imageIndex]);
+      setExpandedImagePropertyId(propertyId);
+      setCurrentImageIndex(prev => ({ ...prev, [propertyId]: imageIndex }));
+    }
+  };
+
+  const nextExpandedImage = useCallback(() => {
+    if (!expandedImagePropertyId) return;
+    const property = (properties || []).find(p => p.id === expandedImagePropertyId);
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
+
+    setCurrentImageIndex(prev => {
+      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
+      const nextIdx = (currentIdx + 1) % property.images.length;
+      setExpandedImage(property.images[nextIdx]);
+      return { ...prev, [expandedImagePropertyId]: nextIdx };
+    });
+  }, [expandedImagePropertyId, properties]);
+
+  const prevExpandedImage = useCallback(() => {
+    if (!expandedImagePropertyId) return;
+    const property = (properties || []).find(p => p.id === expandedImagePropertyId);
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
+
+    setCurrentImageIndex(prev => {
+      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
+      const prevIdx = (currentIdx - 1 + property.images.length) % property.images.length;
+      setExpandedImage(property.images[prevIdx]);
+      return { ...prev, [expandedImagePropertyId]: prevIdx };
+    });
+  }, [expandedImagePropertyId, properties]);
+
+  // Keyboard navigation for expanded image
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (expandedImage) {
+        if (event.key === 'ArrowRight') {
+          nextExpandedImage();
+        } else if (event.key === 'ArrowLeft') {
+          prevExpandedImage();
+        } else if (event.key === 'Escape') {
+          setExpandedImage(null);
+          setExpandedImagePropertyId(null);
         }
       }
-      catch (e) {
-        console.error("Error parsing client_properties during edit:", e);
-        parsedProperties = [];
-      }
-    } else if (Array.isArray(client.client_properties)) {
-      parsedProperties = client.client_properties;
-    }
+    };
 
-    setEditingClient({
-      id: client.id,
-      client_name: client.client_name,
-      client_properties: parsedProperties,
-      custom_logo_url: client.custom_logo_url
-    });
-    setCustomLogoUrl(client.custom_logo_url || null);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expandedImage, nextExpandedImage, prevExpandedImage]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewProperty(prev => ({ ...prev, [name]: value }));
   };
 
-  const deleteClient = async (clientId) => {
-    // Replace window.confirm with a custom modal if needed, as per instructions.
-    // For now, retaining window.confirm for simplicity given the current context.
-    if (!window.confirm("Are you sure you want to delete this client selection?")) {
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const currentImagesCount = newProperty.images?.length || 0;
+    const validFiles = files.filter(file => {
+      return file.type.startsWith('image/') && file.size <= 4 * 1024 * 1024; // Max 4MB per image
+    }).slice(0, 30 - currentImagesCount); // Limit total images to 30
+
+    if (validFiles.length === 0 && files.length > 0) {
+      alert("No valid images selected (only image files up to 4MB are allowed, max 30 total images).");
+    }
+
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setNewProperty(prev => ({
+          ...prev,
+          images: [...(prev.images || []), e.target.result]
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveImage = (indexToRemove) => {
+    setNewProperty(prev => {
+      const currentImages = prev.images || [];
+      const updatedImages = currentImages.filter((_, index) => index !== indexToRemove);
+      let newHomeImageIndex = prev.homeImageIndex;
+
+      if (indexToRemove < prev.homeImageIndex) {
+        newHomeImageIndex = Math.max(0, prev.homeImageIndex - 1);
+      } else if (indexToRemove === prev.homeImageIndex && updatedImages.length > 0) {
+        newHomeImageIndex = 0;
+      } else if (updatedImages.length === 0) {
+        newHomeImageIndex = 0;
+      }
+
+      return {
+        ...prev,
+        images: updatedImages,
+        homeImageIndex: newHomeImageIndex
+      };
+    });
+  };
+
+  const handleSetHomeImage = (index) => {
+    setNewProperty(prev => ({ ...prev, homeImageIndex: index }));
+  };
+
+  const handleAddOrUpdateProperty = () => {
+    if (!newProperty.name || !newProperty.location || !newProperty.checkIn || !newProperty.checkOut) {
+      alert("Please fill all required fields: Location, Check-in, Check-out, Name.");
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', clientId);
+    const priceValue = newProperty.price === '' ? 0 : parseFloat(newProperty.price);
+    const bedroomsValue = parseInt(newProperty.bedrooms) || 0;
+    const bathroomsValue = parseInt(newProperty.bathrooms) || 0;
 
-      if (error) {
-        throw error;
-      }
+    let updatedPropertiesList;
+    let propertyIdForIndexUpdate;
 
-      alert("Client selection deleted successfully!");
-      if (editingClient && editingClient.id === clientId) {
-        setEditingClient(null); // Clear editing if the deleted client was being edited
-        setCustomLogoUrl(null); // Clear logo if exiting editing mode completely
-      }
-      fetchClients(); // Refresh the list
-    } catch (error) {
-      console.error("Error deleting client:", error.message);
-      alert("Failed to delete client: " + error.message + ". Please check Supabase RLS policies and server logs.");
+    if (isEditing && newProperty.id !== null) { // Ensure it's an existing property
+      updatedPropertiesList = (properties || []).map(prop =>
+        prop && prop.id === newProperty.id
+          ? { ...newProperty, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue }
+          : prop
+      ).filter(Boolean);
+      propertyIdForIndexUpdate = newProperty.id;
+    } else {
+      // Generate a new unique ID for a new property
+      const currentMaxId = (properties || []).length > 0 ? Math.max(...(properties || []).map(p => p.id || 0)) : 0;
+      const id = currentMaxId + 1; // Simple incrementing ID, consider UUID for more robustness
+      const propertyToAdd = {
+        ...newProperty,
+        id,
+        selected: false, // New properties are not selected by default
+        price: priceValue,
+        bedrooms: bedroomsValue,
+        bathrooms: bathroomsValue,
+        images: newProperty.images || []
+      };
+      updatedPropertiesList = [...(properties || []), propertyToAdd];
+      propertyIdForIndexUpdate = id;
+    }
+
+    if (typeof setProperties === 'function') {
+      setProperties(updatedPropertiesList);
+    } else {
+      console.error("PropertyForm: setProperties prop is not a function. Cannot update properties.");
+      alert("An internal error occurred. Cannot update properties.");
+      return;
+    }
+
+    setCurrentImageIndex(prev => ({
+      ...prev,
+      [propertyIdForIndexUpdate]: newProperty.homeImageIndex
+    }));
+
+    setIsEditing(false); // Exit editing mode
+    setNewProperty({ // Reset the form
+      id: null, location: '', checkIn: '', checkOut: '', name: '', images: [], category: 'Deluxe',
+      price: '', currency: '$', bedrooms: '', bathrooms: '', homeImageIndex: 0
+    });
+    if (onSave) onSave(); // Trigger save in parent (AdminDashboard)
+  };
+
+  const handleEditClick = (property) => {
+    setNewProperty({
+      ...property,
+      price: property.price !== undefined && property.price !== null ? String(property.price) : '',
+      bedrooms: property.bedrooms !== undefined && property.bedrooms !== null ? String(property.bedrooms) : '',
+      bathrooms: property.bathrooms !== undefined && property.bathrooms !== null ? String(property.bathrooms) : '',
+      images: property.images || [],
+    });
+    setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteClick = (propertyId) => {
+    setPropertyToDeleteId(propertyId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (typeof setProperties === 'function' && propertyToDeleteId !== null) {
+      const updatedPropertiesList = (properties || []).filter(prop => prop && prop.id !== propertyToDeleteId);
+      setProperties(updatedPropertiesList);
+    } else {
+      console.error("PropertyForm: setProperties prop is not a function or propertyToDeleteId is null. Cannot delete property.");
+      alert("An internal error occurred. Cannot delete property.");
+      return;
+    }
+    setShowDeleteConfirm(false);
+    setPropertyToDeleteId(null);
+    if (onSave) onSave(); // Trigger save in parent (AdminDashboard)
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setPropertyToDeleteId(null);
+  };
+
+  const getCategoryColor = (category) => {
+    switch (category) {
+      case 'Luxury': return 'bg-purple-600 text-white';
+      case 'Super Deluxe': return 'bg-blue-600 text-white';
+      case 'Deluxe': return 'bg-green-600 text-white';
+      default: return 'bg-gray-600 text-white';
     }
   };
 
-  const copyClientLink = (clientId) => {
-    const baseUrl = window.location.origin;
-    const clientLink = `${baseUrl}/client/${clientId}`;
-    navigator.clipboard.writeText(clientLink).then(() => {
-      alert(`Client link copied: ${clientLink}`);
-    }).catch(err => {
-      console.error('Could not copy text: ', err);
-      alert(`Failed to copy link. Please manually copy: ${clientLink}`);
-    });
+  const getSelectedProperty = (location) => {
+    return (properties || []).find(prop => prop && prop.location === location && prop.selected);
   };
 
+  const groupedProperties = groupPropertiesByLocation();
+
+  const totalChange = (properties || [])
+    .filter(prop => prop && prop.selected)
+    .reduce((total, prop) => total + parseFloat(prop.price || 0), 0);
+  const totalChangeColorStyle = { color: totalChange >= 0 ? extraColor : savingsColor };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Century_Gothic'] p-4 md:p-6 lg:p-8">
+    <div className="font-['Century_Gothic']">
       <style>{`
-        .font-century-gothic { font-family: 'Century Gothic', sans-serif; }
+        .font-century-gothic {
+          font-family: 'Century Gothic', sans-serif;
+        }
+        .text-extra-color { color: ${extraColor}; }
+        .text-savings-color { color: ${savingsColor}; }
+        .selected-border {
+            border-color: ${accentColor};
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            border-width: 5px;
+            border-radius: 1rem;
+        }
       `}</style>
 
-      {!isAdminLoggedIn ? (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md font-century-gothic text-center">
-            <h3 className="text-2xl font-bold mb-6 text-gray-900">Admin Login</h3>
-            <div className="space-y-4">
-              <div className="relative">
-                <User size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  placeholder="Admin Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-base"
-                />
-              </div>
-              <div className="relative">
-                <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-base"
-                />
-              </div>
-              {loginError && <p className="text-red-500 text-sm text-center">{loginError}</p>}
+      {expandedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+          <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[calc(100vh-80px)] bg-black flex items-center justify-center rounded-xl shadow-lg">
+            <button
+              onClick={() => setExpandedImage(null)}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-10"
+              aria-label="Close image"
+            >
+              <X size={24} />
+            </button>
+            <img
+              src={expandedImage}
+              alt="Expanded view"
+              className="max-w-full max-h-full object-contain rounded-xl"
+            />
+            {expandedImagePropertyId && (properties || []).find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && (
+              <>
+                <button
+                  onClick={prevExpandedImage}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg transition-all"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  onClick={nextExpandedImage}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg transition-all"
+                  aria-label="Next image"
+                >
+                  <ChevronRight size={24} />
+                </button>
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                  {(properties || []).find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className={`w-3 h-3 rounded-full cursor-pointer transition-all duration-200 ${
+                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : ((properties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0)) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
+                      }`}
+                      onClick={() => openExpandedImage(expandedImagePropertyId, idx)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl shadow-2xl text-center max-w-sm w-full font-century-gothic">
+            <h3 className="text-xl font-bold mb-4 text-gray-800">Confirm Deletion</h3>
+            <p className="text-gray-700 mb-6">Are you sure you want to remove this property?</p>
+            <div className="flex justify-center gap-4">
               <button
-                onClick={handleLogin}
-                className="w-full px-5 py-3 rounded-lg text-white font-semibold shadow-md transition-all"
-                style={{ backgroundColor: accentColor, color: '#333' }}
+                onClick={handleCancelDelete}
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
               >
-                Login
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors shadow-sm"
+              >
+                Delete
               </button>
             </div>
           </div>
         </div>
-      ) : (
-        <div>
-          {/* Admin Dashboard Header */}
-          <div className="bg-white rounded-xl shadow-md p-6 mb-8 flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900 font-century-gothic">Admin Dashboard</h1>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center shadow-sm"
+      )}
+
+      {/* Admin Panel (Property Form for editing/adding single client data) */}
+      {adminMode && (
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8 mt-8 font-century-gothic">
+          <h2 className="text-2xl font-bold mb-5 text-gray-800 text-left">
+            {isEditing ? 'Edit Property' : 'Add New Property'}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <input
+              type="text"
+              name="location"
+              placeholder="Location"
+              value={newProperty.location}
+              onChange={handleInputChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+            />
+            <input
+              type="date"
+              name="checkIn"
+              value={newProperty.checkIn}
+              onChange={handleInputChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-gray-700 placeholder-gray-400"
+              placeholder="Check-in Date"
+            />
+            <input
+              type="date"
+              name="checkOut"
+              value={newProperty.checkOut}
+              onChange={handleInputChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-gray-700 placeholder-gray-400"
+              placeholder="Check-out Date"
+            />
+            <input
+              type="text"
+              name="name"
+              placeholder="Property Name"
+              value={newProperty.name}
+              onChange={handleInputChange}
+              className="col-span-full px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+            />
+            <select
+              name="category"
+              value={newProperty.category}
+              onChange={handleInputChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white"
             >
-              <LogOut size={18} className="mr-2" /> Logout
-            </button>
+              <option value="Deluxe">Deluxe</option>
+              <option value="Super Deluxe">Super Deluxe</option>
+              <option value="Luxury">Luxury</option>
+            </select>
+            <div className="flex gap-2">
+              <select
+                name="currency"
+                value={newProperty.currency}
+                onChange={handleInputChange}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white w-24"
+              >
+                {currencies.map(curr => (
+                  <option key={curr} value={curr}>{curr}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                name="price"
+                placeholder="Price (e.g., -25.50 or 50.00)"
+                value={newProperty.price}
+                onChange={handleInputChange}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+            />
+            </div>
+            <input
+              type="number"
+              name="bedrooms"
+              placeholder="Bedrooms"
+              value={newProperty.bedrooms}
+              onChange={handleInputChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+            />
+            <input
+              type="number"
+              name="bathrooms"
+              placeholder="Bathrooms"
+              value={newProperty.bathrooms}
+              onChange={handleInputChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+            />
           </div>
 
-          {/* Client Selection Management */}
-          <div className="bg-white rounded-xl shadow-md p-6 mb-8 font-century-gothic">
-            <h2 className="text-2xl font-bold mb-5 text-gray-800 text-left">Manage Client Selections</h2>
-            <button
-              onClick={createNewClientSelection}
-              className="mb-6 px-6 py-3 rounded-lg text-white font-semibold shadow-md transition-all flex items-center"
-              style={{ backgroundColor: accentColor, color: '#333' }}
-            >
-              <Plus size={20} className="mr-2" /> Create New Client Selection
-            </button>
+          <div className="mt-6 flex flex-col md:flex-row gap-6">
+            <div className="flex-1">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="image-upload"
+              />
+              <label htmlFor="image-upload" className="inline-flex items-center px-5 py-2 rounded-lg text-base font-medium shadow-sm transition-colors cursor-pointer"
+                style={{ backgroundColor: accentColor, color: '#333' }}
+              >
+                <Upload size={18} className="mr-2" />
+                Upload Property Images
+              </label>
 
-            {editingClient && (
-              <div className="mb-8 p-6 border border-gray-200 rounded-xl bg-blue-50">
-                <h3 className="text-xl font-bold mb-4 text-blue-800">
-                  {editingClient.id ? `Editing Client: ${editingClient.client_name}` : 'New Client Selection'}
-                </h3>
-                <input
-                  type="text"
-                  placeholder="Client Name"
-                  value={editingClient.client_name || ''}
-                  onChange={(e) => setEditingClient(prev => ({ ...prev, client_name: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-base mb-4"
-                />
-                <PropertyForm
-                  properties={editingClient.client_properties || []}
-                  setProperties={(newProps) => setEditingClient(prev => ({ ...prev, client_properties: Array.isArray(newProps) ? newProps : [] }))}
-                  customLogoUrl={customLogoUrl} // Pass logo to PropertyForm (though not directly used by it for display)
-                  onSave={saveClientSelection} // Pass the save function to trigger parent's save
-                  adminMode={true} // Pass adminMode as true for the admin view
-                />
-                <div className="flex gap-4 mt-6 justify-end">
-                  <button
-                    onClick={() => {
-                        setEditingClient(null); // Explicitly exit editing mode
-                        setCustomLogoUrl(null); // Clear logo
-                    }}
-                    className="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition-colors shadow-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveClientSelection}
-                    className="px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all"
-                    style={{ backgroundColor: accentColor, color: '#333' }}
-                  >
-                    Save Client Selection
-                  </button>
+              {newProperty.images?.length > 0 && (
+                <div className="mt-4 flex gap-3 flex-wrap">
+                  {newProperty.images.map((image, index) => (
+                    <div key={index} className="relative group w-24 h-24">
+                      <img src={image} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-lg shadow-sm" />
+                      <button
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
+                        aria-label="Remove image"
+                      >
+                        <X size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleSetHomeImage(index)}
+                        className={`absolute bottom-1 left-1 p-1 rounded-full text-white ${newProperty.homeImageIndex === index ? 'bg-blue-500' : 'bg-gray-700 bg-opacity-70 group-hover:bg-blue-500'}`}
+                        aria-label="Set as home image"
+                        title="Set as home image"
+                      >
+                        <Image size={14} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {clients.length === 0 ? (
-                <p className="text-gray-500 col-span-full text-center py-4">No client selections created yet.</p>
-              ) : (
-                clients.map((client) => (
-                  <div key={client.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900">{client.client_name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">ID: {client.id}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Last Updated: {client.last_updated ? new Date(client.last_updated).toLocaleString() : 'N/A'}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      <button
-                        onClick={() => editClient(client)}
-                        className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm shadow-sm"
-                      >
-                        <Edit3 size={16} className="mr-2" /> Edit
-                      </button>
-                      <button
-                        onClick={() => copyClientLink(client.id)}
-                        className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm shadow-sm"
-                      >
-                        <Share2 size={16} className="mr-2" /> Share Link
-                      </button>
-                      <button
-                        onClick={() => deleteClient(client.id)}
-                        className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm shadow-sm"
-                      >
-                        <Trash2 size={16} className="mr-2" /> Delete
-                      </button>
-                    </div>
-                  </div>
-                ))
               )}
             </div>
           </div>
+
+          <div className="flex gap-4 mt-6">
+            <button
+              onClick={handleAddOrUpdateProperty}
+              className="px-8 py-3 rounded-lg text-white font-semibold shadow-md transition-all"
+              style={{ backgroundColor: isEditing ? '#4CAF50' : accentColor, color: isEditing ? '#fff' : '#333' }}
+            >
+              {isEditing ? 'Save Changes' : 'Add Property'}
+            </button>
+            {isEditing && (
+              <button
+                onClick={() => {
+                  setIsEditing(false);
+                  setNewProperty({ // Reset form when cancelling edit
+                    id: null, location: '', checkIn: '', checkOut: '', name: '', images: [], category: 'Deluxe',
+                    price: '', currency: '$', bedrooms: '', bathrooms: '', homeImageIndex: 0
+                  });
+                }}
+                className="px-8 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500 text-base font-semibold shadow-md transition-all"
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
         </div>
       )}
+
+      {/* Location Groups */}
+      <div className="space-y-10">
+        {Object.entries(groupedProperties).map(([location, locationProperties]) => (
+          <div key={location} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+            <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div className="mb-2 md:mb-0">
+                  <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left">
+                    {location}
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    <Calendar size={14} className="inline mr-1 text-gray-500" />
+                    {locationProperties[0]?.checkIn && locationProperties[0]?.checkOut ?
+                      `${formatDate(locationProperties[0].checkIn)} - ${formatDate(locationProperties[0].checkOut)} · ${calculateNights(locationProperties[0].checkIn, locationProperties[0].checkOut)} nights`
+                      : 'Dates N/A'}
+                  </p>
+                </div>
+                <div className="text-left md:text-right">
+                  <p className="text-sm text-gray-600">Selected Property:</p>
+                  <p className="font-semibold text-gray-900 text-base">
+                    {getSelectedProperty(location)?.name || 'None'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                {(locationProperties || []).map((property) => (
+                  <div
+                    key={property.id}
+                    className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
+                      ${property.selected && !adminMode ? 'selected-border' : ''}`}
+                    // Conditional onClick: ONLY allow selection if NOT in adminMode
+                    onClick={() => !adminMode && toggleSelection(location, property.id)}
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
+                      <img
+                        src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
+                        alt={property.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onClick={(e) => {
+                          if (!e.target.closest('button')) {
+                            e.stopPropagation();
+                            openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
+                          }
+                        }}
+                        onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}
+                      />
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
+                        }}
+                        className="absolute top-3 right-3 bg-black bg-opacity-40 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
+                        aria-label="Expand image"
+                      >
+                        <Maximize2 size={16} />
+                      </button>
+
+                      {property.selected && !adminMode && (
+                        <div className="absolute top-3 left-3 rounded-full p-2 shadow-md"
+                          style={{ backgroundColor: accentColor, color: '#333' }}
+                        >
+                          <Check size={16} />
+                        </div>
+                      )}
+
+                      <div className="absolute bottom-3 left-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${getCategoryColor(property.category)}`}>
+                          {property.category}
+                        </span>
+                      </div>
+
+                      {property.images?.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              prevImage(property.id);
+                            }}
+                            className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
+                            aria-label="Previous image"
+                          >
+                            <ChevronLeft size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              nextImage(property.id);
+                            }}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
+                            aria-label="Next image"
+                          >
+                            <ChevronRight size={18} />
+                          </button>
+
+                          <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-1.5">
+                            {property.images.slice(0, 3).map((_, index) => (
+                              <div
+                                key={index}
+                                className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                  index === (currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
+                                }`}
+                              />
+                            ))}
+                            {property.images.length > 3 && (
+                              <div className="w-2 h-2 rounded-full bg-white bg-opacity-60" title={`${property.images.length - 3} more photos`} />
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="p-4 space-y-2">
+                      <h3 className="font-semibold text-lg text-gray-900 leading-tight font-century-gothic">
+                        {property.name}
+                      </h3>
+
+                      <div className="flex items-center text-sm text-gray-600">
+                        <MapPin size={16} className="mr-1 text-gray-500" />
+                        <span>{property.location}</span>
+                      </div>
+
+                      <div className="flex items-center text-sm text-gray-600 gap-3">
+                        {(property.bedrooms !== undefined && property.bedrooms !== null) && (property.bedrooms > 0) && (
+                          <div className="flex items-center">
+                            <BedDouble size={16} className="mr-1 text-gray-500" />
+                            <span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span>
+                          </div>
+                        )}
+                        {(property.bathrooms !== undefined && property.bathrooms !== null) && (property.bathrooms > 0) && (
+                          <div className="flex items-center">
+                            <Bath size={16} className="mr-1 text-gray-500" />
+                            <span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-base text-gray-700 font-medium">
+                          {property.checkIn && property.checkOut ? `${calculateNights(property.checkIn, property.checkOut)} nights` : 'Nights N/A'}
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}>
+                            {property.currency}{Math.abs(parseFloat(property.price || 0)).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {adminMode && (
+                        <div className="flex justify-end gap-3 pt-3 border-t border-gray-100 mt-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(property);
+                            }}
+                            className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-colors"
+                            aria-label="Edit property"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(property.id);
+                            }}
+                            className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 transition-colors"
+                            aria-label="Remove property"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Selection Summary */}
+      <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left">
+        <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
+        {(properties || []).filter(prop => prop && prop.selected).length === 0 ? (
+          <p className="text-gray-500 text-center py-8 text-lg">No properties selected yet. Start choosing!</p>
+        ) : (
+          <div className="space-y-4">
+            {Object.entries(groupedProperties).map(([location, locationProperties]) => {
+              const selectedProperty = getSelectedProperty(location);
+              if (!selectedProperty) return null;
+
+              const priceText = parseFloat(selectedProperty.price || 0);
+              const priceColorStyle = { color: priceText >= 0 ? extraColor : savingsColor };
+
+              return (
+                <div key={location} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+                  <div className="flex items-center space-x-4 mb-3 sm:mb-0">
+                    <img
+                      src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"}
+                      alt={selectedProperty.name}
+                      className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0"
+                      onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}
+                    />
+                    <div className="text-left">
+                      <h4 className="font-semibold text-gray-900 text-base">{location}</h4>
+                      <p className="text-sm text-gray-700 font-medium">{selectedProperty.name}</p>
+                      <p className="text-xs text-gray-500">
+                        <Calendar size={12} className="inline mr-1" />
+                        {selectedProperty.checkIn && selectedProperty.checkOut ? `${calculateNights(selectedProperty.checkIn, selectedProperty.checkOut)} nights` : 'Nights N/A'}
+                      </p>
+                      <div className="flex items-center text-xs text-gray-500 gap-2 mt-1">
+                        {(selectedProperty.bedrooms !== undefined && selectedProperty.bedrooms !== null) && (selectedProperty.bedrooms > 0) && (
+                          <div className="flex items-center">
+                            <BedDouble size={12} className="mr-0.5" />
+                            <span>{selectedProperty.bedrooms}</span>
+                          </div>
+                        )}
+                        {(selectedProperty.bathrooms !== undefined && selectedProperty.bathrooms !== null) && (selectedProperty.bathrooms > 0) && (
+                          <div className="flex items-center">
+                            <Bath size={12} className="mr-0.5" />
+                            <span>{selectedProperty.bathrooms}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right w-full sm:w-auto">
+                    <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>
+                      {selectedProperty.currency}{Math.abs(priceText).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="pt-6 border-t border-gray-200">
+              <div className="flex justify-between items-center">
+                <span className="text-xl font-bold text-gray-900">Total Price Change:</span>
+                <span className={`text-3xl font-extrabold`} style={totalChangeColorStyle}>
+                  {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default AdminDashboard;
+export default PropertyForm;
