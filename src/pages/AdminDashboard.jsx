@@ -76,7 +76,12 @@ const AdminDashboard = () => {
         console.error("Error fetching clients:", error);
         // Optionally, set an error state
       } else {
-        setClients(data);
+        // Ensure client_properties is an array when setting state
+        const fetchedClients = data.map(client => ({
+          ...client,
+          client_properties: client.client_properties || []
+        }));
+        setClients(fetchedClients);
       }
     } catch (error) {
       console.error("Unexpected error fetching clients: ", error);
@@ -131,13 +136,12 @@ const AdminDashboard = () => {
   };
 
   const saveClientSelection = async () => {
-    // Ensure editingClient.client_properties is an array before stringifying
-    const propertiesToSave = editingClient.client_properties || [];
-
-    if (!editingClient || !propertiesToSave) {
-      alert("No client selection to save.");
+    // Ensure editingClient exists and client_properties is an array
+    if (!editingClient) {
+      alert("No client selection to save or editing client is null.");
       return;
     }
+    const propertiesToSave = editingClient.client_properties || [];
 
     try {
       const clientDataToSave = {
@@ -147,10 +151,11 @@ const AdminDashboard = () => {
         last_updated: new Date().toISOString() // Supabase timestamp format
       };
 
-      const user = await supabase.auth.getUser();
-      if (user.data?.user?.id) {
-         clientDataToSave.user_id = user.data.user.id; // Assign current admin's user_id
+      const { data: userAuthData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userAuthData?.user?.id) {
+          throw new Error("User not authenticated. Cannot save client selection.");
       }
+      clientDataToSave.user_id = userAuthData.user.id; // Assign current admin's user_id
 
       let error = null;
       let data = null;
@@ -182,16 +187,15 @@ const AdminDashboard = () => {
       fetchClients(); // Refresh the list of clients
     } catch (error) {
       console.error("Error saving client selection:", error.message);
-      alert("Failed to save client selection: " + error.message);
+      alert("Failed to save client selection: " + error.message + ". Please check Supabase RLS policies and server logs.");
     }
   };
 
   const editClient = (client) => {
-    // Map Supabase column names to frontend state names for PropertyForm
+    // Ensure client_properties is an array when setting editingClient
     setEditingClient({
       id: client.id,
       client_name: client.client_name,
-      // Ensure client_properties is always an array when passed to editingClient
       client_properties: client.client_properties || [],
       custom_logo_url: client.custom_logo_url
     });
@@ -199,24 +203,30 @@ const AdminDashboard = () => {
   };
 
   const deleteClient = async (clientId) => {
-    if (window.confirm("Are you sure you want to delete this client selection?")) {
-      try {
-        const { error } = await supabase
-          .from('clients')
-          .delete()
-          .eq('id', clientId);
+    // Use a custom modal or confirmation if window.confirm is not desired.
+    // For this example, keeping window.confirm as per previous pattern.
+    if (!window.confirm("Are you sure you want to delete this client selection?")) {
+      return; // User cancelled
+    }
 
-        if (error) {
-          throw error;
-        }
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId);
 
-        alert("Client selection deleted successfully!");
-        setEditingClient(null); // Clear editing if the deleted client was being edited
-        fetchClients(); // Refresh the list
-      } catch (error) {
-        console.error("Error deleting client:", error.message);
-        alert("Failed to delete client: " + error.message);
+      if (error) {
+        throw error;
       }
+
+      alert("Client selection deleted successfully!");
+      if (editingClient && editingClient.id === clientId) {
+        setEditingClient(null); // Clear editing if the deleted client was being edited
+      }
+      fetchClients(); // Refresh the list
+    } catch (error) {
+      console.error("Error deleting client:", error.message);
+      alert("Failed to delete client: " + error.message + ". Please check Supabase RLS policies and server logs.");
     }
   };
 
@@ -307,7 +317,7 @@ const AdminDashboard = () => {
                   type="text"
                   placeholder="Client Name"
                   // Use client_name for the input value as it maps to the Supabase column
-                  value={editingClient.client_name}
+                  value={editingClient.client_name || ''} // Ensure default to empty string if null/undefined
                   onChange={(e) => setEditingClient(prev => ({ ...prev, client_name: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-base mb-4"
                 />
@@ -315,7 +325,7 @@ const AdminDashboard = () => {
                   // Ensure properties prop is always an array
                   properties={editingClient.client_properties || []}
                   // Pass setProperties as a callback function
-                  setProperties={(newProps) => setEditingClient(prev => ({ ...prev, client_properties: newProps }))}
+                  setProperties={(newProps) => setEditingClient(prev => ({ ...prev, client_properties: newProps || [] }))} // Ensure it's always an array
                   customLogoUrl={customLogoUrl}
                   setCustomLogoUrl={setCustomLogoUrl}
                   adminMode={true} // Pass adminMode as true for the admin view

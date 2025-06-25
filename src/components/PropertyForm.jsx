@@ -48,6 +48,18 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const currencies = ['$', '€', '£', '¥', '₹', 'NZ$', 'AU$', 'CA$'];
 
+  // Initialize currentImageIndex when properties prop changes
+  useEffect(() => {
+    const initialImageIndices = {};
+    (properties || []).forEach(prop => {
+      if (prop && prop.id !== undefined) { // Ensure prop and prop.id are defined
+        initialImageIndices[prop.id] = prop.homeImageIndex || 0;
+      }
+    });
+    setCurrentImageIndex(initialImageIndices);
+  }, [properties]);
+
+
   const calculateNights = (checkIn, checkOut) => {
     if (!checkIn || !checkOut) return 0;
     const start = new Date(checkIn + 'T00:00:00');
@@ -58,29 +70,42 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('en-NZ', {
-      day: 'numeric',
-      month: 'short',
-      year: '2-digit'
-    });
+    // Add a check for a valid dateString before creating a Date object
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      if (isNaN(date.getTime())) { // Check for invalid date
+        return 'Invalid Date';
+      }
+      return date.toLocaleDateString('en-NZ', {
+        day: 'numeric',
+        month: 'short',
+        year: '2-digit'
+      });
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return 'Error';
+    }
   };
 
   const groupPropertiesByLocation = () => {
     const grouped = {};
     (properties || []).forEach(property => {
-      if (!grouped[property.location]) {
-        grouped[property.location] = [];
+      // Ensure property and property.location are defined before accessing
+      if (property && property.location) {
+        if (!grouped[property.location]) {
+          grouped[property.location] = [];
+        }
+        grouped[property.location].push(property);
       }
-      grouped[property.location].push(property);
     });
     return grouped;
   };
 
   const toggleSelection = (locationId, propertyId) => {
-    if (typeof setProperties === 'function') { // Defensive check
-        setProperties(prevProperties => prevProperties.map(prop => {
-          if (prop.location === locationId) {
+    if (typeof setProperties === 'function') {
+        setProperties(prevProperties => (prevProperties || []).map(prop => {
+          if (prop && prop.location === locationId) { // Ensure prop is defined
             return { ...prop, selected: prop.id === propertyId };
           }
           return prop;
@@ -92,10 +117,10 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const nextImage = (propertyId) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || property.images.length <= 1) return;
+    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
-      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex;
+      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
       const nextIdx = (currentIdx + 1) % property.images.length;
       return { ...prev, [propertyId]: nextIdx };
     });
@@ -103,10 +128,10 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const prevImage = (propertyId) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || property.images.length <= 1) return;
+    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
-      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex;
+      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
       const prevIdx = (currentIdx - 1 + property.images.length) % property.images.length;
       return { ...prev, [propertyId]: prevIdx };
     });
@@ -114,7 +139,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const openExpandedImage = (propertyId, imageIndex) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (property && property.images.length > 0) {
+    if (property && property.images && property.images.length > 0) { // Add check for images array
       setExpandedImage(property.images[imageIndex]);
       setExpandedImagePropertyId(propertyId);
       setCurrentImageIndex(prev => ({ ...prev, [propertyId]: imageIndex }));
@@ -124,10 +149,10 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   const nextExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || property.images.length <= 1) return;
+    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
-      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex;
+      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
       const nextIdx = (currentIdx + 1) % property.images.length;
       setExpandedImage(property.images[nextIdx]);
       return { ...prev, [expandedImagePropertyId]: nextIdx };
@@ -137,10 +162,10 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   const prevExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || property.images.length <= 1) return;
+    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
-      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex;
+      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
       const prevIdx = (currentIdx - 1 + property.images.length) % property.images.length;
       setExpandedImage(property.images[prevIdx]);
       return { ...prev, [expandedImagePropertyId]: prevIdx };
@@ -199,14 +224,16 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
     if (isEditing) {
       updatedPropertiesList = (properties || []).map(prop => 
-        prop.id === newProperty.id ? { ...newProperty, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue } : prop
-      );
+        prop && prop.id === newProperty.id ? { ...newProperty, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue } : prop
+      ).filter(Boolean); // Filter out any null/undefined entries if any appear
       propertyIdForIndexUpdate = newProperty.id;
       setIsEditing(false);
     } else {
-      const id = (properties || []).length > 0 ? Math.max(...(properties || []).map(p => p.id)) + 1 : 1; 
+      // Ensure properties is an array for spread and map operations
+      const currentMaxId = (properties || []).length > 0 ? Math.max(...(properties || []).map(p => p.id || 0)) : 0;
+      const id = currentMaxId + 1;
       const newSavedProperty = { ...newProperty, id, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue, selected: false };
-      updatedPropertiesList = [...(properties || []), newSavedProperty]; 
+      updatedPropertiesList = [...(properties || []), newSavedProperty];
       propertyIdForIndexUpdate = id;
     }
 
@@ -214,7 +241,9 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
       setProperties(updatedPropertiesList);
     } else {
       console.error("PropertyForm: setProperties prop is not a function or is undefined.");
-      alert("An internal error occurred: cannot update properties. Please contact support.");
+      // Provide user feedback without using alert() directly here
+      // For this context, the AdminDashboard's saveClientSelection handles actual persistence errors
+      alert("An internal error occurred with property list update. Please contact support.");
       return; 
     }
 
@@ -243,9 +272,10 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   const editProperty = (property) => {
     setNewProperty({
       ...property,
-      price: property.price === 0 ? '' : property.price.toString(),
-      bedrooms: property.bedrooms === 0 ? '' : property.bedrooms.toString(),
-      bathrooms: property.bathrooms === 0 ? '' : property.bathrooms.toString(),
+      // Ensure price, bedrooms, bathrooms are string representations for input fields
+      price: property.price !== undefined && property.price !== null ? String(property.price) : '',
+      bedrooms: property.bedrooms !== undefined && property.bedrooms !== null ? String(property.bedrooms) : '',
+      bathrooms: property.bathrooms !== undefined && property.bathrooms !== null ? String(property.bathrooms) : '',
     });
     setIsEditing(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -258,7 +288,8 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const removeProperty = () => {
     if (typeof setProperties === 'function') {
-        setProperties(prevProperties => (prevProperties || []).filter(prop => prop.id !== propertyToDelete)); 
+        // Ensure prevProperties is an array and filter out the property to delete
+        setProperties(prevProperties => (prevProperties || []).filter(prop => prop && prop.id !== propertyToDelete));
     } else {
         console.error("PropertyForm: setProperties prop is not a function in removeProperty.");
         alert("An internal error occurred: cannot remove property. Please contact support.");
@@ -279,13 +310,13 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   };
 
   const getSelectedProperty = (location) => {
-    return (properties || []).find(prop => prop.location === location && prop.selected); 
+    return (properties || []).find(prop => prop && prop.location === location && prop.selected); 
   };
 
   const groupedProperties = groupPropertiesByLocation();
 
   const totalChange = (properties || []) 
-    .filter(prop => prop.selected)
+    .filter(prop => prop && prop.selected)
     .reduce((total, prop) => total + parseFloat(prop.price || 0), 0);
   const totalChangeColorStyle = { color: totalChange >= 0 ? extraColor : savingsColor };
 
@@ -320,7 +351,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
               alt="Expanded view"
               className="max-w-full max-h-full object-contain rounded-xl"
             />
-            {(properties || []).find(p => p.id === expandedImagePropertyId)?.images.length > 1 && ( 
+            {expandedImagePropertyId && (properties || []).find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && ( 
               <>
                 <button
                   onClick={prevExpandedImage}
@@ -337,11 +368,11 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                   <ChevronRight size={24} />
                 </button>
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {(properties || []).find(p => p.id === expandedImagePropertyId)?.images.map((img, idx) => ( 
+                  {(properties || []).find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => ( 
                     <div
                       key={idx}
                       className={`w-3 h-3 rounded-full cursor-pointer transition-all duration-200 ${
-                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : (properties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex) ? 'bg-white scale-125' : 'bg-white bg-opacity-60' 
+                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : ((properties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0)) ? 'bg-white scale-125' : 'bg-white bg-opacity-60' 
                       }`}
                       onClick={() => openExpandedImage(expandedImagePropertyId, idx)}
                     />
@@ -542,7 +573,9 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                   </h2>
                   <p className="text-sm text-gray-600">
                     <Calendar size={14} className="inline mr-1 text-gray-500" />
-                    {formatDate(locationProperties[0].checkIn)} - {formatDate(locationProperties[0].checkOut)} · {calculateNights(locationProperties[0].checkIn, locationProperties[0].checkOut)} nights
+                    {locationProperties[0]?.checkIn && locationProperties[0]?.checkOut ? (
+                        `${formatDate(locationProperties[0].checkIn)} - ${formatDate(locationProperties[0].checkOut)} · ${calculateNights(locationProperties[0].checkIn, locationProperties[0].checkOut)} nights`
+                    ) : 'Dates N/A'}
                   </p>
                 </div>
                 <div className="text-left md:text-right">
@@ -556,7 +589,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
             <div className="p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                {locationProperties.map((property) => (
+                {(locationProperties || []).map((property) => (
                   <div
                     key={property.id}
                     className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
@@ -565,13 +598,13 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                   >
                     <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                       <img
-                        src={property.images[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
+                        src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
                         alt={property.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         onClick={(e) => {
                           if (!e.target.closest('button')) {
                             e.stopPropagation();
-                            openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex);
+                            openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
                           }
                         }}
                         onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}
@@ -580,7 +613,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex);
+                          openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
                         }}
                         className="absolute top-3 right-3 bg-black bg-opacity-40 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
                         aria-label="Expand image"
@@ -602,7 +635,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                         </span>
                       </div>
 
-                      {property.images.length > 1 && (
+                      {property.images?.length > 1 && (
                         <>
                           <button
                             onClick={(e) => {
@@ -630,7 +663,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                               <div
                                 key={index}
                                 className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                                  index === (currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
+                                  index === (currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
                                 }`}
                               />
                             ))}
@@ -653,13 +686,13 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                       </div>
 
                       <div className="flex items-center text-sm text-gray-600 gap-3">
-                        {property.bedrooms > 0 && (
+                        {(property.bedrooms !== undefined && property.bedrooms !== null) && (property.bedrooms > 0) && (
                           <div className="flex items-center">
                             <BedDouble size={16} className="mr-1 text-gray-500" />
                             <span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span>
                           </div>
                         )}
-                        {property.bathrooms > 0 && (
+                        {(property.bathrooms !== undefined && property.bathrooms !== null) && (property.bathrooms > 0) && (
                           <div className="flex items-center">
                             <Bath size={16} className="mr-1 text-gray-500" />
                             <span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span>
@@ -669,11 +702,11 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-base text-gray-700 font-medium">
-                          {calculateNights(property.checkIn, property.checkOut)} nights
+                          {property.checkIn && property.checkOut ? `${calculateNights(property.checkIn, property.checkOut)} nights` : 'Nights N/A'}
                         </span>
                         <div className="text-right">
-                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price) >= 0 ? extraColor : savingsColor }}>
-                            {property.currency}{Math.abs(parseFloat(property.price)).toFixed(2)}
+                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}>
+                            {property.currency}{Math.abs(parseFloat(property.price || 0)).toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -714,7 +747,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
       {/* Selection Summary */}
       <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left">
         <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
-        {(properties || []).filter(prop => prop.selected).length === 0 ? ( 
+        {(properties || []).filter(prop => prop && prop.selected).length === 0 ? ( 
           <p className="text-gray-500 text-center py-8 text-lg">No properties selected yet. Start choosing!</p>
         ) : (
           <div className="space-y-4">
@@ -722,14 +755,14 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
               const selectedProperty = getSelectedProperty(location);
               if (!selectedProperty) return null;
 
-              const priceText = parseFloat(selectedProperty.price);
+              const priceText = parseFloat(selectedProperty.price || 0);
               const priceColorStyle = { color: priceText >= 0 ? extraColor : savingsColor };
 
               return (
                 <div key={location} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
                   <div className="flex items-center space-x-4 mb-3 sm:mb-0">
                     <img
-                      src={selectedProperty.images[selectedProperty.homeImageIndex] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"}
+                      src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"}
                       alt={selectedProperty.name}
                       className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0"
                       onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}
@@ -739,16 +772,16 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                       <p className="text-sm text-gray-700 font-medium">{selectedProperty.name}</p>
                       <p className="text-xs text-gray-500">
                         <Calendar size={12} className="inline mr-1" />
-                        {calculateNights(selectedProperty.checkIn, selectedProperty.checkOut)} nights
+                        {selectedProperty.checkIn && selectedProperty.checkOut ? `${calculateNights(selectedProperty.checkIn, selectedProperty.checkOut)} nights` : 'Nights N/A'}
                       </p>
                       <div className="flex items-center text-xs text-gray-500 gap-2 mt-1">
-                        {selectedProperty.bedrooms > 0 && (
+                        {(selectedProperty.bedrooms !== undefined && selectedProperty.bedrooms !== null) && (selectedProperty.bedrooms > 0) && (
                           <div className="flex items-center">
                             <BedDouble size={12} className="mr-0.5" />
                             <span>{selectedProperty.bedrooms}</span>
                           </div>
                         )}
-                        {selectedProperty.bathrooms > 0 && (
+                        {(selectedProperty.bathrooms !== undefined && selectedProperty.bathrooms !== null) && (selectedProperty.bathrooms > 0) && (
                           <div className="flex items-center">
                             <Bath size={12} className="mr-0.5" />
                             <span>{selectedProperty.bathrooms}</span>
