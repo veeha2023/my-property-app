@@ -11,9 +11,6 @@ import {
 
 
 const AdminDashboard = () => {
-  // Removed default properties to provide a blank slate for new client selections
-  const defaultProperties = [];
-
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -64,11 +61,27 @@ const AdminDashboard = () => {
         console.error("Error fetching clients:", error);
         // Optionally, set an error state
       } else {
-        // Ensure client_properties is an array when setting state
-        const fetchedClients = (data || []).map(client => ({
-          ...client,
-          client_properties: client.client_properties || []
-        }));
+        const fetchedClients = (data || []).map(client => {
+          let parsedProperties = [];
+          if (typeof client.client_properties === 'string') {
+            try {
+              parsedProperties = JSON.parse(client.client_properties);
+              if (!Array.isArray(parsedProperties)) {
+                // If parsing results in non-array (e.g., an empty object string "{}"), default to empty array
+                parsedProperties = [];
+              }
+            } catch (parseError) {
+              console.error("Error parsing client_properties for client ID", client.id, ":", parseError);
+              parsedProperties = []; // Default to empty array on parse error
+            }
+          } else if (Array.isArray(client.client_properties)) {
+            parsedProperties = client.client_properties;
+          }
+          return {
+            ...client,
+            client_properties: parsedProperties
+          };
+        });
         setClients(fetchedClients);
       }
     } catch (error) {
@@ -129,12 +142,13 @@ const AdminDashboard = () => {
       alert("No client selection to save or editing client is null.");
       return;
     }
-    const propertiesToSave = editingClient.client_properties || [];
+    const propertiesToSave = Array.isArray(editingClient.client_properties) ? editingClient.client_properties : [];
 
     try {
       const clientDataToSave = {
         client_name: editingClient.client_name || 'Unnamed Client',
-        client_properties: propertiesToSave, // Use the potentially empty array
+        // IMPORTANT FIX: Stringify client_properties before saving to JSONB column
+        client_properties: JSON.stringify(propertiesToSave),
         custom_logo_url: customLogoUrl,
         last_updated: new Date().toISOString() // Supabase timestamp format
       };
@@ -180,19 +194,32 @@ const AdminDashboard = () => {
   };
 
   const editClient = (client) => {
-    // Ensure client_properties is an array when setting editingClient
+    // IMPORTANT FIX: Ensure client_properties is always an array and parsed when setting editingClient
+    let parsedProperties = [];
+    if (typeof client.client_properties === 'string') {
+      try {
+        parsedProperties = JSON.parse(client.client_properties);
+        if (!Array.isArray(parsedProperties)) {
+          parsedProperties = [];
+        }
+      } catch (e) {
+        console.error("Error parsing client_properties during edit:", e);
+        parsedProperties = [];
+      }
+    } else if (Array.isArray(client.client_properties)) {
+      parsedProperties = client.client_properties;
+    }
+
     setEditingClient({
       id: client.id,
       client_name: client.client_name,
-      client_properties: client.client_properties || [],
+      client_properties: parsedProperties,
       custom_logo_url: client.custom_logo_url
     });
     setCustomLogoUrl(client.custom_logo_url || null); // Load client's specific logo into form state
   };
 
   const deleteClient = async (clientId) => {
-    // Use a custom modal or confirmation if window.confirm is not desired.
-    // For this example, keeping window.confirm as per previous pattern.
     if (!window.confirm("Are you sure you want to delete this client selection?")) {
       return; // User cancelled
     }
@@ -310,10 +337,11 @@ const AdminDashboard = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-base mb-4"
                 />
                 <PropertyForm
-                  // Ensure properties prop is always an array
+                  // IMPORTANT FIX: properties prop is already parsed to array in editClient/fetchClients
                   properties={editingClient.client_properties || []}
                   // Pass setProperties as a callback function
-                  setProperties={(newProps) => setEditingClient(prev => ({ ...prev, client_properties: newProps || [] }))} // Ensure it's always an array
+                  // IMPORTANT FIX: Ensure newProps is always an array when updating client_properties
+                  setProperties={(newProps) => setEditingClient(prev => ({ ...prev, client_properties: Array.isArray(newProps) ? newProps : [] }))}
                   customLogoUrl={customLogoUrl}
                   setCustomLogoUrl={setCustomLogoUrl}
                   adminMode={true} // Pass adminMode as true for the admin view

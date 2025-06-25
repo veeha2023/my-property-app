@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient.js'; // Import Supabase client
 import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight, Maximize2,
   BedDouble, Bath, Image // Include Image for home image icon
-} from 'lucide-react';
+} from 'lucide-react'; // Re-added necessary Lucide icons
 
 const ClientView = () => {
   const { clientId } = useParams(); // Get the client ID from the URL
@@ -49,13 +49,29 @@ const ClientView = () => {
              setError("Failed to load client selection: " + error.message);
           }
         } else if (data) {
-          setClientProperties(data.client_properties || []); // Ensure it's an array
+          let parsedProperties = [];
+          if (typeof data.client_properties === 'string') {
+            try {
+              parsedProperties = JSON.parse(data.client_properties);
+              if (!Array.isArray(parsedProperties)) {
+                parsedProperties = [];
+              }
+            } catch (parseError) {
+              console.error("Error parsing client_properties:", parseError);
+              parsedProperties = []; // Default to empty array on parse error
+            }
+          } else if (Array.isArray(data.client_properties)) {
+            parsedProperties = data.client_properties;
+          }
+
+          setClientProperties(parsedProperties); // Set the parsed array
           setClientName(data.client_name || `Selection for ${clientId}`);
           setCustomLogoUrl(data.custom_logo_url || null); // Load custom logo
+          
           // Initialize currentImageIndex for each property based on homeImageIndex
           const initialImageIndices = {};
-          (data.client_properties || []).forEach(prop => {
-            if (prop && prop.id !== undefined) { // Ensure prop and prop.id are defined
+          parsedProperties.forEach(prop => { // Iterate over the parsed array
+            if (prop && prop.id !== undefined) {
               initialImageIndices[prop.id] = prop.homeImageIndex || 0;
             }
           });
@@ -128,7 +144,7 @@ const ClientView = () => {
 
   const nextImage = (propertyId) => {
     const property = (clientProperties || []).find(p => p.id === propertyId); 
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
@@ -139,7 +155,7 @@ const ClientView = () => {
 
   const prevImage = (propertyId) => {
     const property = (clientProperties || []).find(p => p.id === propertyId); 
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
@@ -150,7 +166,7 @@ const ClientView = () => {
 
   const openExpandedImage = (propertyId, imageIndex) => {
     const property = (clientProperties || []).find(p => p.id === propertyId); 
-    if (property && property.images && property.images.length > 0) { // Add check for images array
+    if (property && Array.isArray(property.images) && property.images.length > 0) { // Add check for images array
       setExpandedImage(property.images[imageIndex]);
       setExpandedImagePropertyId(propertyId);
       setCurrentImageIndex(prev => ({ ...prev, [propertyId]: imageIndex }));
@@ -160,7 +176,7 @@ const ClientView = () => {
   const nextExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (clientProperties || []).find(p => p.id === expandedImagePropertyId); 
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
@@ -168,12 +184,12 @@ const ClientView = () => {
       setExpandedImage(property.images[nextIdx]);
       return { ...prev, [expandedImagePropertyId]: nextIdx };
     });
-  }, [expandedImagePropertyId, clientProperties]);
+  }, [expandedImagePropertyId, clientProperties]); // Depend on clientProperties to ensure latest data
 
   const prevExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (clientProperties || []).find(p => p.id === expandedImagePropertyId); 
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
@@ -181,7 +197,28 @@ const ClientView = () => {
       setExpandedImage(property.images[prevIdx]);
       return { ...prev, [expandedImagePropertyId]: prevIdx };
     });
-  }, [expandedImagePropertyId, clientProperties]);
+  }, [expandedImagePropertyId, clientProperties]); // Depend on clientProperties to ensure latest data
+
+  // Keyboard navigation for expanded image
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (expandedImage) {
+        if (event.key === 'ArrowRight') {
+          nextExpandedImage();
+        } else if (event.key === 'ArrowLeft') {
+          prevExpandedImage();
+        } else if (event.key === 'Escape') {
+          setExpandedImage(null);
+          setExpandedImagePropertyId(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expandedImage, nextExpandedImage, prevExpandedImage]); // Dependencies
 
   const getCategoryColor = (category) => {
     switch (category) {
