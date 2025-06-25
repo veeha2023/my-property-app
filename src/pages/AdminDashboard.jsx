@@ -26,7 +26,8 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // Listen for authentication state changes from Supabase
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Destructure `data` to get `subscription`
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAdminLoggedIn(!!session); // True if session exists (user is logged in)
       if (session) {
         fetchClients(); // Fetch clients if logged in
@@ -44,7 +45,9 @@ const AdminDashboard = () => {
     });
 
     return () => {
-      authListener.unsubscribe(); // Cleanup subscription on unmount
+      if (authListener) { // Ensure authListener exists before trying to unsubscribe
+        authListener.unsubscribe(); // Cleanup subscription on unmount
+      }
     };
   }, []);
 

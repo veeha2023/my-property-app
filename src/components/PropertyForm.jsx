@@ -1,4 +1,6 @@
 // src/components/PropertyForm.jsx
+// This component is designed to be used both stand-alone (e.g., initial view without admin)
+// and as a sub-component within AdminDashboard for managing properties for a specific client selection.
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Calendar,
@@ -18,8 +20,14 @@ import {
   Lock
 } from 'lucide-react';
 
-// Added adminMode prop here, with a default value for safety
-const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoUrl, onSave, adminMode = false }) => {
+const PropertyForm = ({
+  properties, // This is now the SOLE source of truth for the list of properties being displayed/managed
+  setProperties, // This is the function to update the properties list (from AdminDashboard)
+  customLogoUrl,
+  setCustomLogoUrl, // For the main logo controlled by admin
+  onSave,       // Callback to trigger a save in the parent (AdminDashboard)
+  adminMode = false // Controls whether admin features (add/edit/delete/toggle selection) are visible
+}) => {
   const accentColor = '#FFD700';
   const accentColorDark = '#DAA520';
   const savingsColor = '#10B981';
@@ -48,11 +56,12 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const currencies = ['$', '€', '£', '¥', '₹', 'NZ$', 'AU$', 'CA$'];
 
-  // Initialize currentImageIndex when properties prop changes
+  // Initialize currentImageIndex when the 'properties' prop changes
+  // This ensures images are correctly indexed when new client data is loaded or changed
   useEffect(() => {
     const initialImageIndices = {};
     (properties || []).forEach(prop => {
-      if (prop && prop.id !== undefined) { // Ensure prop and prop.id are defined
+      if (prop && prop.id !== undefined) {
         initialImageIndices[prop.id] = prop.homeImageIndex || 0;
       }
     });
@@ -70,11 +79,10 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   };
 
   const formatDate = (dateString) => {
-    // Add a check for a valid dateString before creating a Date object
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString + 'T00:00:00');
-      if (isNaN(date.getTime())) { // Check for invalid date
+      if (isNaN(date.getTime())) {
         return 'Invalid Date';
       }
       return date.toLocaleDateString('en-NZ', {
@@ -90,8 +98,8 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const groupPropertiesByLocation = () => {
     const grouped = {};
+    // Ensure 'properties' prop is an array before calling forEach
     (properties || []).forEach(property => {
-      // Ensure property and property.location are defined before accessing
       if (property && property.location) {
         if (!grouped[property.location]) {
           grouped[property.location] = [];
@@ -105,19 +113,20 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   const toggleSelection = (locationId, propertyId) => {
     if (typeof setProperties === 'function') {
         setProperties(prevProperties => (prevProperties || []).map(prop => {
-          if (prop && prop.location === locationId) { // Ensure prop is defined
+          if (prop && prop.location === locationId) {
             return { ...prop, selected: prop.id === propertyId };
           }
           return prop;
         }));
     } else {
-        console.error("PropertyForm: setProperties prop is not a function in toggleSelection.");
+        console.error("PropertyForm: setProperties prop is not a function in toggleSelection. Cannot update property selection locally.");
+        alert("An internal error occurred: cannot toggle selection. Please contact support.");
     }
   };
 
   const nextImage = (propertyId) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
@@ -128,7 +137,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const prevImage = (propertyId) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
@@ -139,7 +148,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const openExpandedImage = (propertyId, imageIndex) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (property && property.images && property.images.length > 0) { // Add check for images array
+    if (property && Array.isArray(property.images) && property.images.length > 0) {
       setExpandedImage(property.images[imageIndex]);
       setExpandedImagePropertyId(propertyId);
       setCurrentImageIndex(prev => ({ ...prev, [propertyId]: imageIndex }));
@@ -149,7 +158,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   const nextExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
@@ -157,12 +166,12 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
       setExpandedImage(property.images[nextIdx]);
       return { ...prev, [expandedImagePropertyId]: nextIdx };
     });
-  }, [expandedImagePropertyId, properties]);
+  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
 
   const prevExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || !property.images || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
@@ -170,19 +179,24 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
       setExpandedImage(property.images[prevIdx]);
       return { ...prev, [expandedImagePropertyId]: prevIdx };
     });
-  }, [expandedImagePropertyId, properties]);
+  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
 
   const handleImageUpload = (files) => {
+    const currentImagesCount = newProperty.images?.length || 0;
     const validFiles = Array.from(files).filter(file => {
-      return file.type.startsWith('image/') && file.size <= 4 * 1024 * 1024;
-    }).slice(0, 30 - newProperty.images.length);
+      return file.type.startsWith('image/') && file.size <= 4 * 1024 * 1024; // Max 4MB per image
+    }).slice(0, 30 - currentImagesCount); // Limit total images to 30
+
+    if (validFiles.length === 0 && files.length > 0) {
+      alert("No valid images selected (only image files up to 4MB are allowed, max 30 total images).");
+    }
 
     validFiles.forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setNewProperty(prev => ({
           ...prev,
-          images: [...prev.images, e.target.result]
+          images: [...(prev.images || []), e.target.result] // Ensure images is an array before spread
         }));
       };
       reader.readAsDataURL(file);
@@ -191,14 +205,17 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const removeImage = (index) => {
     setNewProperty(prev => {
-      const updatedImages = prev.images.filter((_, i) => i !== index);
+      const currentImages = prev.images || []; // Ensure it's an array
+      const updatedImages = currentImages.filter((_, i) => i !== index);
       let newHomeImageIndex = prev.homeImageIndex;
+
+      // Adjust homeImageIndex if the removed image was before it or was the home image itself
       if (index < prev.homeImageIndex) {
         newHomeImageIndex = Math.max(0, prev.homeImageIndex - 1);
       } else if (index === prev.homeImageIndex && updatedImages.length > 0) {
-        newHomeImageIndex = 0;
+        newHomeImageIndex = 0; // If home image removed, set first remaining image as home
       } else if (updatedImages.length === 0) {
-        newHomeImageIndex = 0;
+        newHomeImageIndex = 0; // If all images removed, reset to 0
       }
 
       return {
@@ -223,15 +240,14 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
     let propertyIdForIndexUpdate;
 
     if (isEditing) {
-      updatedPropertiesList = (properties || []).map(prop => 
+      updatedPropertiesList = (properties || []).map(prop =>
         prop && prop.id === newProperty.id ? { ...newProperty, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue } : prop
-      ).filter(Boolean); // Filter out any null/undefined entries if any appear
+      ).filter(Boolean); // Filter out any null/undefined entries that might appear
       propertyIdForIndexUpdate = newProperty.id;
       setIsEditing(false);
     } else {
-      // Ensure properties is an array for spread and map operations
       const currentMaxId = (properties || []).length > 0 ? Math.max(...(properties || []).map(p => p.id || 0)) : 0;
-      const id = currentMaxId + 1;
+      const id = currentMaxId + 1; // Generate a new ID
       const newSavedProperty = { ...newProperty, id, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue, selected: false };
       updatedPropertiesList = [...(properties || []), newSavedProperty];
       propertyIdForIndexUpdate = id;
@@ -240,25 +256,25 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
     if (typeof setProperties === 'function') {
       setProperties(updatedPropertiesList);
     } else {
-      console.error("PropertyForm: setProperties prop is not a function or is undefined.");
-      // Provide user feedback without using alert() directly here
-      // For this context, the AdminDashboard's saveClientSelection handles actual persistence errors
+      console.error("PropertyForm: setProperties prop is not a function or is undefined. Cannot save property list locally.");
       alert("An internal error occurred with property list update. Please contact support.");
-      return; 
+      return;
     }
 
+    // Update currentImageIndex for the saved/added property
     setCurrentImageIndex(prev => ({
       ...prev,
       [propertyIdForIndexUpdate]: newProperty.homeImageIndex
     }));
 
+    // Reset the form for adding a new property
     setNewProperty({
       id: null,
       location: '',
       checkIn: '',
       checkOut: '',
       name: '',
-      images: [],
+      images: [], // Always reset to an empty array
       category: 'Deluxe',
       price: '',
       currency: '$',
@@ -266,7 +282,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
       bathrooms: '',
       homeImageIndex: 0
     });
-    if (onSave) onSave();
+    if (onSave) onSave(); // Callback to parent to trigger database save
   };
 
   const editProperty = (property) => {
@@ -276,6 +292,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
       price: property.price !== undefined && property.price !== null ? String(property.price) : '',
       bedrooms: property.bedrooms !== undefined && property.bedrooms !== null ? String(property.bedrooms) : '',
       bathrooms: property.bathrooms !== undefined && property.bathrooms !== null ? String(property.bathrooms) : '',
+      images: property.images || [], // Ensure images are an array when editing
     });
     setIsEditing(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -288,16 +305,15 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
 
   const removeProperty = () => {
     if (typeof setProperties === 'function') {
-        // Ensure prevProperties is an array and filter out the property to delete
         setProperties(prevProperties => (prevProperties || []).filter(prop => prop && prop.id !== propertyToDelete));
     } else {
-        console.error("PropertyForm: setProperties prop is not a function in removeProperty.");
+        console.error("PropertyForm: setProperties prop is not a function in removeProperty. Cannot remove property locally.");
         alert("An internal error occurred: cannot remove property. Please contact support.");
-        return; 
+        return;
     }
     setShowDeleteConfirm(false);
     setPropertyToDelete(null);
-    if (onSave) onSave();
+    if (onSave) onSave(); // Callback to parent to trigger database save
   };
 
   const getCategoryColor = (category) => {
@@ -310,12 +326,12 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
   };
 
   const getSelectedProperty = (location) => {
-    return (properties || []).find(prop => prop && prop.location === location && prop.selected); 
+    return (properties || []).find(prop => prop && prop.location === location && prop.selected);
   };
 
   const groupedProperties = groupPropertiesByLocation();
 
-  const totalChange = (properties || []) 
+  const totalChange = (properties || [])
     .filter(prop => prop && prop.selected)
     .reduce((total, prop) => total + parseFloat(prop.price || 0), 0);
   const totalChangeColorStyle = { color: totalChange >= 0 ? extraColor : savingsColor };
@@ -351,7 +367,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
               alt="Expanded view"
               className="max-w-full max-h-full object-contain rounded-xl"
             />
-            {expandedImagePropertyId && (properties || []).find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && ( 
+            {expandedImagePropertyId && (properties || []).find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && (
               <>
                 <button
                   onClick={prevExpandedImage}
@@ -368,11 +384,11 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                   <ChevronRight size={24} />
                 </button>
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {(properties || []).find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => ( 
+                  {(properties || []).find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => (
                     <div
                       key={idx}
                       className={`w-3 h-3 rounded-full cursor-pointer transition-all duration-200 ${
-                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : ((properties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0)) ? 'bg-white scale-125' : 'bg-white bg-opacity-60' 
+                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : ((properties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0)) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
                       }`}
                       onClick={() => openExpandedImage(expandedImagePropertyId, idx)}
                     />
@@ -507,7 +523,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                 Upload Property Images
               </label>
 
-              {newProperty.images.length > 0 && (
+              {newProperty.images?.length > 0 && ( // Fixed: Removed stray '{' to correct syntax
                 <div className="mt-4 flex gap-3 flex-wrap">
                   {newProperty.images.map((image, index) => (
                     <div key={index} className="relative group w-24 h-24">
@@ -546,10 +562,19 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
               <button
                 onClick={() => {
                   setIsEditing(false);
-                  setNewProperty({
-                    id: null, location: '', checkIn: '', checkOut: '', name: '',
-                    images: [], category: 'Deluxe', price: '', currency: '$',
-                    bedrooms: '', bathrooms: '', homeImageIndex: 0
+                  setNewProperty({ // Reset form when cancelling edit
+                    id: null,
+                    location: '',
+                    checkIn: '',
+                    checkOut: '',
+                    name: '',
+                    images: [],
+                    category: 'Deluxe',
+                    price: '',
+                    currency: '$',
+                    bedrooms: '',
+                    bathrooms: '',
+                    homeImageIndex: 0
                   });
                 }}
                 className="px-8 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500 text-base font-semibold shadow-md transition-all"
@@ -561,21 +586,21 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
         </div>
       )}
 
-      {/* Location Groups (Display of properties controlled by props) */}
+      {/* Location Groups */}
       <div className="space-y-10">
         {Object.entries(groupedProperties).map(([location, locationProperties]) => (
           <div key={location} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
             <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <div className="mb-2 md:mb-0">
-                  <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left">
+                  <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left"> {/* Left-aligned location title */}
                     {location}
                   </h2>
                   <p className="text-sm text-gray-600">
                     <Calendar size={14} className="inline mr-1 text-gray-500" />
-                    {locationProperties[0]?.checkIn && locationProperties[0]?.checkOut ? (
-                        `${formatDate(locationProperties[0].checkIn)} - ${formatDate(locationProperties[0].checkOut)} · ${calculateNights(locationProperties[0].checkIn, locationProperties[0].checkOut)} nights`
-                    ) : 'Dates N/A'}
+                    {locationProperties[0]?.checkIn && locationProperties[0]?.checkOut ?
+                      `${formatDate(locationProperties[0].checkIn)} - ${formatDate(locationProperties[0].checkOut)} · ${calculateNights(locationProperties[0].checkIn, locationProperties[0].checkOut)} nights`
+                      : 'Dates N/A'}
                   </p>
                 </div>
                 <div className="text-left md:text-right">
@@ -588,7 +613,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
             </div>
 
             <div className="p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6"> {/* Adjusted grid for larger tiles */}
                 {(locationProperties || []).map((property) => (
                   <div
                     key={property.id}
@@ -596,20 +621,25 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                       ${property.selected ? 'selected-border' : ''}`}
                     onClick={() => adminMode && toggleSelection(location, property.id)} // Only toggle selection in admin mode
                   >
+                    {/* Image Container */}
                     <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                       <img
-                        src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
+                        // Adjusted image source to dynamically use currentImageIndex for scrolling
+                        src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "[https://placehold.co/800x600/E0E0E0/333333?text=No+Image](https://placehold.co/800x600/E0E0E0/333333?text=No+Image)"}
                         alt={property.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        // Only enlarge if clicking directly on the image, not the navigation buttons
                         onClick={(e) => {
+                          // Only enlarge if click isn't on a button within the image area
                           if (!e.target.closest('button')) {
                             e.stopPropagation();
                             openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
                           }
                         }}
-                        onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}
+                        onError={(e) => { e.target.src = "[https://placehold.co/800x600/E0E0E0/333333?text=Image+Error](https://placehold.co/800x600/E0E0E0/333333?text=Image+Error)"; }}
                       />
 
+                      {/* Expand Icon - now only appears on image hover, click still handled by primary image click */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -621,6 +651,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                         <Maximize2 size={16} />
                       </button>
 
+                      {/* Selection Indicator */}
                       {property.selected && (
                         <div className="absolute top-3 left-3 rounded-full p-2 shadow-md"
                           style={{ backgroundColor: accentColor, color: '#333' }}
@@ -629,17 +660,19 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                         </div>
                       )}
 
+                      {/* Category Badge */}
                       <div className="absolute bottom-3 left-3">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${getCategoryColor(property.category)}`}>
                           {property.category}
                         </span>
                       </div>
 
+                      {/* Image Navigation */}
                       {property.images?.length > 1 && (
                         <>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
+                              e.stopPropagation(); // Prevent opening image on button click
                               prevImage(property.id);
                             }}
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
@@ -649,7 +682,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                           </button>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
+                              e.stopPropagation(); // Prevent opening image on button click
                               nextImage(property.id);
                             }}
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
@@ -658,6 +691,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                             <ChevronRight size={18} />
                           </button>
 
+                          {/* Dots */}
                           <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-1.5">
                             {property.images.slice(0, 3).map((_, index) => (
                               <div
@@ -675,6 +709,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                       )}
                     </div>
 
+                    {/* Property Details */}
                     <div className="p-4 space-y-2">
                       <h3 className="font-semibold text-lg text-gray-900 leading-tight font-century-gothic">
                         {property.name}
@@ -685,6 +720,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                         <span>{property.location}</span>
                       </div>
 
+                      {/* Bedrooms and Bathrooms Display */}
                       <div className="flex items-center text-sm text-gray-600 gap-3">
                         {(property.bedrooms !== undefined && property.bedrooms !== null) && (property.bedrooms > 0) && (
                           <div className="flex items-center">
@@ -705,7 +741,7 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
                           {property.checkIn && property.checkOut ? `${calculateNights(property.checkIn, property.checkOut)} nights` : 'Nights N/A'}
                         </span>
                         <div className="text-right">
-                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}>
+                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}> {/* Add || 0 */}
                             {property.currency}{Math.abs(parseFloat(property.price || 0)).toFixed(2)}
                           </span>
                         </div>
@@ -745,9 +781,9 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
       </div>
 
       {/* Selection Summary */}
-      <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left">
+      <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left"> {/* Left-aligned for entire section */}
         <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
-        {(properties || []).filter(prop => prop && prop.selected).length === 0 ? ( 
+        {(properties || []).filter(prop => prop && prop.selected).length === 0 ? (
           <p className="text-gray-500 text-center py-8 text-lg">No properties selected yet. Start choosing!</p>
         ) : (
           <div className="space-y-4">
@@ -755,19 +791,19 @@ const PropertyForm = ({ properties, setProperties, customLogoUrl, setCustomLogoU
               const selectedProperty = getSelectedProperty(location);
               if (!selectedProperty) return null;
 
-              const priceText = parseFloat(selectedProperty.price || 0);
+              const priceText = parseFloat(selectedProperty.price || 0); // Add || 0
               const priceColorStyle = { color: priceText >= 0 ? extraColor : savingsColor };
 
               return (
                 <div key={location} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
                   <div className="flex items-center space-x-4 mb-3 sm:mb-0">
                     <img
-                      src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"}
+                      src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "[https://placehold.co/60x60/E0E0E0/333333?text=No+Image](https://placehold.co/60x60/E0E0E0/333333?text=No+Image)"}
                       alt={selectedProperty.name}
                       className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0"
-                      onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}
+                      onError={(e) => { e.target.src = "[https://placehold.co/60x60/E0E0E0/333333?text=Image+Error](https://placehold.co/60x60/E0E0E0/333333?text=Image+Error)"; }}
                     />
-                    <div className="text-left">
+                    <div className="text-left"> {/* Explicitly left-align content within this div */}
                       <h4 className="font-semibold text-gray-900 text-base">{location}</h4>
                       <p className="text-sm text-gray-700 font-medium">{selectedProperty.name}</p>
                       <p className="text-xs text-gray-500">
