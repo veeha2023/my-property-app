@@ -22,6 +22,7 @@ const PropertyForm = ({
   properties, // This is the list of properties for the current client selection
   setProperties, // Callback to update the properties list in the parent (AdminDashboard)
   customLogoUrl, // Logo for display (not used directly in this component, but can be passed down)
+  setCustomLogoUrl, // For changing the logo from within PropertyForm if needed by Admin
   onSave,       // Callback to trigger a save in the parent (AdminDashboard) after property changes
   adminMode = false // Controls whether admin features (add/edit/delete/toggle selection) are visible
 }) => {
@@ -105,23 +106,34 @@ const PropertyForm = ({
     return grouped;
   };
 
-  // Toggles the selection status of a property (ONLY in client view)
+  // MODIFIED: Toggles the selection status of a property
   const toggleSelection = (locationId, propertyId) => {
-    if (!adminMode && typeof setProperties === 'function') {
-        setProperties(prevProperties => (prevProperties || []).map(prop => {
-          if (prop && prop.location === locationId) {
+    if (typeof setProperties === 'function') {
+      const updatedProperties = (properties || []).map(prop => {
+        if (prop && prop.location === locationId) {
+          if (adminMode) {
+            // Admin mode: allow multiple selections/deselections
+            if (prop.id === propertyId) {
+              return { ...prop, selected: !prop.selected };
+            }
+          } else {
+            // Client mode: only one selection per location, toggle on click
             return { ...prop, selected: prop.id === propertyId };
           }
-          return prop;
-        }));
-    } else if (adminMode) {
-        // In adminMode, clicking the card itself should not toggle selection.
-        // The edit/delete buttons handle admin interactions.
-        console.log("Admin mode: Property card click does not toggle selection. Use edit/delete buttons.");
+        }
+        return prop;
+      });
+      setProperties(updatedProperties);
+
+      // In admin mode, save changes after selection toggle
+      if (adminMode && onSave) {
+        onSave(updatedProperties, customLogoUrl);
+      }
     } else {
-        console.error("PropertyForm: setProperties prop is not a function in toggleSelection.");
+      console.error("PropertyForm: setProperties prop is not a function in toggleSelection.");
     }
   };
+
 
   const nextImage = (propertyId) => {
     const property = (properties || []).find(p => p.id === propertyId);
@@ -310,7 +322,7 @@ const PropertyForm = ({
       id: null, location: '', checkIn: '', checkOut: '', name: '', images: [], category: 'Deluxe',
       price: '', currency: '$', bedrooms: '', bathrooms: '', homeImageIndex: 0
     });
-    if (onSave) onSave(); // Trigger save in parent (AdminDashboard)
+    if (onSave) onSave(updatedPropertiesList, customLogoUrl); // Trigger save in parent (AdminDashboard) with updated properties and logo
   };
 
   const handleEditClick = (property) => {
@@ -334,6 +346,7 @@ const PropertyForm = ({
     if (typeof setProperties === 'function' && propertyToDeleteId !== null) {
       const updatedPropertiesList = (properties || []).filter(prop => prop && prop.id !== propertyToDeleteId);
       setProperties(updatedPropertiesList);
+      if (onSave) onSave(updatedPropertiesList, customLogoUrl); // Trigger save after deletion
     } else {
       console.error("PropertyForm: setProperties prop is not a function or propertyToDeleteId is null. Cannot delete property.");
       alert("An internal error occurred. Cannot delete property.");
@@ -341,7 +354,6 @@ const PropertyForm = ({
     }
     setShowDeleteConfirm(false);
     setPropertyToDeleteId(null);
-    if (onSave) onSave(); // Trigger save in parent (AdminDashboard)
   };
 
   const handleCancelDelete = () => {
@@ -359,6 +371,9 @@ const PropertyForm = ({
   };
 
   const getSelectedProperty = (location) => {
+    // In admin mode, this will return the first selected property for the summary,
+    // as admin can select multiple, but the summary needs a single representation.
+    // For client mode, it correctly returns the single selected property.
     return (properties || []).find(prop => prop && prop.location === location && prop.selected);
   };
 
@@ -645,8 +660,8 @@ const PropertyForm = ({
                   <div
                     key={property.id}
                     className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
-                      ${property.selected && !adminMode ? 'selected-border' : ''}`}
-                    onClick={() => !adminMode && toggleSelection(location, property.id)}
+                      ${property.selected ? 'selected-border' : ''}`} /* MODIFIED: Always check property.selected for border */
+                    onClick={() => toggleSelection(location, property.id)} /* MODIFIED: Always call toggleSelection */
                   >
                     <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                       <img
@@ -673,7 +688,7 @@ const PropertyForm = ({
                         <Maximize2 size={16} />
                       </button>
 
-                      {property.selected && !adminMode && (
+                      {property.selected && ( /* MODIFIED: Always check property.selected for checkmark */
                         <div className="absolute top-3 left-3 rounded-full p-2 shadow-md"
                           style={{ backgroundColor: accentColor, color: '#333' }}
                         >

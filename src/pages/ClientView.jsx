@@ -229,6 +229,17 @@ const ClientView = () => {
     }
   };
 
+  // NEW: Add toggleSelection function for client view
+  const toggleSelection = (locationId, propertyId) => {
+    setClientProperties(prevProperties => (prevProperties || []).map(prop => {
+      if (prop && prop.location === locationId) {
+        // Toggle selection for the clicked property, deselect others in the same location
+        return { ...prop, selected: prop.id === propertyId };
+      }
+      return prop;
+    }));
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl">Loading client selection...</div>;
   if (error) return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl text-red-600">Error: {error}</div>;
 
@@ -354,6 +365,8 @@ const ClientView = () => {
                       key={property.id}
                       className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
                         ${property.selected ? 'selected-border' : ''}`}
+                      // ADDED onClick handler to enable selection in client view
+                      onClick={() => toggleSelection(location, property.id)} 
                     >
                       <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                         <img
