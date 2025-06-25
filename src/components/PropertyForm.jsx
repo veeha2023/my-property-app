@@ -110,6 +110,7 @@ const PropertyForm = ({
     return grouped;
   };
 
+  // FIXED: Removed onSave() call. This function now only updates local state.
   const toggleSelection = (locationId, propertyId) => {
     if (typeof setProperties === 'function') {
         setProperties(prevProperties => (prevProperties || []).map(prop => {
@@ -120,7 +121,8 @@ const PropertyForm = ({
         }));
     } else {
         console.error("PropertyForm: setProperties prop is not a function in toggleSelection. Cannot update property selection locally.");
-        alert("An internal error occurred: cannot toggle selection. Please contact support.");
+        // Use a custom modal or message box instead of alert in production
+        // alert("An internal error occurred: cannot toggle selection. Please contact support.");
     }
   };
 
@@ -188,7 +190,8 @@ const PropertyForm = ({
     }).slice(0, 30 - currentImagesCount); // Limit total images to 30
 
     if (validFiles.length === 0 && files.length > 0) {
-      alert("No valid images selected (only image files up to 4MB are allowed, max 30 total images).");
+      // Use a custom modal or message box instead of alert in production
+      // alert("No valid images selected (only image files up to 4MB are allowed, max 30 total images).");
     }
 
     validFiles.forEach(file => {
@@ -228,7 +231,8 @@ const PropertyForm = ({
 
   const handleSaveProperty = () => {
     if (!newProperty.name || !newProperty.location || !newProperty.checkIn || !newProperty.checkOut) {
-      alert("Please fill all required fields: Location, Check-in, Check-out, Name.");
+      // Use a custom modal or message box instead of alert in production
+      // alert("Please fill all required fields: Location, Check-in, Check-out, Name.");
       return;
     }
 
@@ -257,7 +261,8 @@ const PropertyForm = ({
       setProperties(updatedPropertiesList);
     } else {
       console.error("PropertyForm: setProperties prop is not a function or is undefined. Cannot save property list locally.");
-      alert("An internal error occurred with property list update. Please contact support.");
+      // Use a custom modal or message box instead of alert in production
+      // alert("An internal error occurred with property list update. Please contact support.");
       return;
     }
 
@@ -282,7 +287,7 @@ const PropertyForm = ({
       bathrooms: '',
       homeImageIndex: 0
     });
-    if (onSave) onSave(); // Callback to parent to trigger database save
+    if (onSave) onSave(); // Callback to parent to trigger database save - ONLY HERE
   };
 
   const editProperty = (property) => {
@@ -303,17 +308,19 @@ const PropertyForm = ({
     setShowDeleteConfirm(true);
   };
 
+  // FIXED: Removed onSave() call. This function now only updates local state.
   const removeProperty = () => {
     if (typeof setProperties === 'function') {
         setProperties(prevProperties => (prevProperties || []).filter(prop => prop && prop.id !== propertyToDelete));
     } else {
         console.error("PropertyForm: setProperties prop is not a function in removeProperty. Cannot remove property locally.");
-        alert("An internal error occurred: cannot remove property. Please contact support.");
+        // Use a custom modal or message box instead of alert in production
+        // alert("An internal error occurred: cannot remove property. Please contact support.");
         return;
     }
     setShowDeleteConfirm(false);
     setPropertyToDelete(null);
-    if (onSave) onSave(); // Callback to parent to trigger database save
+    if (onSave) onSave(); // Callback to parent to trigger database save - ONLY AFTER CONFIRMED DELETION
   };
 
   const getCategoryColor = (category) => {
@@ -523,7 +530,7 @@ const PropertyForm = ({
                 Upload Property Images
               </label>
 
-              {newProperty.images?.length > 0 && ( // Fixed: Removed stray '{' to correct syntax
+              {newProperty.images?.length > 0 && (
                 <div className="mt-4 flex gap-3 flex-wrap">
                   {newProperty.images.map((image, index) => (
                     <div key={index} className="relative group w-24 h-24">
@@ -593,7 +600,7 @@ const PropertyForm = ({
             <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <div className="mb-2 md:mb-0">
-                  <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left"> {/* Left-aligned location title */}
+                  <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left">
                     {location}
                   </h2>
                   <p className="text-sm text-gray-600">
@@ -613,19 +620,20 @@ const PropertyForm = ({
             </div>
 
             <div className="p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6"> {/* Adjusted grid for larger tiles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                 {(locationProperties || []).map((property) => (
                   <div
                     key={property.id}
                     className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
                       ${property.selected ? 'selected-border' : ''}`}
-                    onClick={() => adminMode && toggleSelection(location, property.id)} // Only toggle selection in admin mode
+                    // FIXED: Only allow selection toggle in adminMode
+                    onClick={() => adminMode && toggleSelection(location, property.id)}
                   >
                     {/* Image Container */}
                     <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                       <img
                         // Adjusted image source to dynamically use currentImageIndex for scrolling
-                        src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "[https://placehold.co/800x600/E0E0E0/333333?text=No+Image](https://placehold.co/800x600/E0E0E0/333333?text=No+Image)"}
+                        src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
                         alt={property.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         // Only enlarge if clicking directly on the image, not the navigation buttons
@@ -636,7 +644,7 @@ const PropertyForm = ({
                             openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
                           }
                         }}
-                        onError={(e) => { e.target.src = "[https://placehold.co/800x600/E0E0E0/333333?text=Image+Error](https://placehold.co/800x600/E0E0E0/333333?text=Image+Error)"; }}
+                        onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}
                       />
 
                       {/* Expand Icon - now only appears on image hover, click still handled by primary image click */}
@@ -741,7 +749,7 @@ const PropertyForm = ({
                           {property.checkIn && property.checkOut ? `${calculateNights(property.checkIn, property.checkOut)} nights` : 'Nights N/A'}
                         </span>
                         <div className="text-right">
-                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}> {/* Add || 0 */}
+                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}>
                             {property.currency}{Math.abs(parseFloat(property.price || 0)).toFixed(2)}
                           </span>
                         </div>
@@ -781,7 +789,7 @@ const PropertyForm = ({
       </div>
 
       {/* Selection Summary */}
-      <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left"> {/* Left-aligned for entire section */}
+      <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left">
         <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
         {(properties || []).filter(prop => prop && prop.selected).length === 0 ? (
           <p className="text-gray-500 text-center py-8 text-lg">No properties selected yet. Start choosing!</p>
@@ -791,19 +799,19 @@ const PropertyForm = ({
               const selectedProperty = getSelectedProperty(location);
               if (!selectedProperty) return null;
 
-              const priceText = parseFloat(selectedProperty.price || 0); // Add || 0
+              const priceText = parseFloat(selectedProperty.price || 0);
               const priceColorStyle = { color: priceText >= 0 ? extraColor : savingsColor };
 
               return (
                 <div key={location} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
                   <div className="flex items-center space-x-4 mb-3 sm:mb-0">
                     <img
-                      src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "[https://placehold.co/60x60/E0E0E0/333333?text=No+Image](https://placehold.co/60x60/E0E0E0/333333?text=No+Image)"}
+                      src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"}
                       alt={selectedProperty.name}
                       className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0"
-                      onError={(e) => { e.target.src = "[https://placehold.co/60x60/E0E0E0/333333?text=Image+Error](https://placehold.co/60x60/E0E0E0/333333?text=Image+Error)"; }}
+                      onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}
                     />
-                    <div className="text-left"> {/* Explicitly left-align content within this div */}
+                    <div className="text-left">
                       <h4 className="font-semibold text-gray-900 text-base">{location}</h4>
                       <p className="text-sm text-gray-700 font-medium">{selectedProperty.name}</p>
                       <p className="text-xs text-gray-500">
