@@ -1,6 +1,6 @@
 // src/components/PropertyForm.jsx
-// This component is designed to be used both stand-alone (e.g., initial view without admin)
-// and as a sub-component within AdminDashboard for managing properties for a specific client selection.
+// This component is designed to be a controlled component used by AdminDashboard.
+// It receives properties and update functions as props.
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Calendar,
@@ -13,19 +13,16 @@ import {
   Trash2,
   Edit3,
   Maximize2,
-  BedDouble,
-  Bath,
-  Image,
-  User,
-  Lock
+  BedDouble, // Icon for bedrooms
+  Bath,      // Icon for bathrooms
+  Image,     // Icon for selecting home image
 } from 'lucide-react';
 
 const PropertyForm = ({
-  properties, // This is now the SOLE source of truth for the list of properties being displayed/managed
-  setProperties, // This is the function to update the properties list (from AdminDashboard)
-  customLogoUrl,
-  setCustomLogoUrl, // For the main logo controlled by admin
-  onSave,       // Callback to trigger a save in the parent (AdminDashboard)
+  properties, // This is the list of properties for the current client selection
+  setProperties, // Callback to update the properties list in the parent (AdminDashboard)
+  customLogoUrl, // Logo for display (not used directly in this component, but can be passed down)
+  onSave,       // Callback to trigger a save in the parent (AdminDashboard) after property changes
   adminMode = false // Controls whether admin features (add/edit/delete/toggle selection) are visible
 }) => {
   const accentColor = '#FFD700';
@@ -52,12 +49,11 @@ const PropertyForm = ({
   });
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [propertyToDelete, setPropertyToDelete] = useState(null);
+  const [propertyToDeleteId, setPropertyToDeleteId] = useState(null);
 
   const currencies = ['$', '€', '£', '¥', '₹', 'NZ$', 'AU$', 'CA$'];
 
   // Initialize currentImageIndex when the 'properties' prop changes
-  // This ensures images are correctly indexed when new client data is loaded or changed
   useEffect(() => {
     const initialImageIndices = {};
     (properties || []).forEach(prop => {
@@ -98,7 +94,6 @@ const PropertyForm = ({
 
   const groupPropertiesByLocation = () => {
     const grouped = {};
-    // Ensure 'properties' prop is an array before calling forEach
     (properties || []).forEach(property => {
       if (property && property.location) {
         if (!grouped[property.location]) {
@@ -110,19 +105,21 @@ const PropertyForm = ({
     return grouped;
   };
 
-  // FIXED: Removed onSave() call. This function now only updates local state.
+  // Toggles the selection status of a property (ONLY in client view)
   const toggleSelection = (locationId, propertyId) => {
-    if (typeof setProperties === 'function') {
+    if (!adminMode && typeof setProperties === 'function') {
         setProperties(prevProperties => (prevProperties || []).map(prop => {
           if (prop && prop.location === locationId) {
             return { ...prop, selected: prop.id === propertyId };
           }
           return prop;
         }));
+    } else if (adminMode) {
+        // In adminMode, clicking the card itself should not toggle selection.
+        // The edit/delete buttons handle admin interactions.
+        console.log("Admin mode: Property card click does not toggle selection. Use edit/delete buttons.");
     } else {
-        console.error("PropertyForm: setProperties prop is not a function in toggleSelection. Cannot update property selection locally.");
-        // Use a custom modal or message box instead of alert in production
-        // alert("An internal error occurred: cannot toggle selection. Please contact support.");
+        console.error("PropertyForm: setProperties prop is not a function in toggleSelection.");
     }
   };
 
@@ -168,7 +165,7 @@ const PropertyForm = ({
       setExpandedImage(property.images[nextIdx]);
       return { ...prev, [expandedImagePropertyId]: nextIdx };
     });
-  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
+  }, [expandedImagePropertyId, properties]);
 
   const prevExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
@@ -181,17 +178,43 @@ const PropertyForm = ({
       setExpandedImage(property.images[prevIdx]);
       return { ...prev, [expandedImagePropertyId]: prevIdx };
     });
-  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
+  }, [expandedImagePropertyId, properties]);
 
-  const handleImageUpload = (files) => {
+  // Keyboard navigation for expanded image
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (expandedImage) {
+        if (event.key === 'ArrowRight') {
+          nextExpandedImage();
+        } else if (event.key === 'ArrowLeft') {
+          prevExpandedImage();
+        } else if (event.key === 'Escape') {
+          setExpandedImage(null);
+          setExpandedImagePropertyId(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expandedImage, nextExpandedImage, prevExpandedImage]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewProperty(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
     const currentImagesCount = newProperty.images?.length || 0;
-    const validFiles = Array.from(files).filter(file => {
+    const validFiles = files.filter(file => {
       return file.type.startsWith('image/') && file.size <= 4 * 1024 * 1024; // Max 4MB per image
     }).slice(0, 30 - currentImagesCount); // Limit total images to 30
 
     if (validFiles.length === 0 && files.length > 0) {
-      // Use a custom modal or message box instead of alert in production
-      // alert("No valid images selected (only image files up to 4MB are allowed, max 30 total images).");
+      alert("No valid images selected (only image files up to 4MB are allowed, max 30 total images).");
     }
 
     validFiles.forEach(file => {
@@ -199,26 +222,25 @@ const PropertyForm = ({
       reader.onload = (e) => {
         setNewProperty(prev => ({
           ...prev,
-          images: [...(prev.images || []), e.target.result] // Ensure images is an array before spread
+          images: [...(prev.images || []), e.target.result]
         }));
       };
       reader.readAsDataURL(file);
     });
   };
 
-  const removeImage = (index) => {
+  const handleRemoveImage = (indexToRemove) => {
     setNewProperty(prev => {
-      const currentImages = prev.images || []; // Ensure it's an array
-      const updatedImages = currentImages.filter((_, i) => i !== index);
+      const currentImages = prev.images || [];
+      const updatedImages = currentImages.filter((_, index) => index !== indexToRemove);
       let newHomeImageIndex = prev.homeImageIndex;
 
-      // Adjust homeImageIndex if the removed image was before it or was the home image itself
-      if (index < prev.homeImageIndex) {
+      if (indexToRemove < prev.homeImageIndex) {
         newHomeImageIndex = Math.max(0, prev.homeImageIndex - 1);
-      } else if (index === prev.homeImageIndex && updatedImages.length > 0) {
-        newHomeImageIndex = 0; // If home image removed, set first remaining image as home
+      } else if (indexToRemove === prev.homeImageIndex && updatedImages.length > 0) {
+        newHomeImageIndex = 0;
       } else if (updatedImages.length === 0) {
-        newHomeImageIndex = 0; // If all images removed, reset to 0
+        newHomeImageIndex = 0;
       }
 
       return {
@@ -229,10 +251,13 @@ const PropertyForm = ({
     });
   };
 
-  const handleSaveProperty = () => {
+  const handleSetHomeImage = (index) => {
+    setNewProperty(prev => ({ ...prev, homeImageIndex: index }));
+  };
+
+  const handleAddOrUpdateProperty = () => {
     if (!newProperty.name || !newProperty.location || !newProperty.checkIn || !newProperty.checkOut) {
-      // Use a custom modal or message box instead of alert in production
-      // alert("Please fill all required fields: Location, Check-in, Check-out, Name.");
+      alert("Please fill all required fields: Location, Check-in, Check-out, Name.");
       return;
     }
 
@@ -243,84 +268,85 @@ const PropertyForm = ({
     let updatedPropertiesList;
     let propertyIdForIndexUpdate;
 
-    if (isEditing) {
+    if (isEditing && newProperty.id !== null) { // Ensure it's an existing property
       updatedPropertiesList = (properties || []).map(prop =>
-        prop && prop.id === newProperty.id ? { ...newProperty, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue } : prop
-      ).filter(Boolean); // Filter out any null/undefined entries that might appear
+        prop && prop.id === newProperty.id
+          ? { ...newProperty, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue }
+          : prop
+      ).filter(Boolean);
       propertyIdForIndexUpdate = newProperty.id;
-      setIsEditing(false);
     } else {
+      // Generate a new unique ID for a new property
       const currentMaxId = (properties || []).length > 0 ? Math.max(...(properties || []).map(p => p.id || 0)) : 0;
-      const id = currentMaxId + 1; // Generate a new ID
-      const newSavedProperty = { ...newProperty, id, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue, selected: false };
-      updatedPropertiesList = [...(properties || []), newSavedProperty];
+      const id = currentMaxId + 1; // Simple incrementing ID, consider UUID for more robustness
+      const propertyToAdd = {
+        ...newProperty,
+        id,
+        selected: false, // New properties are not selected by default
+        price: priceValue,
+        bedrooms: bedroomsValue,
+        bathrooms: bathroomsValue,
+        images: newProperty.images || []
+      };
+      updatedPropertiesList = [...(properties || []), propertyToAdd];
       propertyIdForIndexUpdate = id;
     }
 
     if (typeof setProperties === 'function') {
       setProperties(updatedPropertiesList);
     } else {
-      console.error("PropertyForm: setProperties prop is not a function or is undefined. Cannot save property list locally.");
-      // Use a custom modal or message box instead of alert in production
-      // alert("An internal error occurred with property list update. Please contact support.");
+      console.error("PropertyForm: setProperties prop is not a function. Cannot update properties.");
+      alert("An internal error occurred. Cannot update properties.");
       return;
     }
 
-    // Update currentImageIndex for the saved/added property
     setCurrentImageIndex(prev => ({
       ...prev,
       [propertyIdForIndexUpdate]: newProperty.homeImageIndex
     }));
 
-    // Reset the form for adding a new property
-    setNewProperty({
-      id: null,
-      location: '',
-      checkIn: '',
-      checkOut: '',
-      name: '',
-      images: [], // Always reset to an empty array
-      category: 'Deluxe',
-      price: '',
-      currency: '$',
-      bedrooms: '',
-      bathrooms: '',
-      homeImageIndex: 0
+    setIsEditing(false); // Exit editing mode
+    setNewProperty({ // Reset the form
+      id: null, location: '', checkIn: '', checkOut: '', name: '', images: [], category: 'Deluxe',
+      price: '', currency: '$', bedrooms: '', bathrooms: '', homeImageIndex: 0
     });
-    if (onSave) onSave(); // Callback to parent to trigger database save - ONLY HERE
+    if (onSave) onSave(); // Trigger save in parent (AdminDashboard)
   };
 
-  const editProperty = (property) => {
+  const handleEditClick = (property) => {
     setNewProperty({
       ...property,
-      // Ensure price, bedrooms, bathrooms are string representations for input fields
       price: property.price !== undefined && property.price !== null ? String(property.price) : '',
       bedrooms: property.bedrooms !== undefined && property.bedrooms !== null ? String(property.bedrooms) : '',
       bathrooms: property.bathrooms !== undefined && property.bathrooms !== null ? String(property.bathrooms) : '',
-      images: property.images || [], // Ensure images are an array when editing
+      images: property.images || [],
     });
     setIsEditing(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const confirmRemoveProperty = (id) => {
-    setPropertyToDelete(id);
+  const handleDeleteClick = (propertyId) => {
+    setPropertyToDeleteId(propertyId);
     setShowDeleteConfirm(true);
   };
 
-  // FIXED: Removed onSave() call. This function now only updates local state.
-  const removeProperty = () => {
-    if (typeof setProperties === 'function') {
-        setProperties(prevProperties => (prevProperties || []).filter(prop => prop && prop.id !== propertyToDelete));
+  const handleConfirmDelete = () => {
+    if (typeof setProperties === 'function' && propertyToDeleteId !== null) {
+      const updatedPropertiesList = (properties || []).filter(prop => prop && prop.id !== propertyToDeleteId);
+      setProperties(updatedPropertiesList);
     } else {
-        console.error("PropertyForm: setProperties prop is not a function in removeProperty. Cannot remove property locally.");
-        // Use a custom modal or message box instead of alert in production
-        // alert("An internal error occurred: cannot remove property. Please contact support.");
-        return;
+      console.error("PropertyForm: setProperties prop is not a function or propertyToDeleteId is null. Cannot delete property.");
+      alert("An internal error occurred. Cannot delete property.");
+      return;
     }
     setShowDeleteConfirm(false);
-    setPropertyToDelete(null);
-    if (onSave) onSave(); // Callback to parent to trigger database save - ONLY AFTER CONFIRMED DELETION
+    setPropertyToDeleteId(null);
+    if (onSave) onSave(); // Trigger save in parent (AdminDashboard)
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setPropertyToDeleteId(null);
   };
 
   const getCategoryColor = (category) => {
@@ -414,13 +440,13 @@ const PropertyForm = ({
             <p className="text-gray-700 mb-6">Are you sure you want to remove this property?</p>
             <div className="flex justify-center gap-4">
               <button
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={handleCancelDelete}
                 className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
               >
                 Cancel
               </button>
               <button
-                onClick={removeProperty}
+                onClick={handleConfirmDelete}
                 className="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors shadow-sm"
               >
                 Delete
@@ -439,35 +465,40 @@ const PropertyForm = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             <input
               type="text"
+              name="location"
               placeholder="Location"
               value={newProperty.location}
-              onChange={(e) => setNewProperty({...newProperty, location: e.target.value})}
+              onChange={handleInputChange}
               className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
             />
             <input
               type="date"
+              name="checkIn"
               value={newProperty.checkIn}
-              onChange={(e) => setNewProperty({...newProperty, checkIn: e.target.value})}
+              onChange={handleInputChange}
               className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-gray-700 placeholder-gray-400"
               placeholder="Check-in Date"
             />
             <input
               type="date"
+              name="checkOut"
               value={newProperty.checkOut}
-              onChange={(e) => setNewProperty({...newProperty, checkOut: e.target.value})}
+              onChange={handleInputChange}
               className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-gray-700 placeholder-gray-400"
               placeholder="Check-out Date"
             />
             <input
               type="text"
+              name="name"
               placeholder="Property Name"
               value={newProperty.name}
-              onChange={(e) => setNewProperty({...newProperty, name: e.target.value})}
+              onChange={handleInputChange}
               className="col-span-full px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
             />
             <select
+              name="category"
               value={newProperty.category}
-              onChange={(e) => setNewProperty({...newProperty, category: e.target.value})}
+              onChange={handleInputChange}
               className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white"
             >
               <option value="Deluxe">Deluxe</option>
@@ -476,8 +507,9 @@ const PropertyForm = ({
             </select>
             <div className="flex gap-2">
               <select
+                name="currency"
                 value={newProperty.currency}
-                onChange={(e) => setNewProperty({...newProperty, currency: e.target.value})}
+                onChange={handleInputChange}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white w-24"
               >
                 {currencies.map(curr => (
@@ -486,29 +518,27 @@ const PropertyForm = ({
               </select>
               <input
                 type="text"
+                name="price"
                 placeholder="Price (e.g., -25.50 or 50.00)"
                 value={newProperty.price}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '' || value === '-' || /^-?\d*\.?\d*$/.test(value)) {
-                    setNewProperty({ ...newProperty, price: value });
-                  }
-                }}
+                onChange={handleInputChange}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
             />
             </div>
             <input
               type="number"
+              name="bedrooms"
               placeholder="Bedrooms"
               value={newProperty.bedrooms}
-              onChange={(e) => setNewProperty({...newProperty, bedrooms: e.target.value})}
+              onChange={handleInputChange}
               className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
             />
             <input
               type="number"
+              name="bathrooms"
               placeholder="Bathrooms"
               value={newProperty.bathrooms}
-              onChange={(e) => setNewProperty({...newProperty, bathrooms: e.target.value})}
+              onChange={handleInputChange}
               className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
             />
           </div>
@@ -519,7 +549,7 @@ const PropertyForm = ({
                 type="file"
                 multiple
                 accept="image/*"
-                onChange={(e) => handleImageUpload(e.target.files)}
+                onChange={handleImageUpload}
                 className="hidden"
                 id="image-upload"
               />
@@ -536,14 +566,14 @@ const PropertyForm = ({
                     <div key={index} className="relative group w-24 h-24">
                       <img src={image} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-lg shadow-sm" />
                       <button
-                        onClick={() => removeImage(index)}
+                        onClick={() => handleRemoveImage(index)}
                         className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
                         aria-label="Remove image"
                       >
                         <X size={14} />
                       </button>
                       <button
-                        onClick={() => setNewProperty(prev => ({ ...prev, homeImageIndex: index }))}
+                        onClick={() => handleSetHomeImage(index)}
                         className={`absolute bottom-1 left-1 p-1 rounded-full text-white ${newProperty.homeImageIndex === index ? 'bg-blue-500' : 'bg-gray-700 bg-opacity-70 group-hover:bg-blue-500'}`}
                         aria-label="Set as home image"
                         title="Set as home image"
@@ -559,7 +589,7 @@ const PropertyForm = ({
 
           <div className="flex gap-4 mt-6">
             <button
-              onClick={handleSaveProperty}
+              onClick={handleAddOrUpdateProperty}
               className="px-8 py-3 rounded-lg text-white font-semibold shadow-md transition-all"
               style={{ backgroundColor: isEditing ? '#4CAF50' : accentColor, color: isEditing ? '#fff' : '#333' }}
             >
@@ -570,18 +600,8 @@ const PropertyForm = ({
                 onClick={() => {
                   setIsEditing(false);
                   setNewProperty({ // Reset form when cancelling edit
-                    id: null,
-                    location: '',
-                    checkIn: '',
-                    checkOut: '',
-                    name: '',
-                    images: [],
-                    category: 'Deluxe',
-                    price: '',
-                    currency: '$',
-                    bedrooms: '',
-                    bathrooms: '',
-                    homeImageIndex: 0
+                    id: null, location: '', checkIn: '', checkOut: '', name: '', images: [], category: 'Deluxe',
+                    price: '', currency: '$', bedrooms: '', bathrooms: '', homeImageIndex: 0
                   });
                 }}
                 className="px-8 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500 text-base font-semibold shadow-md transition-all"
@@ -625,20 +645,15 @@ const PropertyForm = ({
                   <div
                     key={property.id}
                     className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
-                      ${property.selected ? 'selected-border' : ''}`}
-                    // FIXED: Only allow selection toggle in adminMode
-                    onClick={() => adminMode && toggleSelection(location, property.id)}
+                      ${property.selected && !adminMode ? 'selected-border' : ''}`}
+                    onClick={() => !adminMode && toggleSelection(location, property.id)}
                   >
-                    {/* Image Container */}
                     <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                       <img
-                        // Adjusted image source to dynamically use currentImageIndex for scrolling
                         src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
                         alt={property.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        // Only enlarge if clicking directly on the image, not the navigation buttons
                         onClick={(e) => {
-                          // Only enlarge if click isn't on a button within the image area
                           if (!e.target.closest('button')) {
                             e.stopPropagation();
                             openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
@@ -647,7 +662,6 @@ const PropertyForm = ({
                         onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}
                       />
 
-                      {/* Expand Icon - now only appears on image hover, click still handled by primary image click */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -659,8 +673,7 @@ const PropertyForm = ({
                         <Maximize2 size={16} />
                       </button>
 
-                      {/* Selection Indicator */}
-                      {property.selected && (
+                      {property.selected && !adminMode && (
                         <div className="absolute top-3 left-3 rounded-full p-2 shadow-md"
                           style={{ backgroundColor: accentColor, color: '#333' }}
                         >
@@ -668,19 +681,17 @@ const PropertyForm = ({
                         </div>
                       )}
 
-                      {/* Category Badge */}
                       <div className="absolute bottom-3 left-3">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${getCategoryColor(property.category)}`}>
                           {property.category}
                         </span>
                       </div>
 
-                      {/* Image Navigation */}
                       {property.images?.length > 1 && (
                         <>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent opening image on button click
+                              e.stopPropagation();
                               prevImage(property.id);
                             }}
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
@@ -690,7 +701,7 @@ const PropertyForm = ({
                           </button>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent opening image on button click
+                              e.stopPropagation();
                               nextImage(property.id);
                             }}
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
@@ -699,7 +710,6 @@ const PropertyForm = ({
                             <ChevronRight size={18} />
                           </button>
 
-                          {/* Dots */}
                           <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-1.5">
                             {property.images.slice(0, 3).map((_, index) => (
                               <div
@@ -717,7 +727,6 @@ const PropertyForm = ({
                       )}
                     </div>
 
-                    {/* Property Details */}
                     <div className="p-4 space-y-2">
                       <h3 className="font-semibold text-lg text-gray-900 leading-tight font-century-gothic">
                         {property.name}
@@ -728,7 +737,6 @@ const PropertyForm = ({
                         <span>{property.location}</span>
                       </div>
 
-                      {/* Bedrooms and Bathrooms Display */}
                       <div className="flex items-center text-sm text-gray-600 gap-3">
                         {(property.bedrooms !== undefined && property.bedrooms !== null) && (property.bedrooms > 0) && (
                           <div className="flex items-center">
@@ -760,7 +768,7 @@ const PropertyForm = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              editProperty(property);
+                              handleEditClick(property);
                             }}
                             className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-colors"
                             aria-label="Edit property"
@@ -770,7 +778,7 @@ const PropertyForm = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              confirmRemoveProperty(property.id);
+                              handleDeleteClick(property.id);
                             }}
                             className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 transition-colors"
                             aria-label="Remove property"

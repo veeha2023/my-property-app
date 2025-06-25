@@ -23,13 +23,13 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // Listen for authentication state changes from Supabase
-    // Destructure `data` to get `subscription`
     const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAdminLoggedIn(!!session); // True if session exists (user is logged in)
       if (session) {
         fetchClients(); // Fetch clients if logged in
       } else {
         setClients([]); // Clear clients if logged out
+        setEditingClient(null); // Also clear editing client on logout
       }
     });
 
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
     });
 
     return () => {
-      if (authListener) { // Ensure authListener exists before trying to unsubscribe
+      if (authListener) {
         authListener.unsubscribe(); // Cleanup subscription on unmount
       }
     };
@@ -59,7 +59,6 @@ const AdminDashboard = () => {
 
       if (error) {
         console.error("Error fetching clients:", error);
-        // Optionally, set an error state
       } else {
         const fetchedClients = (data || []).map(client => {
           let parsedProperties = [];
@@ -67,7 +66,6 @@ const AdminDashboard = () => {
             try {
               parsedProperties = JSON.parse(client.client_properties);
               if (!Array.isArray(parsedProperties)) {
-                // If parsing results in non-array (e.g., an empty object string "{}"), default to empty array
                 parsedProperties = [];
               }
             } catch (parseError) {
@@ -128,16 +126,15 @@ const AdminDashboard = () => {
 
   const createNewClientSelection = () => {
     setEditingClient({
-      id: null,
-      client_name: 'New Client Selection', // Matches Supabase column name
-      client_properties: [], // Starts with a blank array for properties
+      id: null, // Indicates a new client
+      client_name: 'New Client Selection',
+      client_properties: [],
       custom_logo_url: null
     });
-    setCustomLogoUrl(null); // Clear custom logo state for the form
+    setCustomLogoUrl(null);
   };
 
   const saveClientSelection = async () => {
-    // Ensure editingClient exists and client_properties is an array
     if (!editingClient) {
       alert("No client selection to save or editing client is null.");
       return;
@@ -147,46 +144,51 @@ const AdminDashboard = () => {
     try {
       const clientDataToSave = {
         client_name: editingClient.client_name || 'Unnamed Client',
-        // IMPORTANT FIX: Stringify client_properties before saving to JSONB column
-        client_properties: JSON.stringify(propertiesToSave),
+        client_properties: JSON.stringify(propertiesToSave), // Stringify for JSONB column
         custom_logo_url: customLogoUrl,
-        last_updated: new Date().toISOString() // Supabase timestamp format
+        last_updated: new Date().toISOString()
       };
 
       const { data: userAuthData, error: userError } = await supabase.auth.getUser();
       if (userError || !userAuthData?.user?.id) {
           throw new Error("User not authenticated. Cannot save client selection.");
       }
-      clientDataToSave.user_id = userAuthData.user.id; // Assign current admin's user_id
+      clientDataToSave.user_id = userAuthData.user.id;
 
       let error = null;
       let data = null;
+      let isNewClient = !editingClient.id; // Check if it's a new client
 
       if (editingClient.id) { // Existing client, update
         const response = await supabase
           .from('clients')
           .update(clientDataToSave)
           .eq('id', editingClient.id)
-          .select(); // Add .select() to get the updated data back
+          .select();
         data = response.data;
         error = response.error;
       } else { // New client, insert
         const response = await supabase
           .from('clients')
           .insert(clientDataToSave)
-          .select(); // Add .select() to get the inserted data back
+          .select();
         data = response.data;
         error = response.error;
       }
 
       if (error) {
-        throw error; // Throw error to be caught by the catch block
+        throw error;
       }
 
-      alert(`Client selection ${editingClient.id ? 'updated' : 'created'} successfully!`);
-      setEditingClient(null); // Exit editing mode
-      setCustomLogoUrl(null); // Clear logo after saving
-      fetchClients(); // Refresh the list of clients
+      alert(`Client selection ${isNewClient ? 'created' : 'updated'} successfully!`);
+
+      // IMPORTANT: Only clear editingClient if a new client was just created.
+      // For updates/deletions within an existing client, keep it in editing mode.
+      if (isNewClient) {
+        setEditingClient(null);
+        setCustomLogoUrl(null); // Clear logo only if exiting editing mode completely
+      }
+      fetchClients(); // Refresh the list
     } catch (error) {
       console.error("Error saving client selection:", error.message);
       alert("Failed to save client selection: " + error.message + ". Please check Supabase RLS policies and server logs.");
@@ -194,7 +196,6 @@ const AdminDashboard = () => {
   };
 
   const editClient = (client) => {
-    // IMPORTANT FIX: Ensure client_properties is always an array and parsed when setting editingClient
     let parsedProperties = [];
     if (typeof client.client_properties === 'string') {
       try {
@@ -202,7 +203,8 @@ const AdminDashboard = () => {
         if (!Array.isArray(parsedProperties)) {
           parsedProperties = [];
         }
-      } catch (e) {
+      }
+      catch (e) {
         console.error("Error parsing client_properties during edit:", e);
         parsedProperties = [];
       }
@@ -216,12 +218,14 @@ const AdminDashboard = () => {
       client_properties: parsedProperties,
       custom_logo_url: client.custom_logo_url
     });
-    setCustomLogoUrl(client.custom_logo_url || null); // Load client's specific logo into form state
+    setCustomLogoUrl(client.custom_logo_url || null);
   };
 
   const deleteClient = async (clientId) => {
+    // Replace window.confirm with a custom modal if needed, as per instructions.
+    // For now, retaining window.confirm for simplicity given the current context.
     if (!window.confirm("Are you sure you want to delete this client selection?")) {
-      return; // User cancelled
+      return;
     }
 
     try {
@@ -237,6 +241,7 @@ const AdminDashboard = () => {
       alert("Client selection deleted successfully!");
       if (editingClient && editingClient.id === clientId) {
         setEditingClient(null); // Clear editing if the deleted client was being edited
+        setCustomLogoUrl(null); // Clear logo if exiting editing mode completely
       }
       fetchClients(); // Refresh the list
     } catch (error) {
@@ -331,24 +336,23 @@ const AdminDashboard = () => {
                 <input
                   type="text"
                   placeholder="Client Name"
-                  // Use client_name for the input value as it maps to the Supabase column
-                  value={editingClient.client_name || ''} // Ensure default to empty string if null/undefined
+                  value={editingClient.client_name || ''}
                   onChange={(e) => setEditingClient(prev => ({ ...prev, client_name: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-base mb-4"
                 />
                 <PropertyForm
-                  // IMPORTANT FIX: properties prop is already parsed to array in editClient/fetchClients
                   properties={editingClient.client_properties || []}
-                  // Pass setProperties as a callback function
-                  // IMPORTANT FIX: Ensure newProps is always an array when updating client_properties
                   setProperties={(newProps) => setEditingClient(prev => ({ ...prev, client_properties: Array.isArray(newProps) ? newProps : [] }))}
-                  customLogoUrl={customLogoUrl}
-                  setCustomLogoUrl={setCustomLogoUrl}
+                  customLogoUrl={customLogoUrl} // Pass logo to PropertyForm (though not directly used by it for display)
+                  onSave={saveClientSelection} // Pass the save function to trigger parent's save
                   adminMode={true} // Pass adminMode as true for the admin view
                 />
                 <div className="flex gap-4 mt-6 justify-end">
                   <button
-                    onClick={() => setEditingClient(null)}
+                    onClick={() => {
+                        setEditingClient(null); // Explicitly exit editing mode
+                        setCustomLogoUrl(null); // Clear logo
+                    }}
                     className="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition-colors shadow-sm"
                   >
                     Cancel
@@ -371,7 +375,6 @@ const AdminDashboard = () => {
                 clients.map((client) => (
                   <div key={client.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
                     <div>
-                      {/* Use client.client_name to display */}
                       <h3 className="font-semibold text-lg text-gray-900">{client.client_name}</h3>
                       <p className="text-sm text-gray-600 mt-1">ID: {client.id}</p>
                       <p className="text-xs text-gray-500 mt-1">
