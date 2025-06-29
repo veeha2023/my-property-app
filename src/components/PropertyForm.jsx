@@ -1,7 +1,8 @@
-// src/components/PropertyForm.jsx
+// src/components/PropertyForm.jsx - Version 6.2
 // This component is designed to be a controlled component used by AdminDashboard.
 // It receives properties and update functions as props.
 import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../supabaseClient';
 import {
   Calendar,
   MapPin,
@@ -16,6 +17,7 @@ import {
   BedDouble, // Icon for bedrooms
   Bath,      // Icon for bathrooms
   Image,     // Icon for selecting home image
+  Plus, // Added Plus icon for 'Add New Property' button
 } from 'lucide-react';
 
 const PropertyForm = ({
@@ -28,31 +30,37 @@ const PropertyForm = ({
 }) => {
   const accentColor = '#FFD700';
   const accentColorDark = '#DAA520';
-  const savingsColor = '#10B981';
-  const extraColor = '#EF4444';
+  // Re-added savingsColor and extraColor
+  const savingsColor = '#10B981'; // Dark green for savings (negative)
+  const extraColor = '#EF4444';   // Dark red for extra (positive)
 
   const [currentImageIndex, setCurrentImageIndex] = useState({});
   const [expandedImage, setExpandedImage] = useState(null);
   const [expandedImagePropertyId, setExpandedImagePropertyId] = useState(null);
   const [newProperty, setNewProperty] = useState({
-    id: null,
-    location: '',
-    checkIn: '',
-    checkOut: '',
-    name: '',
-    images: [],
-    category: 'Deluxe',
-    price: '',
-    currency: '$',
-    bedrooms: '',
-    bathrooms: '',
-    homeImageIndex: 0
+    name: '', location: '', checkIn: '', checkOut: '', currency: 'NZD',
+    price: '', // MODIFIED: Changed from 0 to empty string
+    price_type: 'Per Night',
+    bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0, // MODIFIED: Changed from 0 to empty string
+    selected: false, description: '', category: 'Luxury', // Default category set to 'Luxury'
   });
-  const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [propertyToDeleteId, setPropertyToDeleteId] = useState(null);
+  const [isAddingNew, setIsAddingNew] = useState(false); // Controls the add form visibility
+  const [editingProperty, setEditingProperty] = useState(null); // For existing property edits
+  const [showPropertyFormModal, setShowPropertyFormModal] = useState(false); // Controls the visibility of the property form modal (for add/edit)
+  const [tempImageFiles, setTempImageFiles] = useState([]); // For new image files before upload
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imagePreviews, setImagePreviews] = useState({}); // Stores URLs for existing images
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState(null);
 
-  const currencies = ['$', '€', '£', '¥', '₹', 'NZ$', 'AU$', 'CA$'];
+  // Helper for initial state of a new property
+  const initialNewPropertyState = {
+    name: '', location: '', checkIn: '', checkOut: '', currency: 'NZD',
+    price: '', // MODIFIED: Changed from 0 to empty string
+    price_type: 'Per Night',
+    bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0, // MODIFIED: Changed from 0 to empty string
+    selected: false, description: '', category: 'Luxury', // Default category set to 'Luxury'
+  };
 
   // Initialize currentImageIndex when the 'properties' prop changes
   useEffect(() => {
@@ -65,132 +73,226 @@ const PropertyForm = ({
     setCurrentImageIndex(initialImageIndices);
   }, [properties]);
 
-
-  const calculateNights = (checkIn, checkOut) => {
-    if (!checkIn || !checkOut) return 0;
-    const start = new Date(checkIn + 'T00:00:00');
-    const end = new Date(checkOut + 'T00:00:00');
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  // For adding a new property
+  const handleAddNewPropertyClick = () => {
+    setNewProperty({ ...initialNewPropertyState }); // Reset form fields
+    setIsAddingNew(true); // Show the new property form
+    setEditingProperty(null); // Ensure not in edit mode
+    setShowPropertyFormModal(true); // Open the modal
+    setMessage('');
+    setError(null);
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+  // For editing an existing property
+  const handleEditPropertyClick = (property) => {
+    // Set the property to be edited
+    // Ensure that if price, bedrooms, or bathrooms are 0, they appear as empty in the edit form
+    setEditingProperty({
+      ...property,
+      price: property.price === 0 ? '' : property.price,
+      bedrooms: property.bedrooms === 0 ? '' : property.bedrooms,
+      bathrooms: property.bathrooms === 0 ? '' : property.bathrooms,
+    });
+    setIsAddingNew(false); // Ensure not in add mode
+    setShowPropertyFormModal(true); // Open the modal for editing
+
+    // Populate image previews for editing property
+    const initialPreviews = {};
+    property.images.forEach((url) => {
+      initialPreviews[url] = url; // Use the URL itself as the preview for existing images
+    });
+    setImagePreviews(initialPreviews);
+
+    setMessage('');
+    setError(null);
+  };
+
+  // Function to handle saving new/edited property details
+  const handleSavePropertyDetails = async (propertyToSave, isNewProperty) => {
+    setUploadingImages(true); // Indicate that saving/uploading is in progress
+    setError(null); // Clear previous errors
+
     try {
-      const date = new Date(dateString + 'T00:00:00');
-      if (isNaN(date.getTime())) {
-        return 'Invalid Date';
+      // Ensure numeric fields are correctly parsed before saving
+      const finalPropertyToSave = {
+        ...propertyToSave,
+        price: parseCurrencyToNumber(propertyToSave.price),
+        bedrooms: parseInt(propertyToSave.bedrooms) || 0,
+        bathrooms: parseFloat(propertyToSave.bathrooms) || 0,
+      };
+
+      let updatedProperties;
+      if (isNewProperty) {
+        // Generate a simple unique ID for new property
+        const newId = `prop-${Date.now()}`;
+        const propertyWithId = { ...finalPropertyToSave, id: newId };
+        updatedProperties = [...properties, propertyWithId];
+      } else {
+        updatedProperties = properties.map(prop =>
+          prop.id === propertyToSave.id ? finalPropertyToSave : prop
+        );
       }
-      return date.toLocaleDateString('en-NZ', {
-        day: 'numeric',
-        month: 'short',
-        year: '2-digit'
-      });
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return 'Error';
+
+      setProperties(updatedProperties); // Update the state immediately
+      if (onSave) {
+        await onSave(updatedProperties); // Trigger save to parent (AdminDashboard)
+      }
+      setMessage(isNewProperty ? 'Property added successfully!' : 'Property updated successfully!');
+      isNewProperty ? setIsAddingNew(false) : setEditingProperty(null);
+      setShowPropertyFormModal(false); // Close modal on success for both new and existing property
+    } catch (err) {
+      console.error("Save error:", err);
+      setError(`Failed to save property: ${err.message}`);
+      setUploadingImages(false); // Ensure loading state is reset
+    } finally {
+      setUploadingImages(false);
     }
   };
 
-  const groupPropertiesByLocation = () => {
-    const grouped = {};
-    (properties || []).forEach(property => {
-      if (property && property.location) {
-        if (!grouped[property.location]) {
-          grouped[property.location] = [];
-        }
-        grouped[property.location].push(property);
-      }
-    });
-    return grouped;
+  // Function to handle form cancellation
+  const handleCancelForm = () => {
+    if (isAddingNew) {
+      setIsAddingNew(false);
+      setNewProperty({ ...initialNewPropertyState }); // Clear fields
+    } else if (editingProperty) {
+      setEditingProperty(null);
+      setNewProperty({ ...initialNewPropertyState }); // Clear newProperty state for next add
+    }
+    setTempImageFiles([]); // Clear any temporary image files
+    setImagePreviews({}); // Clear image previews
+    setMessage('');
+    setError(null);
+    setIsAddingNew(false); // Reset add mode
+    setShowPropertyFormModal(false); // Close modal on cancel for both new and existing property
   };
 
-  // MODIFIED: Toggles the selection status of a property
-  const toggleSelection = (locationId, propertyId) => {
+  // For deleting a property
+  const handleDeleteProperty = (idToDelete) => {
+    if (window.confirm("Are you sure you want to delete this property? This action cannot be undone.")) {
+      const updatedProperties = properties.filter(prop => prop.id !== idToDelete);
+      setProperties(updatedProperties);
+      if (onSave) {
+        onSave(updatedProperties); // Trigger save to parent
+      }
+      setMessage('Property deleted successfully!');
+      setError(null);
+    }
+  };
+
+  // Function to handle setting an image as the home image
+  const handleSetHomeImage = (propertyId, imageIndex) => {
+    const updatedProperties = properties.map(prop =>
+      prop.id === propertyId ? { ...prop, homeImageIndex: imageIndex } : prop
+    );
+    setProperties(updatedProperties);
+    if (onSave) {
+      onSave(updatedProperties);
+    }
+  };
+
+  // MODIFIED: Toggles the selection status of a property, ensuring only one per location.
+  // This now works regardless of adminMode.
+  const toggleSelection = useCallback((locationId, propertyId) => {
     if (typeof setProperties === 'function') {
       const updatedProperties = (properties || []).map(prop => {
         if (prop && prop.location === locationId) {
-          if (adminMode) {
-            // Admin mode: allow multiple selections/deselections
-            if (prop.id === propertyId) {
-              return { ...prop, selected: !prop.selected };
-            }
-          } else {
-            // Client mode: only one selection per location, toggle on click
-            return { ...prop, selected: prop.id === propertyId };
-          }
+          // If the clicked property is already selected, deselect it.
+          // Otherwise, select the clicked property and deselect all others in the same location.
+          return { ...prop, selected: (prop.id === propertyId) ? !prop.selected : false };
         }
         return prop;
       });
       setProperties(updatedProperties);
-
-      // In admin mode, save changes after selection toggle
-      if (adminMode && onSave) {
-        onSave(updatedProperties, customLogoUrl);
-      }
     } else {
       console.error("PropertyForm: setProperties prop is not a function in toggleSelection.");
     }
+  }, [properties, setProperties]); // Depend on 'properties' and 'setProperties'
+
+
+  // Utility function to safely parse numeric values from currency strings
+  const parseCurrencyToNumber = useCallback((currencyString) => {
+    if (typeof currencyString === 'number') {
+      return currencyString;
+    }
+    if (typeof currencyString === 'string') {
+      const cleanedString = currencyString.replace(/[^0-9.-]+/g, "");
+      const parsed = parseFloat(cleanedString);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, []);
+
+  // NEW: Function to get price color style
+  const getPriceColorStyle = (price) => {
+    if (price < 0) {
+      return { color: savingsColor }; // Dark green for negative (savings)
+    } else if (price > 0) {
+      return { color: extraColor }; // Dark red for positive (extra)
+    }
+    return { color: '#333' }; // Default color for zero
   };
 
+  // NEW: Function to get total change color style
+  const getTotalChangeColorStyle = (totalChangeValue) => {
+    if (totalChangeValue < 0) {
+      return { color: savingsColor }; // Dark green for negative (savings)
+    } else if (totalChangeValue > 0) {
+      return { color: extraColor }; // Dark red for positive (extra)
+    }
+    return { color: '#333' }; // Default color for zero
+  };
+
+  // Image navigation for property cards
+  const prevImage = (propertyId) => {
+    setCurrentImageIndex(prev => {
+      const current = prev[propertyId] || 0;
+      const totalImages = properties.find(p => p.id === propertyId)?.images?.length || 0;
+      return { ...prev, [propertyId]: (current - 1 + totalImages) % totalImages };
+    });
+  };
 
   const nextImage = (propertyId) => {
-    const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
-
     setCurrentImageIndex(prev => {
-      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
-      const nextIdx = (currentIdx + 1) % property.images.length;
-      return { ...prev, [propertyId]: nextIdx };
+      const current = prev[propertyId] || 0;
+      const totalImages = properties.find(p => p.id === propertyId)?.images?.length || 0;
+      return { ...prev, [propertyId]: (current + 1) % totalImages };
     });
   };
 
-  const prevImage = (propertyId) => {
-    const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
-
-    setCurrentImageIndex(prev => {
-      const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
-      const prevIdx = (currentIdx - 1 + property.images.length) % property.images.length;
-      return { ...prev, [propertyId]: prevIdx };
-    });
-  };
-
-  const openExpandedImage = (propertyId, imageIndex) => {
-    const property = (properties || []).find(p => p.id === propertyId);
-    if (property && Array.isArray(property.images) && property.images.length > 0) {
-      setExpandedImage(property.images[imageIndex]);
+  // Image expansion logic
+  const openExpandedImage = (propertyId, index) => {
+    const property = properties.find(p => p.id === propertyId);
+    if (property && property.images && property.images[index]) {
+      setExpandedImage(property.images[index]);
       setExpandedImagePropertyId(propertyId);
-      setCurrentImageIndex(prev => ({ ...prev, [propertyId]: imageIndex }));
+      setCurrentImageIndex(prev => ({ ...prev, [propertyId]: index })); // Set current index for expanded view
     }
   };
 
-  const nextExpandedImage = useCallback(() => {
-    if (!expandedImagePropertyId) return;
-    const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
+  const closeExpandedImage = () => {
+    setExpandedImage(null);
+    setExpandedImagePropertyId(null);
+  };
 
-    setCurrentImageIndex(prev => {
-      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
-      const nextIdx = (currentIdx + 1) % property.images.length;
-      setExpandedImage(property.images[nextIdx]);
-      return { ...prev, [expandedImagePropertyId]: nextIdx };
-    });
-  }, [expandedImagePropertyId, properties]);
+  const prevExpandedImage = () => {
+    if (expandedImagePropertyId) {
+      prevImage(expandedImagePropertyId);
+      const property = properties.find(p => p.id === expandedImagePropertyId);
+      if (property) {
+        setExpandedImage(property.images[(currentImageIndex[expandedImagePropertyId] - 1 + property.images.length) % property.images.length]);
+      }
+    }
+  };
 
-  const prevExpandedImage = useCallback(() => {
-    if (!expandedImagePropertyId) return;
-    const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
-
-    setCurrentImageIndex(prev => {
-      const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
-      const prevIdx = (currentIdx - 1 + property.images.length) % property.images.length;
-      setExpandedImage(property.images[prevIdx]);
-      return { ...prev, [expandedImagePropertyId]: prevIdx };
-    });
-  }, [expandedImagePropertyId, properties]);
+  const nextExpandedImage = () => {
+    if (expandedImagePropertyId) {
+      nextImage(expandedImagePropertyId);
+      const property = properties.find(p => p.id === expandedImagePropertyId);
+      if (property) {
+        setExpandedImage(property.images[(currentImageIndex[expandedImagePropertyId] + 1) % property.images.length]);
+      }
+    }
+  };
 
   // Keyboard navigation for expanded image
   useEffect(() => {
@@ -213,185 +315,372 @@ const PropertyForm = ({
     };
   }, [expandedImage, nextExpandedImage, prevExpandedImage]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewProperty(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const currentImagesCount = newProperty.images?.length || 0;
-    const validFiles = files.filter(file => {
-      return file.type.startsWith('image/') && file.size <= 4 * 1024 * 1024; // Max 4MB per image
-    }).slice(0, 30 - currentImagesCount); // Limit total images to 30
-
-    if (validFiles.length === 0 && files.length > 0) {
-      alert("No valid images selected (only image files up to 4MB are allowed, max 30 total images).");
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString + 'T00:00:00'); // Added T00:00:00 for consistent parsing
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      return new Intl.DateTimeFormat('en-NZ', {
+        day: 'numeric',
+        month: 'short', // Changed to short month
+        year: '2-digit'  // Changed to 2-digit year
+      }).format(date);
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return 'Error';
     }
-
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setNewProperty(prev => ({
-          ...prev,
-          images: [...(prev.images || []), e.target.result]
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
   };
 
-  const handleRemoveImage = (indexToRemove) => {
-    setNewProperty(prev => {
-      const currentImages = prev.images || [];
-      const updatedImages = currentImages.filter((_, index) => index !== indexToRemove);
-      let newHomeImageIndex = prev.homeImageIndex;
+  // Calculate number of nights
+  const calculateNights = (checkIn, checkOut) => {
+    if (!checkIn || !checkOut) return 0;
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
 
-      if (indexToRemove < prev.homeImageIndex) {
-        newHomeImageIndex = Math.max(0, prev.homeImageIndex - 1);
-      } else if (indexToRemove === prev.homeImageIndex && updatedImages.length > 0) {
-        newHomeImageIndex = 0;
-      } else if (updatedImages.length === 0) {
-        newHomeImageIndex = 0;
+  // Handle image file input change (Supabase integration)
+  const handleImageFileChange = async (e, currentProperty, setProperty) => {
+    const files = Array.from(e.target.files);
+    setUploadingImages(true);
+    setError(null);
+
+    const newImageFiles = [];
+    const newImageUrls = [...(currentProperty.images || [])]; // Existing images
+    const previewsToAdd = {};
+
+    try {
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { data, error: uploadError } = await supabase.storage
+          .from('property-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: publicURLData } = supabase.storage
+          .from('property-images')
+          .getPublicUrl(data.path);
+
+        newImageUrls.push(publicURLData.publicUrl);
+        newImageFiles.push(file); // Keep track of files to associate with property
+        previewsToAdd[publicURLData.publicUrl] = publicURLData.publicUrl;
       }
 
-      return {
+      setProperty(prev => ({
         ...prev,
-        images: updatedImages,
-        homeImageIndex: newHomeImageIndex
-      };
+        images: newImageUrls,
+        homeImageIndex: prev.homeImageIndex >= 0 ? prev.homeImageIndex : 0, // Ensure homeImageIndex is valid
+      }));
+      setTempImageFiles(prev => [...prev, ...newImageFiles]);
+      setImagePreviews(prev => ({ ...prev, ...previewsToAdd }));
+      setMessage('Images uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      setError(`Error uploading images: ${error.message}`);
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  // Handle image removal from property (both new and existing)
+  const handleRemoveImage = (imageToRemoveUrl, currentProperty, setProperty) => {
+    const updatedImages = currentProperty.images.filter(url => url !== imageToRemoveUrl);
+    setProperty(prev => {
+      let newHomeImageIndex = prev.homeImageIndex;
+      if (updatedImages.length > 0 && newHomeImageIndex >= updatedImages.length) {
+        newHomeImageIndex = updatedImages.length - 1; // Adjust if home image index is now out of bounds
+      } else if (updatedImages.length === 0) {
+        newHomeImageIndex = 0; // No images left
+      }
+      return { ...prev, images: updatedImages, homeImageIndex: newHomeImageIndex };
     });
-  };
-
-  const handleSetHomeImage = (index) => {
-    setNewProperty(prev => ({ ...prev, homeImageIndex: index }));
-  };
-
-  const handleAddOrUpdateProperty = () => {
-    if (!newProperty.name || !newProperty.location || !newProperty.checkIn || !newProperty.checkOut) {
-      alert("Please fill all required fields: Location, Check-in, Check-out, Name.");
-      return;
-    }
-
-    const priceValue = newProperty.price === '' ? 0 : parseFloat(newProperty.price);
-    const bedroomsValue = parseInt(newProperty.bedrooms) || 0;
-    const bathroomsValue = parseInt(newProperty.bathrooms) || 0;
-
-    let updatedPropertiesList;
-    let propertyIdForIndexUpdate;
-
-    if (isEditing && newProperty.id !== null) { // Ensure it's an existing property
-      updatedPropertiesList = (properties || []).map(prop =>
-        prop && prop.id === newProperty.id
-          ? { ...newProperty, price: priceValue, bedrooms: bedroomsValue, bathrooms: bathroomsValue }
-          : prop
-      ).filter(Boolean);
-      propertyIdForIndexUpdate = newProperty.id;
-    } else {
-      // Generate a new unique ID for a new property
-      const currentMaxId = (properties || []).length > 0 ? Math.max(...(properties || []).map(p => p.id || 0)) : 0;
-      const id = currentMaxId + 1; // Simple incrementing ID, consider UUID for more robustness
-      const propertyToAdd = {
-        ...newProperty,
-        id,
-        selected: false, // New properties are not selected by default
-        price: priceValue,
-        bedrooms: bedroomsValue,
-        bathrooms: bathroomsValue,
-        images: newProperty.images || []
-      };
-      updatedPropertiesList = [...(properties || []), propertyToAdd];
-      propertyIdForIndexUpdate = id;
-    }
-
-    if (typeof setProperties === 'function') {
-      setProperties(updatedPropertiesList);
-    } else {
-      console.error("PropertyForm: setProperties prop is not a function. Cannot update properties.");
-      alert("An internal error occurred. Cannot update properties.");
-      return;
-    }
-
-    setCurrentImageIndex(prev => ({
-      ...prev,
-      [propertyIdForIndexUpdate]: newProperty.homeImageIndex
-    }));
-
-    setIsEditing(false); // Exit editing mode
-    setNewProperty({ // Reset the form
-      id: null, location: '', checkIn: '', checkOut: '', name: '', images: [], category: 'Deluxe',
-      price: '', currency: '$', bedrooms: '', bathrooms: '', homeImageIndex: 0
+    setImagePreviews(prev => {
+      const newPreviews = { ...prev };
+      delete newPreviews[imageToRemoveUrl];
+      return newPreviews;
     });
-    if (onSave) onSave(updatedPropertiesList, customLogoUrl); // Trigger save in parent (AdminDashboard) with updated properties and logo
+
+    // Optionally, if it's an existing image in Supabase, you might want to delete it from storage too
+    // This would require a separate Supabase delete call
   };
 
-  const handleEditClick = (property) => {
-    setNewProperty({
-      ...property,
-      price: property.price !== undefined && property.price !== null ? String(property.price) : '',
-      bedrooms: property.bedrooms !== undefined && property.bedrooms !== null ? String(property.bedrooms) : '',
-      bathrooms: property.bathrooms !== undefined && property.bathrooms !== null ? String(property.bathrooms) : '',
-      images: property.images || [],
-    });
-    setIsEditing(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDeleteClick = (propertyId) => {
-    setPropertyToDeleteId(propertyId);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (typeof setProperties === 'function' && propertyToDeleteId !== null) {
-      const updatedPropertiesList = (properties || []).filter(prop => prop && prop.id !== propertyToDeleteId);
-      setProperties(updatedPropertiesList);
-      if (onSave) onSave(updatedPropertiesList, customLogoUrl); // Trigger save after deletion
-    } else {
-      console.error("PropertyForm: setProperties prop is not a function or propertyToDeleteId is null. Cannot delete property.");
-      alert("An internal error occurred. Cannot delete property.");
-      return;
-    }
-    setShowDeleteConfirm(false);
-    setPropertyToDeleteId(null);
-  };
-
-  const handleCancelDelete = () => {
-    setShowDeleteConfirm(false);
-    setPropertyToDeleteId(null);
-  };
-
+  // MODIFIED: Categories are now only Deluxe, Super Deluxe, Luxury
   const getCategoryColor = (category) => {
     switch (category) {
-      case 'Luxury': return 'bg-purple-600 text-white';
-      case 'Super Deluxe': return 'bg-blue-600 text-white';
+      case 'Luxury': return 'bg-yellow-400 text-gray-900';
       case 'Deluxe': return 'bg-green-600 text-white';
-      default: return 'bg-gray-600 text-white';
+      case 'Super Deluxe': return 'bg-blue-600 text-white';
+      default: return 'bg-gray-400 text-white'; // Fallback for unexpected categories
     }
   };
 
+  // Group properties by location
+  const groupPropertiesByLocation = () => {
+    const grouped = {};
+    (properties || []).forEach(property => {
+      if (property && property.location) {
+        if (!grouped[property.location]) {
+          grouped[property.location] = [];
+        }
+        grouped[property.location].push(property);
+      }
+    });
+    return grouped;
+  };
+
+  // Get selected property for summary
   const getSelectedProperty = (location) => {
-    // In admin mode, this will return the first selected property for the summary,
-    // as admin can select multiple, but the summary needs a single representation.
-    // For client mode, it correctly returns the single selected property.
+    // Returns the single selected property for a given location for the summary
     return (properties || []).find(prop => prop && prop.location === location && prop.selected);
   };
 
   const groupedProperties = groupPropertiesByLocation();
 
-  const totalChange = (properties || [])
-    .filter(prop => prop && prop.selected)
-    .reduce((total, prop) => total + parseFloat(prop.price || 0), 0);
-  const totalChangeColorStyle = { color: totalChange >= 0 ? extraColor : savingsColor };
 
-  return (
-    <div className="font-['Century_Gothic']">
+  const renderPropertyFormFields = (currentProperty, setProperty) => (
+    <>
+      <style>
+        {`
+        /* Hide spin buttons for number input */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield; /* Firefox */
+        }
+        `}
+      </style>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Property Name</label>
+          <input
+            type="text"
+            id="name"
+            value={currentProperty.name}
+            onChange={(e) => setProperty(prev => ({ ...prev, name: e.target.value }))}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
+          <input
+            type="text"
+            id="location"
+            value={currentProperty.location}
+            onChange={(e) => setProperty(prev => ({ ...prev, location: e.target.value }))}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700">Check-in Date</label>
+          <input
+            type="date"
+            id="checkIn"
+            value={currentProperty.checkIn}
+            onChange={(e) => setProperty(prev => ({ ...prev, checkIn: e.target.value, checkOut: e.target.value > prev.checkOut ? '' : prev.checkOut }))} // Clear checkout if it's before new checkIn
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700">Check-out Date</label>
+          <input
+            type="date"
+            id="checkOut"
+            value={currentProperty.checkOut}
+            onChange={(e) => setProperty(prev => ({ ...prev, checkOut: e.target.value }))}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+            min={currentProperty.checkIn} // MODIFIED: Checkout date must be after check-in date
+            disabled={!currentProperty.checkIn} // Disable if check-in not set
+          />
+        </div>
+        {/* MODIFIED: Price input now allows 2 decimal places and negative sign, with arrows hidden via CSS */}
+        <div>
+          <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price</label>
+          <input
+            type="number" // Still type number for semantic meaning, but arrows hidden with CSS
+            id="price"
+            value={currentProperty.price}
+            onChange={(e) => setProperty(prev => ({ ...prev, price: e.target.value }))} // Keep as string for display
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+            step="0.01" // Allows 2 decimal places
+            placeholder="e.g., 100.00 or -50.00" // Added placeholder for clarity
+          />
+        </div>
+        {/* Removed original_price and adjusted_price inputs */}
+        <div>
+          <label htmlFor="currency" className="block text-sm font-medium text-gray-700">Currency</label>
+          <select
+            id="currency"
+            value={currentProperty.currency}
+            onChange={(e) => setProperty(prev => ({ ...prev, currency: e.target.value }))}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="NZD">NZD</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="price_type" className="block text-sm font-medium text-gray-700">Price Type</label>
+          <select
+            id="price_type"
+            value={currentProperty.price_type}
+            onChange={(e) => setProperty(prev => ({ ...prev, price_type: e.target.value }))}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="Per Night">Per Night</option>
+            <option value="Total Stay">Total Stay</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="bedrooms" className="block text-sm font-medium text-gray-700">Bedrooms</label>
+          <input
+            type="number"
+            id="bedrooms"
+            value={currentProperty.bedrooms}
+            onChange={(e) => setProperty(prev => ({ ...prev, bedrooms: e.target.value }))} // Keep as string for display
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            min="0"
+            placeholder="e.g., 2"
+          />
+        </div>
+        <div>
+          <label htmlFor="bathrooms" className="block text-sm font-medium text-gray-700">Bathrooms</label>
+          <input
+            type="number"
+            id="bathrooms"
+            value={currentProperty.bathrooms}
+            onChange={(e) => setProperty(prev => ({ ...prev, bathrooms: e.target.value }))} // Keep as string for display
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            min="0"
+            step="0.5"
+            placeholder="e.g., 1.5"
+          />
+        </div>
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
+          <select
+            id="category"
+            value={currentProperty.category}
+            onChange={(e) => setProperty(prev => ({ ...prev, category: e.target.value }))}
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            {/* MODIFIED: Categories are now only Deluxe, Super Deluxe, Luxury */}
+            <option value="Deluxe">Deluxe</option>
+            <option value="Super Deluxe">Super Deluxe</option>
+            <option value="Luxury">Luxury</option>
+          </select>
+        </div>
+      </div>
+      <div className="mb-6">
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+        <textarea
+          id="description"
+          value={currentProperty.description}
+          onChange={(e) => setProperty(prev => ({ ...prev, description: e.target.value }))}
+          rows="4"
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
+        <div className="border border-gray-300 rounded-md p-4 mb-4">
+          <input
+            type="file"
+            id="imageUpload"
+            multiple
+            accept="image/*"
+            onChange={(e) => handleImageFileChange(e, currentProperty, setProperty)}
+            className="hidden"
+          />
+          <label
+            htmlFor="imageUpload"
+            className="cursor-pointer bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
+          >
+            <Upload size={20} />
+            <span>{uploadingImages ? 'Uploading...' : 'Upload Images'}</span>
+          </label>
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {currentProperty.images.map((image, index) => (
+              <div key={index} className="relative group rounded-lg overflow-hidden shadow-sm aspect-video">
+                <img src={image} alt={`Property image ${index + 1}`} className="w-full h-full object-cover" />
+                <button
+                  onClick={() => handleRemoveImage(image, currentProperty, setProperty)}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove image"
+                >
+                  <X size={16} />
+                </button>
+                {/* Admin Mode Controls for Home Image (on the form itself) */}
+                {adminMode && (
+                  <button
+                    onClick={() => setProperty(prev => ({ ...prev, homeImageIndex: index }))}
+                    className={`absolute bottom-1 left-1 rounded-full p-1 shadow-md transition-all duration-200
+                      ${currentProperty.homeImageIndex === index ? `bg-${accentColor.replace('#', '')}/90 text-gray-900` : 'bg-gray-700 bg-opacity-70 text-white hover:bg-opacity-90'}`}
+                    style={{
+                      backgroundColor: currentProperty.homeImageIndex === index ? accentColor : undefined,
+                      color: currentProperty.homeImageIndex === index ? '#333' : 'white'
+                    }}
+                    title="Set as Home Image"
+                  >
+                    <Image size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Checkbox for 'selected' in the form (Admin Mode) */}
+      <div className="mb-6 flex items-center">
+        <input
+          type="checkbox"
+          id="selected"
+          checked={currentProperty.selected}
+          onChange={(e) => setProperty(prev => ({ ...prev, selected: e.target.checked }))}
+          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+        <label htmlFor="selected" className="ml-2 block text-sm font-medium text-gray-700">
+          Selected for Client
+        </label>
+      </div>
+    </>
+  );
+
+  // MODIFIED: Calculate total change as sum of prices of selected properties
+  const totalChange = properties.filter(p => p.selected).reduce((sum, prop) => {
+    // Ensure to parse price from string to number before summing
+    return sum + parseCurrencyToNumber(prop.price);
+  }, 0);
+
+  return ( // Main container for PropertyForm
+    <div className="admin-property-form-container font-['Century_Gothic']">
       <style>{`
         .font-century-gothic {
           font-family: 'Century Gothic', sans-serif;
         }
-        .text-extra-color { color: ${extraColor}; }
-        .text-savings-color { color: ${savingsColor}; }
         .selected-border {
             border-color: ${accentColor};
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
@@ -399,12 +688,70 @@ const PropertyForm = ({
             border-radius: 1rem;
         }
       `}</style>
+      {message && <p className="mb-4 text-center text-sm text-blue-600">{message}</p>}
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm text-center">
+          {error}
+        </div>
+      )}
 
+      {/* Admin Button for Add New Property */}
+      {adminMode && !isAddingNew && !editingProperty && (
+        <div className="mb-6 text-center">
+          <button onClick={handleAddNewPropertyClick} className="px-6 py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center text-lg">
+            <Plus size={20} className="inline mr-2" /> Add New Property
+          </button>
+        </div>
+      )}
+
+      {/* Unified Modal for Add/Edit Property */}
+      {adminMode && showPropertyFormModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={handleCancelForm}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
+              aria-label="Close"
+            >
+              <X size={24} />
+            </button>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              {isAddingNew ? 'Add New Property' : 'Edit Property'}
+            </h2>
+
+            {/* Render the form fields dynamically based on whether it's adding or editing */}
+            {renderPropertyFormFields(
+              isAddingNew ? newProperty : editingProperty,
+              isAddingNew ? setNewProperty : setEditingProperty
+            )}
+
+            <div className="flex justify-end space-x-4 mt-6">
+              <button
+                onClick={() => {
+                  handleSavePropertyDetails(isAddingNew ? newProperty : editingProperty, isAddingNew);
+                }}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                disabled={uploadingImages || !(isAddingNew ? newProperty.name : editingProperty?.name) || !(isAddingNew ? newProperty.location : editingProperty?.location) || !(isAddingNew ? newProperty.checkIn : editingProperty?.checkIn) || !(isAddingNew ? newProperty.checkOut : editingProperty?.checkOut)}
+              >
+                {uploadingImages ? 'Uploading...' : (isAddingNew ? 'Save Property' : 'Save Changes')}
+              </button>
+              <button
+                onClick={handleCancelForm}
+                className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded Image Modal */}
       {expandedImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
           <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[calc(100vh-80px)] bg-black flex items-center justify-center rounded-xl shadow-lg">
             <button
-              onClick={() => setExpandedImage(null)}
+              onClick={closeExpandedImage}
               className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-10"
               aria-label="Close image"
             >
@@ -415,7 +762,7 @@ const PropertyForm = ({
               alt="Expanded view"
               className="max-w-full max-h-full object-contain rounded-xl"
             />
-            {expandedImagePropertyId && (properties || []).find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && (
+            {expandedImagePropertyId && properties.find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && (
               <>
                 <button
                   onClick={prevExpandedImage}
@@ -432,197 +779,17 @@ const PropertyForm = ({
                   <ChevronRight size={24} />
                 </button>
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {(properties || []).find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => (
+                  {properties.find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => (
                     <div
                       key={idx}
                       className={`w-3 h-3 rounded-full cursor-pointer transition-all duration-200 ${
-                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : ((properties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0)) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
+                        idx === (currentImageIndex[expandedImagePropertyId] || properties.find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
                       }`}
                       onClick={() => openExpandedImage(expandedImagePropertyId, idx)}
                     />
                   ))}
                 </div>
               </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-xl shadow-2xl text-center max-w-sm w-full font-century-gothic">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">Confirm Deletion</h3>
-            <p className="text-gray-700 mb-6">Are you sure you want to remove this property?</p>
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={handleCancelDelete}
-                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors shadow-sm"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Panel (Property Form for editing/adding single client data) */}
-      {adminMode && (
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8 mt-8 font-century-gothic">
-          <h2 className="text-2xl font-bold mb-5 text-gray-800 text-left">
-            {isEditing ? 'Edit Property' : 'Add New Property'}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <input
-              type="text"
-              name="location"
-              placeholder="Location"
-              value={newProperty.location}
-              onChange={handleInputChange}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
-            />
-            <input
-              type="date"
-              name="checkIn"
-              value={newProperty.checkIn}
-              onChange={handleInputChange}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-gray-700 placeholder-gray-400"
-              placeholder="Check-in Date"
-            />
-            <input
-              type="date"
-              name="checkOut"
-              value={newProperty.checkOut}
-              onChange={handleInputChange}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-gray-700 placeholder-gray-400"
-              placeholder="Check-out Date"
-            />
-            <input
-              type="text"
-              name="name"
-              placeholder="Property Name"
-              value={newProperty.name}
-              onChange={handleInputChange}
-              className="col-span-full px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
-            />
-            <select
-              name="category"
-              value={newProperty.category}
-              onChange={handleInputChange}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white"
-            >
-              <option value="Deluxe">Deluxe</option>
-              <option value="Super Deluxe">Super Deluxe</option>
-              <option value="Luxury">Luxury</option>
-            </select>
-            <div className="flex gap-2">
-              <select
-                name="currency"
-                value={newProperty.currency}
-                onChange={handleInputChange}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all bg-white w-24"
-              >
-                {currencies.map(curr => (
-                  <option key={curr} value={curr}>{curr}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                name="price"
-                placeholder="Price (e.g., -25.50 or 50.00)"
-                value={newProperty.price}
-                onChange={handleInputChange}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
-            />
-            </div>
-            <input
-              type="number"
-              name="bedrooms"
-              placeholder="Bedrooms"
-              value={newProperty.bedrooms}
-              onChange={handleInputChange}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
-            />
-            <input
-              type="number"
-              name="bathrooms"
-              placeholder="Bathrooms"
-              value={newProperty.bathrooms}
-              onChange={handleInputChange}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div className="mt-6 flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="image-upload"
-              />
-              <label htmlFor="image-upload" className="inline-flex items-center px-5 py-2 rounded-lg text-base font-medium shadow-sm transition-colors cursor-pointer"
-                style={{ backgroundColor: accentColor, color: '#333' }}
-              >
-                <Upload size={18} className="mr-2" />
-                Upload Property Images
-              </label>
-
-              {newProperty.images?.length > 0 && (
-                <div className="mt-4 flex gap-3 flex-wrap">
-                  {newProperty.images.map((image, index) => (
-                    <div key={index} className="relative group w-24 h-24">
-                      <img src={image} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-lg shadow-sm" />
-                      <button
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
-                        aria-label="Remove image"
-                      >
-                        <X size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleSetHomeImage(index)}
-                        className={`absolute bottom-1 left-1 p-1 rounded-full text-white ${newProperty.homeImageIndex === index ? 'bg-blue-500' : 'bg-gray-700 bg-opacity-70 group-hover:bg-blue-500'}`}
-                        aria-label="Set as home image"
-                        title="Set as home image"
-                      >
-                        <Image size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={handleAddOrUpdateProperty}
-              className="px-8 py-3 rounded-lg text-white font-semibold shadow-md transition-all"
-              style={{ backgroundColor: isEditing ? '#4CAF50' : accentColor, color: isEditing ? '#fff' : '#333' }}
-            >
-              {isEditing ? 'Save Changes' : 'Add Property'}
-            </button>
-            {isEditing && (
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setNewProperty({ // Reset form when cancelling edit
-                    id: null, location: '', checkIn: '', checkOut: '', name: '', images: [], category: 'Deluxe',
-                    price: '', currency: '$', bedrooms: '', bathrooms: '', homeImageIndex: 0
-                  });
-                }}
-                className="px-8 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500 text-base font-semibold shadow-md transition-all"
-              >
-                Cancel Edit
-              </button>
             )}
           </div>
         </div>
@@ -656,210 +823,197 @@ const PropertyForm = ({
 
             <div className="p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                {(locationProperties || []).map((property) => (
-                  <div
-                    key={property.id}
-                    className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
-                      ${property.selected ? 'selected-border' : ''}`} /* MODIFIED: Always check property.selected for border */
-                    onClick={() => toggleSelection(location, property.id)} /* MODIFIED: Always call toggleSelection */
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
-                      <img
-                        src={property.images?.[currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
-                        alt={property.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onClick={(e) => {
-                          if (!e.target.closest('button')) {
-                            e.stopPropagation();
-                            openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
-                          }
-                        }}
-                        onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}
-                      />
+                {(locationProperties || []).map((property) => {
+                  const priceValue = parseCurrencyToNumber(property.price); // Use single price field
+                  const priceColorStyle = getPriceColorStyle(priceValue);
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
-                        }}
-                        className="absolute top-3 right-3 bg-black bg-opacity-40 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
-                        aria-label="Expand image"
-                      >
-                        <Maximize2 size={16} />
-                      </button>
-
-                      {property.selected && ( /* MODIFIED: Always check property.selected for checkmark */
-                        <div className="absolute top-3 left-3 rounded-full p-2 shadow-md"
-                          style={{ backgroundColor: accentColor, color: '#333' }}
-                        >
-                          <Check size={16} />
+                  return (
+                    <div
+                      key={property.id}
+                      className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
+                        ${property.selected ? 'selected-border' : ''}`}
+                      onClick={() => toggleSelection(property.location, property.id)}
+                    >
+                      {/* Checkbox/Selection Indicator for Admin Mode */}
+                      {adminMode && (
+                        <div className="absolute top-3 left-3 z-10">
+                          <input
+                            type="checkbox"
+                            checked={property.selected}
+                            onChange={(e) => {
+                              e.stopPropagation(); // Prevent card click from toggling selection twice
+                              toggleSelection(property.location, property.id);
+                            }}
+                            className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                          />
                         </div>
                       )}
 
-                      <div className="absolute bottom-3 left-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${getCategoryColor(property.category)}`}>
-                          {property.category}
-                        </span>
-                      </div>
-
-                      {property.images?.length > 1 && (
-                        <>
+                      {/* Admin Edit/Delete Buttons */}
+                      {adminMode && (
+                        <div className="absolute top-3 right-3 z-10 flex space-x-2">
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              prevImage(property.id);
+                              e.stopPropagation(); // Prevent card click
+                              handleEditPropertyClick(property);
                             }}
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
-                            aria-label="Previous image"
+                            className="p-2 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 transition-colors"
+                            title="Edit Property"
                           >
-                            <ChevronLeft size={18} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              nextImage(property.id);
+                              e.stopPropagation(); // Prevent card click
+                              handleDeleteProperty(property.id);
                             }}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
-                            aria-label="Next image"
+                            className="p-2 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
+                            title="Delete Property"
                           >
-                            <ChevronRight size={18} />
+                            <Trash2 size={16} />
                           </button>
-
-                          <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-1.5">
-                            {property.images.slice(0, 3).map((_, index) => (
-                              <div
-                                key={index}
-                                className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                                  index === (currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
-                                }`}
-                              />
-                            ))}
-                            {property.images.length > 3 && (
-                              <div className="w-2 h-2 rounded-full bg-white bg-opacity-60" title={`${property.images.length - 3} more photos`} />
-                            )}
-                          </div>
-                        </>
+                        </div>
                       )}
-                    </div>
 
-                    <div className="p-4 space-y-2">
-                      <h3 className="font-semibold text-lg text-gray-900 leading-tight font-century-gothic">
-                        {property.name}
-                      </h3>
-
-                      <div className="flex items-center text-sm text-gray-600">
-                        <MapPin size={16} className="mr-1 text-gray-500" />
-                        <span>{property.location}</span>
-                      </div>
-
-                      <div className="flex items-center text-sm text-gray-600 gap-3">
-                        {(property.bedrooms !== undefined && property.bedrooms !== null) && (property.bedrooms > 0) && (
-                          <div className="flex items-center">
-                            <BedDouble size={16} className="mr-1 text-gray-500" />
-                            <span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span>
+                      <div className="aspect-w-16 aspect-h-9 overflow-hidden">
+                        {property.images && property.images.length > 0 ? (
+                          <div className="relative w-full h-48 sm:h-56">
+                            <img
+                              src={property.images[currentImageIndex[property.id] || property.homeImageIndex || 0]}
+                              alt={property.name}
+                              className="w-full h-full object-cover"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0);
+                              }}
+                            />
+                            {property.images.length > 1 && (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); prevImage(property.id); }}
+                                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
+                                >
+                                  <ChevronLeft size={20} />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); nextImage(property.id); }}
+                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
+                                >
+                                  <ChevronRight size={20} />
+                                </button>
+                                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                                  {property.images.map((img, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`w-2 h-2 rounded-full ${
+                                        idx === (currentImageIndex[property.id] || property.homeImageIndex || 0) ? 'bg-white' : 'bg-gray-400'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0);
+                              }}
+                              className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
+                              title="Expand Image"
+                            >
+                              <Maximize2 size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-full h-48 sm:h-56 bg-gray-200 flex items-center justify-center text-gray-500">
+                            <Image size={48} />
                           </div>
                         )}
-                        {(property.bathrooms !== undefined && property.bathrooms !== null) && (property.bathrooms > 0) && (
-                          <div className="flex items-center">
-                            <Bath size={16} className="mr-1 text-gray-500" />
-                            <span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span>
-                          </div>
-                        )}
                       </div>
 
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-base text-gray-700 font-medium">
-                          {property.checkIn && property.checkOut ? `${calculateNights(property.checkIn, property.checkOut)} nights` : 'Nights N/A'}
-                        </span>
-                        <div className="text-right">
-                          <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}>
-                            {property.currency}{Math.abs(parseFloat(property.price || 0)).toFixed(2)}
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="text-xl font-bold text-gray-900 leading-tight">
+                            {property.name}
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getCategoryColor(property.category)}`}>
+                            {property.category}
                           </span>
                         </div>
-                      </div>
+                        <p className="text-gray-600 text-sm mb-3 flex items-center">
+                          <MapPin size={14} className="inline mr-1 text-gray-500" />
+                          {property.location}
+                        </p>
+                        <p className="text-gray-600 text-sm mb-3">
+                          {property.description}
+                        </p>
 
-                      {adminMode && (
-                        <div className="flex justify-end gap-3 pt-3 border-t border-gray-100 mt-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditClick(property);
-                            }}
-                            className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-colors"
-                            aria-label="Edit property"
-                          >
-                            <Edit3 size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(property.id);
-                            }}
-                            className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 transition-colors"
-                            aria-label="Remove property"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                        <div className="flex justify-between items-end mt-4">
+                          <div className="flex items-center text-gray-700 text-sm space-x-3">
+                            {(property.bedrooms !== undefined && property.bedrooms !== null && property.bedrooms !== '') && (property.bedrooms > 0) && ( // Check for non-empty string
+                              <div className="flex items-center">
+                                <BedDouble size={12} className="mr-0.5" />
+                                <span>{property.bedrooms}</span>
+                              </div>
+                            )}
+                            {(property.bathrooms !== undefined && property.bathrooms !== null && property.bathrooms !== '') && (property.bathrooms > 0) && ( // Check for non-empty string
+                              <div className="flex items-center">
+                                <Bath size={12} className="mr-0.5" />
+                                <span>{property.bathrooms}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right w-full sm:w-auto">
+                            {/* MODIFIED: Display price with sign and color */}
+                            <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>
+                              {property.currency}{priceValue >= 0 ? '+' : ''}{priceValue.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
         ))}
-      </div>
 
-      {/* Selection Summary */}
-      <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left">
-        <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
-        {(properties || []).filter(prop => prop && prop.selected).length === 0 ? (
-          <p className="text-gray-500 text-center py-8 text-lg">No properties selected yet. Start choosing!</p>
-        ) : (
-          <div className="space-y-4">
+        {/* Total Price Change Summary */}
+        {(properties && properties.length > 0) && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 mt-10">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Summary of Selected Properties</h3>
             {Object.entries(groupedProperties).map(([location, locationProperties]) => {
               const selectedProperty = getSelectedProperty(location);
               if (!selectedProperty) return null;
 
-              const priceText = parseFloat(selectedProperty.price || 0);
-              const priceColorStyle = { color: priceText >= 0 ? extraColor : savingsColor };
+              const priceValue = parseCurrencyToNumber(selectedProperty.price);
+              const priceColorStyle = getPriceColorStyle(priceValue);
 
               return (
-                <div key={location} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
-                  <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-                    <img
-                      src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"}
-                      alt={selectedProperty.name}
-                      className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0"
-                      onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}
-                    />
-                    <div className="text-left">
-                      <h4 className="font-semibold text-gray-900 text-base">{location}</h4>
-                      <p className="text-sm text-gray-700 font-medium">{selectedProperty.name}</p>
-                      <p className="text-xs text-gray-500">
-                        <Calendar size={12} className="inline mr-1" />
-                        {selectedProperty.checkIn && selectedProperty.checkOut ? `${calculateNights(selectedProperty.checkIn, selectedProperty.checkOut)} nights` : 'Nights N/A'}
-                      </p>
-                      <div className="flex items-center text-xs text-gray-500 gap-2 mt-1">
-                        {(selectedProperty.bedrooms !== undefined && selectedProperty.bedrooms !== null) && (selectedProperty.bedrooms > 0) && (
-                          <div className="flex items-center">
-                            <BedDouble size={12} className="mr-0.5" />
-                            <span>{selectedProperty.bedrooms}</span>
-                          </div>
-                        )}
-                        {(selectedProperty.bathrooms !== undefined && selectedProperty.bathrooms !== null) && (selectedProperty.bathrooms > 0) && (
-                          <div className="flex items-center">
-                            <Bath size={12} className="mr-0.5" />
-                            <span>{selectedProperty.bathrooms}</span>
-                          </div>
-                        )}
-                      </div>
+                <div key={`summary-${location}`} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+                  <div>
+                    <p className="text-lg font-semibold text-gray-800">{selectedProperty.name}</p>
+                    <p className="text-sm text-gray-600">{selectedProperty.location}</p>
+                    <div className="flex items-center text-gray-700 text-xs space-x-2 mt-1">
+                      {(selectedProperty.bedrooms !== undefined && selectedProperty.bedrooms !== null && selectedProperty.bedrooms !== '') && (selectedProperty.bedrooms > 0) && ( // Check for non-empty string
+                        <div className="flex items-center">
+                          <BedDouble size={12} className="mr-0.5" />
+                          <span>{selectedProperty.bedrooms}</span>
+                        </div>
+                      )}
+                      {(selectedProperty.bathrooms !== undefined && selectedProperty.bathrooms !== null && selectedProperty.bathrooms !== '') && (selectedProperty.bathrooms > 0) && ( // Check for non-empty string
+                        <div className="flex items-center">
+                          <Bath size={12} className="mr-0.5" />
+                          <span>{selectedProperty.bathrooms}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="text-right w-full sm:w-auto">
+                    {/* MODIFIED: Display single price */}
                     <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>
-                      {selectedProperty.currency}{Math.abs(priceText).toFixed(2)}
+                      {selectedProperty.currency}{priceValue >= 0 ? '+' : ''}{priceValue.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -869,7 +1023,8 @@ const PropertyForm = ({
             <div className="pt-6 border-t border-gray-200">
               <div className="flex justify-between items-center">
                 <span className="text-xl font-bold text-gray-900">Total Price Change:</span>
-                <span className={`text-3xl font-extrabold`} style={totalChangeColorStyle}>
+                {/* MODIFIED: Display sum of prices with color and sign */}
+                <span className={`text-3xl font-extrabold`} style={getTotalChangeColorStyle(totalChange)}>
                   {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}
                 </span>
               </div>

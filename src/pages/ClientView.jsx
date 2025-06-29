@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx
+// src/pages/ClientView.jsx - Version 1.1 (Global Logo Display)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js'; // Import Supabase client
@@ -10,11 +10,14 @@ import {
 
 const ClientView = () => {
   const { clientId } = useParams(); // Get the client ID from the URL
-  const [clientProperties, setClientProperties] = useState([]);
+  const [properties, setProperties] = useState([]); // Renamed from clientProperties for consistency
   const [clientName, setClientName] = useState('Client Selection');
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState(''); // Added for success/loading messages
   const [error, setError] = useState(null);
-  const [customLogoUrl, setCustomLogoUrl] = useState(null);
+  // No longer fetching customLogoUrl per client, instead will fetch global logo
+  // const [customLogoUrl, setCustomLogoUrl] = useState(null);
+  const [globalLogoUrl, setGlobalLogoUrl] = useState(null); // State for the global logo
 
   const [currentImageIndex, setCurrentImageIndex] = useState({});
   const [expandedImage, setExpandedImage] = useState(null);
@@ -24,72 +27,157 @@ const ClientView = () => {
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
 
-  useEffect(() => {
-    const fetchClientData = async () => {
-      if (!clientId) {
-        setError("No client ID provided in the URL.");
+  // A fixed ID for global settings in 'clients' table (must match AdminDashboard)
+  const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+
+  // NEW: Helper function to safely parse numeric values from currency strings
+  const parseCurrencyToNumber = useCallback((currencyString) => {
+    if (typeof currencyString === 'number') {
+      return currencyString;
+    }
+    if (typeof currencyString !== 'string') {
+      return 0; // Default for null, undefined, etc.
+    }
+    // Remove all non-numeric characters except for the decimal point and the leading hyphen
+    const numericString = currencyString.replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(numericString);
+    return isNaN(parsed) ? 0 : parsed;
+  }, []);
+
+  // Function to fetch client's properties and the global logo
+  const fetchClientProperties = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setMessage('');
+
+    if (!clientId) {
+      setError("No client ID provided in the URL.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // 1. Fetch data for the specific client
+      const { data: clientData, error: clientFetchError } = await supabase
+        .from('clients')
+        .select('client_name, client_properties') // Exclude custom_logo_url as we're using global
+        .eq('id', clientId)
+        .single();
+
+      if (clientFetchError) {
+        if (clientFetchError.code === 'PGRST116') {
+          setError("Client selection not found or invalid URL.");
+        } else {
+          console.error("Supabase client fetch error:", clientFetchError);
+          setError("Failed to load client selection: " + clientFetchError.message);
+        }
+        setProperties([]);
         setLoading(false);
         return;
       }
-      setLoading(true);
-      setError(null);
-      try {
-        // Fetch data from Supabase 'clients' table
-        const { data, error } = await supabase
-          .from('clients')
-          .select('client_name, client_properties, custom_logo_url')
-          .eq('id', clientId)
-          .single(); // Use .single() to expect one row
 
-        if (error) {
-          if (error.code === 'PGRST116') { // Specific code for no rows found
-             setError("Client selection not found.");
-          } else {
-             console.error("Supabase fetch error:", error);
-             setError("Failed to load client selection: " + error.message);
+      let parsedProperties = [];
+      if (typeof clientData.client_properties === 'string') {
+        try {
+          parsedProperties = JSON.parse(clientData.client_properties);
+          if (!Array.isArray(parsedProperties)) {
+            parsedProperties = [];
           }
-        } else if (data) {
-          let parsedProperties = [];
-          if (typeof data.client_properties === 'string') {
-            try {
-              parsedProperties = JSON.parse(data.client_properties);
-              if (!Array.isArray(parsedProperties)) {
-                parsedProperties = [];
-              }
-            } catch (parseError) {
-              console.error("Error parsing client_properties:", parseError);
-              parsedProperties = []; // Default to empty array on parse error
-            }
-          } else if (Array.isArray(data.client_properties)) {
-            parsedProperties = data.client_properties;
-          }
-
-          setClientProperties(parsedProperties); // Set the parsed array
-          setClientName(data.client_name || `Selection for ${clientId}`);
-          setCustomLogoUrl(data.custom_logo_url || null); // Load custom logo
-          
-          // Initialize currentImageIndex for each property based on homeImageIndex
-          const initialImageIndices = {};
-          parsedProperties.forEach(prop => { // Iterate over the parsed array
-            if (prop && prop.id !== undefined) {
-              initialImageIndices[prop.id] = prop.homeImageIndex || 0;
-            }
-          });
-          setCurrentImageIndex(initialImageIndices);
-
-        } else {
-          setError("Client selection not found."); // Should be covered by error.code, but as fallback
+        } catch (parseError) {
+          console.error("Error parsing client_properties:", parseError);
+          parsedProperties = [];
         }
-      } catch (err) {
-        console.error("Unexpected error fetching client data:", err);
-        setError("An unexpected error occurred.");
-      } finally {
-        setLoading(false);
+      } else if (Array.isArray(clientData.client_properties)) {
+        parsedProperties = clientData.client_properties;
       }
-    };
 
-    fetchClientData();
-  }, [clientId]); // Re-fetch if clientId changes
+      const sanitizedProperties = parsedProperties.map(prop => ({
+        ...prop,
+        price: parseCurrencyToNumber(prop.price)
+      }));
+
+      setProperties(sanitizedProperties);
+      setClientName(clientData.client_name || `Selection for ${clientId}`);
+
+      // Initialize currentImageIndex for each property based on homeImageIndex
+      const initialImageIndices = {};
+      sanitizedProperties.forEach(prop => {
+        if (prop && prop.id !== undefined) {
+          initialImageIndices[prop.id] = prop.homeImageIndex || 0;
+        }
+      });
+      setCurrentImageIndex(initialImageIndices);
+
+      // 2. Fetch global settings for the global logo
+      const { data: globalSettingsData, error: globalSettingsError } = await supabase
+        .from('clients')
+        .select('custom_logo_url')
+        .eq('id', GLOBAL_SETTINGS_ID)
+        .single();
+
+      if (globalSettingsError && globalSettingsError.code !== 'PGRST116') {
+        console.error("Error fetching global logo settings:", globalSettingsError.message);
+        // Do not set error for UI, just log, as client view can still function
+      } else if (globalSettingsData) {
+        setGlobalLogoUrl(globalSettingsData.custom_logo_url || null);
+      } else {
+        setGlobalLogoUrl(null); // No global logo found
+      }
+
+    } catch (err) {
+      console.error("An unexpected error occurred during fetch:", err);
+      setError("An unexpected error occurred while loading data.");
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId, parseCurrencyToNumber]);
+
+  // Effect to run fetch on component mount or clientId change
+  useEffect(() => {
+    fetchClientProperties();
+  }, [fetchClientProperties]);
+
+  // NEW: Function to handle saving client's property selections
+  const handleSaveSelection = useCallback(async () => {
+    setLoading(true);
+    setMessage('');
+    setError(null);
+
+    if (!clientId) {
+      setError('Client ID is missing, cannot save selection.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Stringify the entire properties array before saving to Supabase
+      // Ensure all price values are numbers before saving
+      const propertiesToSave = properties.map(prop => ({
+        ...prop,
+        price: parseCurrencyToNumber(prop.price) // Ensure numeric before saving
+      }));
+      const propertiesJson = JSON.stringify(propertiesToSave);
+
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({ client_properties: propertiesJson })
+        .eq('id', clientId);
+
+      if (updateError) {
+        console.error('Error saving client selection:', updateError.message);
+        setError('Error saving your selection: ' + updateError.message);
+      } else {
+        setMessage('Your selection has been successfully saved!');
+        // No need to re-fetch here, as the state is already updated locally
+      }
+    } catch (unexpectedError) {
+      console.error("An unexpected error occurred during save:", unexpectedError);
+      setError("An unexpected error occurred while saving.");
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId, properties, parseCurrencyToNumber]);
+
 
   // Helper functions (copied from PropertyForm, but without admin parts)
   const calculateNights = (checkIn, checkOut) => {
@@ -122,7 +210,7 @@ const ClientView = () => {
 
   const groupPropertiesByLocation = () => {
     const grouped = {};
-    (clientProperties || []).forEach(property => { 
+    (properties || []).forEach(property => {
       if (property && property.location) { // Ensure property and property.location are defined
         if (!grouped[property.location]) {
           grouped[property.location] = [];
@@ -134,16 +222,16 @@ const ClientView = () => {
   };
 
   const getSelectedProperty = (location) => {
-    return (clientProperties || []).find(prop => prop && prop.location === location && prop.selected); 
+    return (properties || []).find(prop => prop && prop.location === location && prop.selected);
   };
 
-  const totalChange = (clientProperties || []) 
+  const totalChangeValue = (properties || []) // Renamed from totalChange for clarity
     .filter(prop => prop && prop.selected) // Ensure prop is defined
-    .reduce((total, prop) => total + parseFloat(prop.price || 0), 0);
-  const totalChangeColorStyle = { color: totalChange >= 0 ? extraColor : savingsColor };
+    .reduce((total, prop) => total + parseCurrencyToNumber(prop.price), 0); // Used new helper
+  const totalChangeColorStyle = { color: totalChangeValue >= 0 ? extraColor : savingsColor };
 
   const nextImage = (propertyId) => {
-    const property = (clientProperties || []).find(p => p.id === propertyId); 
+    const property = (properties || []).find(p => p.id === propertyId);
     if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
@@ -154,7 +242,7 @@ const ClientView = () => {
   };
 
   const prevImage = (propertyId) => {
-    const property = (clientProperties || []).find(p => p.id === propertyId); 
+    const property = (properties || []).find(p => p.id === propertyId);
     if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
@@ -165,7 +253,7 @@ const ClientView = () => {
   };
 
   const openExpandedImage = (propertyId, imageIndex) => {
-    const property = (clientProperties || []).find(p => p.id === propertyId); 
+    const property = (properties || []).find(p => p.id === propertyId);
     if (property && Array.isArray(property.images) && property.images.length > 0) { // Add check for images array
       setExpandedImage(property.images[imageIndex]);
       setExpandedImagePropertyId(propertyId);
@@ -173,9 +261,14 @@ const ClientView = () => {
     }
   };
 
+  const closeExpandedImage = useCallback(() => { // Added useCallback
+    setExpandedImage(null);
+    setExpandedImagePropertyId(null);
+  }, []);
+
   const nextExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
-    const property = (clientProperties || []).find(p => p.id === expandedImagePropertyId); 
+    const property = (properties || []).find(p => p.id === expandedImagePropertyId);
     if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
@@ -184,11 +277,11 @@ const ClientView = () => {
       setExpandedImage(property.images[nextIdx]);
       return { ...prev, [expandedImagePropertyId]: nextIdx };
     });
-  }, [expandedImagePropertyId, clientProperties]); // Depend on clientProperties to ensure latest data
+  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
 
   const prevExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
-    const property = (clientProperties || []).find(p => p.id === expandedImagePropertyId); 
+    const property = (properties || []).find(p => p.id === expandedImagePropertyId);
     if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
 
     setCurrentImageIndex(prev => {
@@ -197,7 +290,7 @@ const ClientView = () => {
       setExpandedImage(property.images[prevIdx]);
       return { ...prev, [expandedImagePropertyId]: prevIdx };
     });
-  }, [expandedImagePropertyId, clientProperties]); // Depend on clientProperties to ensure latest data
+  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
 
   // Keyboard navigation for expanded image
   useEffect(() => {
@@ -208,8 +301,7 @@ const ClientView = () => {
         } else if (event.key === 'ArrowLeft') {
           prevExpandedImage();
         } else if (event.key === 'Escape') {
-          setExpandedImage(null);
-          setExpandedImagePropertyId(null);
+          closeExpandedImage(); // Use the new useCallback version
         }
       }
     };
@@ -218,7 +310,7 @@ const ClientView = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [expandedImage, nextExpandedImage, prevExpandedImage]); // Dependencies
+  }, [expandedImage, nextExpandedImage, prevExpandedImage, closeExpandedImage]); // Dependencies
 
   const getCategoryColor = (category) => {
     switch (category) {
@@ -230,18 +322,23 @@ const ClientView = () => {
   };
 
   // NEW: Add toggleSelection function for client view
-  const toggleSelection = (locationId, propertyId) => {
-    setClientProperties(prevProperties => (prevProperties || []).map(prop => {
+  const toggleSelection = useCallback((locationId, propertyId) => {
+    setProperties(prevProperties => (prevProperties || []).map(prop => {
       if (prop && prop.location === locationId) {
         // Toggle selection for the clicked property, deselect others in the same location
         return { ...prop, selected: prop.id === propertyId };
       }
       return prop;
     }));
-  };
+  }, []);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl">Loading client selection...</div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl text-red-600">Error: {error}</div>;
+  if (loading && !properties.length && !error) { // Show initial loading only if no properties are loaded yet and no error
+    return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl">Loading client selection...</div>;
+  }
+
+  if (error && !properties.length) { // Show error if no properties are loaded due to error
+    return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl text-red-600">Error: {error}</div>;
+  }
 
   const groupedProperties = groupPropertiesByLocation();
 
@@ -261,11 +358,24 @@ const ClientView = () => {
         }
       `}</style>
 
+      {/* Loading/Message Overlay for save operations */}
+      {loading && message === '' && error === null && ( // Show only for save operations, not initial load
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg shadow-xl flex items-center">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Saving selection...
+          </div>
+        </div>
+      )}
+
       {expandedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
           <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[calc(100vh-80px)] bg-black flex items-center justify-center rounded-xl shadow-lg">
             <button
-              onClick={() => setExpandedImage(null)}
+              onClick={closeExpandedImage} // Changed to closeExpandedImage
               className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-10"
               aria-label="Close image"
             >
@@ -276,7 +386,7 @@ const ClientView = () => {
               alt="Expanded view"
               className="max-w-full max-h-full object-contain rounded-xl"
             />
-            {expandedImagePropertyId && (clientProperties || []).find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && ( 
+            {expandedImagePropertyId && (properties || []).find(p => p.id === expandedImagePropertyId)?.images?.length > 1 && (
               <>
                 <button
                   onClick={prevExpandedImage}
@@ -293,11 +403,11 @@ const ClientView = () => {
                   <ChevronRight size={24} />
                 </button>
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {(clientProperties || []).find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => ( 
+                  {(properties || []).find(p => p.id === expandedImagePropertyId)?.images?.map((img, idx) => (
                     <div
                       key={idx}
                       className={`w-3 h-3 rounded-full cursor-pointer transition-all duration-200 ${
-                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : ((clientProperties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0)) ? 'bg-white scale-125' : 'bg-white bg-opacity-60' 
+                        idx === (currentImageIndex[expandedImagePropertyId] !== undefined ? currentImageIndex[expandedImagePropertyId] : ((properties || []).find(p => p.id === expandedImagePropertyId)?.homeImageIndex || 0)) ? 'bg-white scale-125' : 'bg-white bg-opacity-60'
                       }`}
                       onClick={() => openExpandedImage(expandedImagePropertyId, idx)}
                     />
@@ -312,8 +422,9 @@ const ClientView = () => {
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white rounded-xl shadow-md p-4 md:p-6">
           <div className="flex items-center mb-4 md:mb-0">
-            {customLogoUrl ? (
-              <img src={customLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" />
+            {/* MODIFIED: Use globalLogoUrl here */}
+            {globalLogoUrl ? (
+              <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" />
             ) : (
               <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div>
             )}
@@ -324,14 +435,23 @@ const ClientView = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className={`text-right p-3 rounded-lg border ${totalChange >= 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+            <div className={`text-right p-3 rounded-lg border ${totalChangeValue >= 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
               <p className="text-xs text-gray-600">Total Price Change</p>
               <p className={`text-2xl font-bold font-century-gothic`} style={totalChangeColorStyle}>
-                {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}
+                {totalChangeValue >= 0 ? '+' : ''}{totalChangeValue.toFixed(2)}
               </p>
             </div>
           </div>
         </div>
+
+        {/* Message and Error Displays */}
+        {message && <p className="mb-4 text-center text-sm text-blue-600">{message}</p>}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong className="font-bold">Error!</strong>
+            <span className="block sm:inline"> {error}</span>
+          </div>
+        )}
 
         <div className="space-y-10">
           {Object.entries(groupedProperties).map(([location, locationProperties]) => (
@@ -366,7 +486,7 @@ const ClientView = () => {
                       className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
                         ${property.selected ? 'selected-border' : ''}`}
                       // ADDED onClick handler to enable selection in client view
-                      onClick={() => toggleSelection(location, property.id)} 
+                      onClick={() => toggleSelection(location, property.id)}
                     >
                       <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                         <img
@@ -464,7 +584,8 @@ const ClientView = () => {
                               <span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span>
                             </div>
                           )}
-                          {(property.bathrooms !== undefined && property.bathrooms !== null) && (property.bathrooms > 0) && (
+                          {/* Simplified Bathroom Conditional */}
+                          {property.bathrooms > 0 && (
                             <div className="flex items-center">
                               <Bath size={16} className="mr-1 text-gray-500" />
                               <span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span>
@@ -477,8 +598,8 @@ const ClientView = () => {
                             {property.checkIn && property.checkOut ? `${calculateNights(property.checkIn, property.checkOut)} nights` : 'Nights N/A'}
                           </span>
                           <div className="text-right">
-                            <span className="font-bold text-xl text-gray-900" style={{ color: parseFloat(property.price || 0) >= 0 ? extraColor : savingsColor }}>
-                              {property.currency}{Math.abs(parseFloat(property.price || 0)).toFixed(2)}
+                            <span className="font-bold text-xl text-gray-900" style={{ color: parseCurrencyToNumber(property.price) >= 0 ? extraColor : savingsColor }}>
+                              {property.currency}{Math.abs(parseCurrencyToNumber(property.price)).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -493,7 +614,7 @@ const ClientView = () => {
 
         <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left">
           <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
-          {(clientProperties || []).filter(prop => prop && prop.selected).length === 0 ? ( 
+          {(properties || []).filter(prop => prop && prop.selected).length === 0 ? (
             <p className="text-gray-500 text-center py-8 text-lg">No properties selected yet. Start choosing!</p>
           ) : (
             <div className="space-y-4">
@@ -501,7 +622,7 @@ const ClientView = () => {
                 const selectedProperty = getSelectedProperty(location);
                 if (!selectedProperty) return null;
 
-                const priceText = parseFloat(selectedProperty.price || 0);
+                const priceText = parseCurrencyToNumber(selectedProperty.price); // Used new helper
                 const priceColorStyle = { color: priceText >= 0 ? extraColor : savingsColor };
 
                 return (
@@ -527,7 +648,8 @@ const ClientView = () => {
                               <span>{selectedProperty.bedrooms}</span>
                             </div>
                           )}
-                          {(selectedProperty.bathrooms !== undefined && selectedProperty.bathrooms !== null) && (selectedProperty.bathrooms > 0) && (
+                          {/* Simplified Bathroom Conditional */}
+                          {selectedProperty.bathrooms > 0 && (
                             <div className="flex items-center">
                               <Bath size={12} className="mr-0.5" />
                               <span>{selectedProperty.bathrooms}</span>
@@ -549,13 +671,25 @@ const ClientView = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-xl font-bold text-gray-900">Total Price Change:</span>
                   <span className={`text-3xl font-extrabold`} style={totalChangeColorStyle}>
-                    {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}
+                    {totalChangeValue >= 0 ? '+' : ''}{totalChangeValue.toFixed(2)}
                   </span>
                 </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* NEWLY ADDED: Confirm Selection Button - now at the very bottom */}
+        <div className="mt-6 mb-12">
+          <button
+            onClick={handleSaveSelection}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Confirm My Selection'}
+          </button>
+        </div>
+
       </div>
     </div>
   );
