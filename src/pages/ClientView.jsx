@@ -83,7 +83,21 @@ const ClientView = () => {
 
         const { properties, clientName, globalLogoUrl } = responseData;
         
-        const propertiesArray = Array.isArray(properties) ? properties : [];
+        // Handle case where properties might come as a JSON string instead of array
+        let propertiesArray = [];
+        if (Array.isArray(properties)) {
+            propertiesArray = properties;
+        } else if (typeof properties === 'string') {
+            try {
+                propertiesArray = JSON.parse(properties);
+                if (!Array.isArray(propertiesArray)) {
+                    propertiesArray = [];
+                }
+            } catch (e) {
+                console.error('Failed to parse properties JSON string:', e);
+                propertiesArray = [];
+            }
+        }
 
         const itinerariesMap = propertiesArray.reduce((acc, prop) => {
             if (!prop.location) return acc;
