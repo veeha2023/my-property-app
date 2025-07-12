@@ -1,15 +1,10 @@
-// src/pages/AdminDashboard.jsx - Version 6.18 (Updates and Fixes)
+// src/pages/AdminDashboard.jsx - Version 6.27 (Full Code with Fixes)
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
-import {
-  Link
-} from 'react-router-dom';
-import {
-  LogOut, Plus, Edit, Trash2, Eye, ExternalLink, // Existing functional icons
-  ChevronLeft, ChevronRight, X, MapPin // Removed unused 'Settings' icon
-}
-from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid'; // Ensure you have installed uuid: npm install uuid
 
 const AdminDashboard = () => {
   const [session, setSession] = useState(null);
@@ -22,7 +17,6 @@ const AdminDashboard = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
-  // Removed unused state related to individual client logos
   const [currentClientProperties, setCurrentClientProperties] = useState([]);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [editingClientName, setEditingClientName] = useState('');
@@ -32,15 +26,12 @@ const AdminDashboard = () => {
   const [newGlobalLogoFile, setNewGlobalLogoFile] = useState(null);
   const [companyName, setCompanyName] = useState('Veeha Travels');
   const [activeTab, setActiveTab] = useState('clients');
-
-  // New state for "Add Itinerary" modal
   const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [newItinerary, setNewItinerary] = useState({
     location: '',
     checkIn: '',
     checkOut: '',
   });
-
 
   const accentColor = '#FFD700';
   const primaryBgColor = '#F7F7F7';
@@ -53,18 +44,16 @@ const AdminDashboard = () => {
   const buttonTextPrimary = '#1A202C';
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
-  // Helper function to sort properties by check-in date
   const sortPropertiesByDate = (properties) => {
-    return properties.sort((a, b) => {
+    if (!properties) return [];
+    return [...properties].sort((a, b) => {
       const dateA = new Date(a.checkIn);
       const dateB = new Date(b.checkIn);
-      // Handle invalid dates if any
       if (isNaN(dateA.getTime())) return 1;
       if (isNaN(dateB.getTime())) return -1;
       return dateA - dateB;
     });
   };
-
 
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -84,7 +73,7 @@ const AdminDashboard = () => {
         .single();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error("Error fetching global settings:", fetchError.message);
+        throw fetchError;
       } else if (data) {
         setCompanyName(data.client_name || 'Veeha Travels');
         setGlobalLogoUrl(data.custom_logo_url || null);
@@ -106,8 +95,7 @@ const AdminDashboard = () => {
       if (fetchError) {
         throw fetchError;
       }
-      const regularClients = data.filter(client => client.id !== GLOBAL_SETTINGS_ID);
-      setClients(regularClients);
+      setClients(data || []);
 
     } catch (err) {
       console.error("Error fetching clients:", err.message);
@@ -131,76 +119,20 @@ const AdminDashboard = () => {
     };
   }, []);
 
-
   useEffect(() => {
     if (!session) return;
 
     const channel = supabase
       .channel('public:clients')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clients' },
-        (payload) => {
-          console.log('Realtime change received!', payload);
-
-          if (payload.eventType === 'INSERT') {
-            if (payload.new.id === GLOBAL_SETTINGS_ID) {
-              setCompanyName(payload.new.client_name || 'Veeha Travels');
-              setGlobalLogoUrl(payload.new.custom_logo_url || null);
-            } else {
-              setClients((prevClients) => [...prevClients, payload.new]);
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            if (payload.new.id === GLOBAL_SETTINGS_ID) {
-              setCompanyName(payload.new.client_name || 'Veeha Travels');
-              setGlobalLogoUrl(payload.new.custom_logo_url || null);
-            } else {
-              setClients((prevClients) =>
-                prevClients.map((client) =>
-                  client.id === payload.new.id ? payload.new : client
-                )
-              );
-              if (selectedClient && selectedClient.id === payload.new.id) {
-                let parsedProperties = [];
-                if (typeof payload.new.client_properties === 'string') {
-                  try {
-                    parsedProperties = JSON.parse(payload.new.client_properties);
-                  } catch (e) {
-                    console.error("Error parsing realtime client_properties:", e);
-                    parsedProperties = [];
-                  }
-                } else if (Array.isArray(payload.new.client_properties)) {
-                  parsedProperties = payload.new.client_properties;
-                }
-                setCurrentClientProperties(sortPropertiesByDate(parsedProperties));
-                setSelectedClient(payload.new);
-                setMessage(`Properties for ${payload.new.client_name} updated.`);
-              }
-            }
-          } else if (payload.eventType === 'DELETE') {
-            if (payload.old.id === GLOBAL_SETTINGS_ID) {
-              setCompanyName('Veeha Travels');
-              setGlobalLogoUrl(null);
-            } else {
-              setClients((prevClients) =>
-                prevClients.filter((client) => client.id !== payload.old.id)
-              );
-              if (selectedClient && selectedClient.id === payload.old.id) {
-                setSelectedClient(null);
-                setCurrentClientProperties([]);
-                setMessage('Selected client was deleted.');
-              }
-            }
-          }
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+        fetchClients();
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session, selectedClient]);
-
+  }, [session, fetchClients]);
 
   useEffect(() => {
     if (session) {
@@ -214,7 +146,6 @@ const AdminDashboard = () => {
       setCompanyName('Veeha Travels');
     }
   }, [session, fetchClients, fetchGlobalSettings]);
-
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -243,16 +174,33 @@ const AdminDashboard = () => {
     setLoading(false);
   };
 
+  // FIX: Modified handleAddClient to generate a UUID for the new client
   const handleAddClient = async (e) => {
     e.preventDefault();
+    if (!session) {
+        setError("You must be logged in to add a client.");
+        return;
+    }
+    if (!newClientName.trim()) {
+        setError("Client name cannot be empty.");
+        return;
+    }
     setLoading(true);
     setMessage('');
     setError(null);
 
+    const newClientId = uuidv4(); // Generate a new UUID for the client
+
     const { error: insertError } = await supabase
       .from('clients')
       .insert([
-        { client_name: newClientName, client_properties: [] },
+        {
+            id: newClientId, // Provide the generated UUID
+            client_name: newClientName,
+            client_properties: [],
+            user_id: session.user.id,
+            last_updated: new Date().toISOString(), // Ensure last_updated is set
+        },
       ])
       .select();
 
@@ -263,6 +211,7 @@ const AdminDashboard = () => {
       setMessage('Client added successfully!');
       setNewClientName('');
       setIsAddingClient(false);
+      fetchClients(); // Re-fetch clients to update the list
     }
     setLoading(false);
   };
@@ -272,6 +221,7 @@ const AdminDashboard = () => {
       setLoading(true);
       setMessage('');
       setError(null);
+
       const { error: deleteError } = await supabase
         .from('clients')
         .delete()
@@ -282,6 +232,8 @@ const AdminDashboard = () => {
         setError('Error deleting client: ' + deleteError.message);
       } else {
         setMessage('Client deleted successfully!');
+        setSelectedClient(null);
+        fetchClients();
       }
       setLoading(false);
     }
@@ -320,14 +272,14 @@ const AdminDashboard = () => {
 
     const { error: updateError } = await supabase
       .from('clients')
-      .update({ client_properties: propertiesJson })
+      .update({ client_properties: propertiesJson, last_updated: new Date().toISOString() })
       .eq('id', selectedClient.id);
 
     if (updateError) {
       console.error('Error saving properties:', updateError.message);
       setError('Error saving properties: ' + updateError.message);
     } else {
-      setCurrentClientProperties(sortedProperties); // Ensure local state is also sorted
+      setCurrentClientProperties(sortedProperties);
       setMessage('Properties saved successfully!');
     }
     setLoading(false);
@@ -348,20 +300,49 @@ const AdminDashboard = () => {
     setMessage('');
     setError(null);
 
-    const { error: updateError } = await supabase
-      .from('clients')
-      .update({ client_name: editingClientName })
-      .eq('id', selectedClient.id)
-      .select();
+    try {
+        const { error: updateClientError } = await supabase
+            .from('clients')
+            .update({ client_name: editingClientName, last_updated: new Date().toISOString() })
+            .eq('id', selectedClient.id);
 
-    if (updateError) {
-      console.error('Error updating client details:', updateError.message);
-      setError('Error updating client details: ' + updateError.message);
-    } else {
-      setMessage('Client details updated successfully!');
-      setShowEditClientModal(false);
+        if (updateClientError) throw updateClientError;
+
+        setMessage('Client details updated successfully!');
+        setShowEditClientModal(false);
+        fetchClients();
+
+    } catch (err) {
+        console.error('Error updating client details:', err.message);
+        setError('Error updating client details: ' + err.message);
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
+  };
+  
+  // FIX: Added more robust error handling to show the actual database error
+  const handleGenerateShareLink = async () => {
+    if (!selectedClient) return;
+    setLoading(true);
+    setError(null);
+    try {
+        const { data: token, error: rpcError } = await supabase.rpc('generate_client_share_token', {
+            p_client_id: selectedClient.id
+        });
+
+        if (rpcError) throw rpcError;
+
+        const shareLink = `${window.location.origin}/client/${selectedClient.id}?token=${token}`;
+        navigator.clipboard.writeText(shareLink);
+        setMessage('Share link copied to clipboard!');
+
+    } catch (err) {
+        console.error('Error generating share link:', err.message);
+        // Display the specific error message from the database
+        setError(`Could not generate share link: ${err.message}`);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleUpdateGlobalSettings = async (newCompanyName, newLogoFileFromInput = null) => {
@@ -385,7 +366,9 @@ const AdminDashboard = () => {
             id: GLOBAL_SETTINGS_ID,
             client_name: newCompanyName,
             custom_logo_url: logoData,
-            client_properties: []
+            client_properties: [],
+            user_id: session.user.id,
+            last_updated: new Date().toISOString()
           },
           { onConflict: 'id' }
         );
@@ -428,7 +411,6 @@ const AdminDashboard = () => {
       };
 
       const updatedProperties = [...currentClientProperties, placeholderProperty];
-      // No need to set state here, handleSaveProperties will do it after sorting
       await handleSaveProperties(updatedProperties);
 
       setShowItineraryModal(false);
@@ -436,7 +418,6 @@ const AdminDashboard = () => {
       setMessage('Itinerary added successfully. You can now add properties to this location.');
       setError(null);
   };
-
 
   if (!session) {
     return (
@@ -526,7 +507,7 @@ const AdminDashboard = () => {
                               type="date"
                               id="itineraryCheckIn"
                               value={newItinerary.checkIn}
-                              onChange={(e) => setNewItinerary({ ...newItinerary, checkIn: e.target.value, checkOut: '' })} // Reset checkout on checkIn change
+                              onChange={(e) => setNewItinerary({ ...newItinerary, checkIn: e.target.value, checkOut: '' })}
                               className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`}
                               required
                           />
@@ -541,7 +522,7 @@ const AdminDashboard = () => {
                               onChange={(e) => setNewItinerary({ ...newItinerary, checkOut: e.target.value })}
                               className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`}
                               required
-                              disabled={!newItinerary.checkIn} // Disable until check-in is selected
+                              disabled={!newItinerary.checkIn}
                           />
                       </div>
                       <button
@@ -643,9 +624,19 @@ const AdminDashboard = () => {
                 className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`}
                 disabled={loading}
               >
-                {loading ? 'Updating...' : 'Update Details'}
+                {loading ? 'Updating...' : 'Update Name'}
               </button>
             </form>
+            <div className="mt-6 border-t pt-4">
+                 <button
+                    onClick={handleGenerateShareLink}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center"
+                    disabled={loading}
+                >
+                    <Share2 size={16} className="mr-2"/>
+                    {loading ? 'Generating...' : 'Generate & Copy Share Link'}
+                </button>
+            </div>
             {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
             {message && <p className="text-green-600 text-sm mt-4">{message}</p>}
           </div>
@@ -685,7 +676,6 @@ const AdminDashboard = () => {
           <LogOut size={20} className="mr-2" /> {loading ? 'Logging out...' : 'Logout'}
         </button>
       </div>
-
 
       <div className={`flex-grow flex p-4 md:p-8 pt-0`}>
         {activeTab === 'clients' && (
