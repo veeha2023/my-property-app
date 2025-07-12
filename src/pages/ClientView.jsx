@@ -83,7 +83,27 @@ const ClientView = () => {
 
         const { properties, clientName, globalLogoUrl } = responseData;
         
-        const propertiesArray = Array.isArray(properties) ? properties : [];
+        // Robustly normalise the `properties` payload coming from Supabase.
+        // It can legitimately arrive as:
+        //   1. A proper array (preferred)
+        //   2. A JSON-encoded string of that array (legacy rows)
+        //   3. Null / undefined
+        // Anything other than case 1 is coerced into an array with safe fall-backs so that
+        // the rest of the component never breaks or renders an empty screen.
+
+        let propertiesArray = [];
+        if (Array.isArray(properties)) {
+          propertiesArray = properties;
+        } else if (typeof properties === 'string') {
+          try {
+            const parsed = JSON.parse(properties);
+            if (Array.isArray(parsed)) {
+              propertiesArray = parsed;
+            }
+          } catch (parseErr) {
+            console.error('Failed to JSON.parse(properties):', parseErr);
+          }
+        }
 
         const itinerariesMap = propertiesArray.reduce((acc, prop) => {
             if (!prop.location) return acc;
