@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 1.7 (RLS Implemented)
+// src/pages/ClientView.jsx - Version 1.8 (RLS Update Fix)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -176,6 +176,10 @@ const ClientView = () => {
     }
 
     try {
+      // **THE FIX IS HERE:** Call the RPC to set the session variable *before* the update.
+      const { error: rpcError } = await supabase.rpc('set_client_id_session_variable', { client_id_param: clientId });
+      if (rpcError) throw rpcError;
+
       // Re-flatten the itineraries back into the properties array structure for saving
       const propertiesToSave = itineraries.flatMap(itinerary => {
           if (itinerary.properties.length === 0) {
@@ -194,7 +198,7 @@ const ClientView = () => {
 
       const propertiesJson = JSON.stringify(propertiesToSave);
       
-      // The RPC call in fetchClientData ensures this update is authorized by RLS
+      // Now this update call will be authorized by the RLS policy
       const { error: updateError } = await supabase
         .from('clients')
         .update({ client_properties: propertiesJson })
