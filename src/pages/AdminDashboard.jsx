@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Version 6.16 (Single Global Logo)
+// src/pages/AdminDashboard.jsx - Version 6.18 (Updates and Fixes)
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
@@ -7,7 +7,7 @@ import {
 } from 'react-router-dom';
 import {
   LogOut, Plus, Edit, Trash2, Eye, ExternalLink, // Existing functional icons
-  ChevronLeft, ChevronRight, Settings, X // Added X for modal close, Chevron icons for sidebar, Settings icon
+  ChevronLeft, ChevronRight, X, MapPin // Removed unused 'Settings' icon
 }
 from 'lucide-react';
 
@@ -22,39 +22,50 @@ const AdminDashboard = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
-  // newClientLogo state and related logic for individual client logos are now redundant and removed from usage.
-  // Kept here for state declaration consistency but will not be used for individual client logos.
-  const [newClientLogo, setNewClientLogo] = useState(null);
-  const [currentCustomLogoUrl, setCurrentCustomLogoUrl] = useState(null);
+  // Removed unused state related to individual client logos
   const [currentClientProperties, setCurrentClientProperties] = useState([]);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [editingClientName, setEditingClientName] = useState('');
-  // editingClientLogoFile state and related logic for individual client logos are now redundant and removed from usage.
-  const [editingClientLogoFile, setEditingClientLogoFile] = useState(null);
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [globalLogoUrl, setGlobalLogoUrl] = useState(null);
-  const [newGlobalLogoFile, setNewGlobalLogoFile] = useState(null); // State for global logo file upload
+  const [newGlobalLogoFile, setNewGlobalLogoFile] = useState(null);
   const [companyName, setCompanyName] = useState('Veeha Travels');
-  const [activeTab, setActiveTab] = useState('clients'); // State for managing active tab
+  const [activeTab, setActiveTab] = useState('clients');
 
-  // Define colors consistent with the theme from provided website images
-  const accentColor = '#FFD700'; // Vibrant Yellow from the website
-  const primaryBgColor = '#F7F7F7'; // Light gray/off-white for main content background, similar to the white sections in the landing pages
-  const secondaryBgColor = '#FFFFFF'; // White for cards/panels within the main content
-  const sidebarBg = '#1A202C'; // Very dark grey/black for sidebar, similar to the footer in the landing pages
-  const headerBg = '#1A202C'; // Very dark grey/black for the top banner/header
-  const primaryTextColor = '#2D3748'; // Dark grey for general text on light backgrounds
-  const secondaryTextColor = '#718096'; // Medium grey for secondary text
+  // New state for "Add Itinerary" modal
+  const [showItineraryModal, setShowItineraryModal] = useState(false);
+  const [newItinerary, setNewItinerary] = useState({
+    location: '',
+    checkIn: '',
+    checkOut: '',
+  });
+
+
+  const accentColor = '#FFD700';
+  const primaryBgColor = '#F7F7F7';
+  const secondaryBgColor = '#FFFFFF';
+  const sidebarBg = '#1A202C';
+  const headerBg = '#1A202C';
+  const primaryTextColor = '#2D3748';
+  const secondaryTextColor = '#718096';
   const buttonPrimary = accentColor;
-  const buttonTextPrimary = '#1A202C'; // Dark text for yellow buttons
-
-  // A fixed ID for global settings in 'clients' table to store company-wide data
-  // Using a valid UUID string to avoid "invalid input syntax for type uuid" error,
-  // as the Supabase 'id' column is expected to be UUID type and not being adjusted.
+  const buttonTextPrimary = '#1A202C';
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
-  // Helper function to convert a File object to a Base64 Data URL
+  // Helper function to sort properties by check-in date
+  const sortPropertiesByDate = (properties) => {
+    return properties.sort((a, b) => {
+      const dateA = new Date(a.checkIn);
+      const dateB = new Date(b.checkIn);
+      // Handle invalid dates if any
+      if (isNaN(dateA.getTime())) return 1;
+      if (isNaN(dateB.getTime())) return -1;
+      return dateA - dateB;
+    });
+  };
+
+
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -64,7 +75,6 @@ const AdminDashboard = () => {
     });
   };
 
-  // Function to fetch global settings (company name and logo)
   const fetchGlobalSettings = useCallback(async () => {
     try {
       const { data, error: fetchError } = await supabase
@@ -77,7 +87,6 @@ const AdminDashboard = () => {
         console.error("Error fetching global settings:", fetchError.message);
       } else if (data) {
         setCompanyName(data.client_name || 'Veeha Travels');
-        // The globalLogoUrl is set directly from the database; it will now store Base64 data.
         setGlobalLogoUrl(data.custom_logo_url || null);
       }
     } catch (err) {
@@ -91,13 +100,12 @@ const AdminDashboard = () => {
     try {
       const { data, error: fetchError } = await supabase
         .from('clients')
-        .select('*') // Select all columns for initial client list display and selectedClient state
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
         throw fetchError;
       }
-      // Filter out the global settings entry from the regular client list
       const regularClients = data.filter(client => client.id !== GLOBAL_SETTINGS_ID);
       setClients(regularClients);
 
@@ -124,7 +132,6 @@ const AdminDashboard = () => {
   }, []);
 
 
-  // Supabase Realtime Subscription for client data
   useEffect(() => {
     if (!session) return;
 
@@ -165,9 +172,7 @@ const AdminDashboard = () => {
                 } else if (Array.isArray(payload.new.client_properties)) {
                   parsedProperties = payload.new.client_properties;
                 }
-                setCurrentClientProperties(parsedProperties);
-                // currentCustomLogoUrl is now for display only, not individual client logo management
-                setCurrentCustomLogoUrl(payload.new.custom_logo_url);
+                setCurrentClientProperties(sortPropertiesByDate(parsedProperties));
                 setSelectedClient(payload.new);
                 setMessage(`Properties for ${payload.new.client_name} updated.`);
               }
@@ -183,7 +188,6 @@ const AdminDashboard = () => {
               if (selectedClient && selectedClient.id === payload.old.id) {
                 setSelectedClient(null);
                 setCurrentClientProperties([]);
-                setCurrentCustomLogoUrl(null);
                 setMessage('Selected client was deleted.');
               }
             }
@@ -245,11 +249,10 @@ const AdminDashboard = () => {
     setMessage('');
     setError(null);
 
-    // MODIFIED: custom_logo_url is NOT included in client insertion, as clients will use global logo.
     const { error: insertError } = await supabase
       .from('clients')
       .insert([
-        { client_name: newClientName, client_properties: [] }, // Removed custom_logo_url from here
+        { client_name: newClientName, client_properties: [] },
       ])
       .select();
 
@@ -297,13 +300,8 @@ const AdminDashboard = () => {
     } else if (Array.isArray(client.client_properties)) {
       parsedProperties = client.client_properties;
     }
-    setCurrentClientProperties(parsedProperties);
-    // currentCustomLogoUrl no longer relevant for individual client logo management
-    // but can be kept if the database column still exists and we want to preserve old data.
-    // For display in the client list, we will use globalLogoUrl.
-    setCurrentCustomLogoUrl(client.custom_logo_url);
+    setCurrentClientProperties(sortPropertiesByDate(parsedProperties));
     setEditingClientName(client.client_name);
-    setEditingClientLogoFile(null); // Clear any pending file selection
     setMessage(`Editing properties for ${client.client_name}`);
     setError(null);
   };
@@ -317,7 +315,8 @@ const AdminDashboard = () => {
     setMessage('');
     setError(null);
 
-    const propertiesJson = JSON.stringify(updatedProperties);
+    const sortedProperties = sortPropertiesByDate(updatedProperties);
+    const propertiesJson = JSON.stringify(sortedProperties);
 
     const { error: updateError } = await supabase
       .from('clients')
@@ -328,6 +327,7 @@ const AdminDashboard = () => {
       console.error('Error saving properties:', updateError.message);
       setError('Error saving properties: ' + updateError.message);
     } else {
+      setCurrentClientProperties(sortedProperties); // Ensure local state is also sorted
       setMessage('Properties saved successfully!');
     }
     setLoading(false);
@@ -336,12 +336,10 @@ const AdminDashboard = () => {
   const handleOpenEditClientModal = useCallback(() => {
     if (selectedClient) {
       setEditingClientName(selectedClient.client_name);
-      // No longer setting currentCustomLogoUrl for individual client logo edit
       setShowEditClientModal(true);
     }
   }, [selectedClient]);
 
-  // MODIFIED: handleUpdateClientDetails no longer updates custom_logo_url
   const handleUpdateClientDetails = async (e) => {
     e.preventDefault();
     if (!selectedClient) return;
@@ -350,12 +348,9 @@ const AdminDashboard = () => {
     setMessage('');
     setError(null);
 
-    // Removed all logic related to editingClientLogoFile and custom_logo_url upload
-    // as individual client logos are no longer managed here.
-
     const { error: updateError } = await supabase
       .from('clients')
-      .update({ client_name: editingClientName }) // Only update client_name
+      .update({ client_name: editingClientName })
       .eq('id', selectedClient.id)
       .select();
 
@@ -365,25 +360,21 @@ const AdminDashboard = () => {
     } else {
       setMessage('Client details updated successfully!');
       setShowEditClientModal(false);
-      // Removed clearing editingClientLogoFile as it's no longer used
     }
     setLoading(false);
   };
 
-  // handleUpdateGlobalSettings remains the same, storing Base64 logo in database
   const handleUpdateGlobalSettings = async (newCompanyName, newLogoFileFromInput = null) => {
     setLoading(true);
     setError(null);
     setMessage('');
 
-    let logoData = globalLogoUrl; // This will now store Base64 string or null
+    let logoData = globalLogoUrl;
 
     try {
       if (newLogoFileFromInput) {
-        // Convert file to Base64 Data URL for storage in the database
         logoData = await fileToBase64(newLogoFileFromInput);
       } else if (newLogoFileFromInput === null && globalLogoUrl) {
-          // If the user explicitly clears the file input AND there was a logo before, set to null
           logoData = null;
       }
 
@@ -393,8 +384,8 @@ const AdminDashboard = () => {
           {
             id: GLOBAL_SETTINGS_ID,
             client_name: newCompanyName,
-            custom_logo_url: logoData, // Store Base64 data directly in this column
-            client_properties: [] // client_properties not relevant for global settings row
+            custom_logo_url: logoData,
+            client_properties: []
           },
           { onConflict: 'id' }
         );
@@ -403,8 +394,8 @@ const AdminDashboard = () => {
         throw upsertError;
       }
       setCompanyName(newCompanyName);
-      setGlobalLogoUrl(logoData); // Update globalLogoUrl state to reflect the Base64 data
-      setNewGlobalLogoFile(null); // Clear file input after successful update
+      setGlobalLogoUrl(logoData);
+      setNewGlobalLogoFile(null);
       setMessage('Global settings updated successfully!');
       setShowSettingsModal(false);
     } catch (err) {
@@ -413,6 +404,37 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveItinerary = async () => {
+      if (!selectedClient || !newItinerary.location || !newItinerary.checkIn || !newItinerary.checkOut) {
+          setError("Please fill in all itinerary fields.");
+          return;
+      }
+
+      const placeholderProperty = {
+          id: `itinerary-placeholder-${Date.now()}`,
+          name: 'Itinerary Placeholder',
+          location: newItinerary.location,
+          checkIn: newItinerary.checkIn,
+          checkOut: newItinerary.checkOut,
+          price: 0,
+          currency: 'NZD',
+          images: [],
+          bedrooms: 0,
+          bathrooms: 0,
+          selected: false,
+          isPlaceholder: true,
+      };
+
+      const updatedProperties = [...currentClientProperties, placeholderProperty];
+      // No need to set state here, handleSaveProperties will do it after sorting
+      await handleSaveProperties(updatedProperties);
+
+      setShowItineraryModal(false);
+      setNewItinerary({ location: '', checkIn: '', checkOut: '' });
+      setMessage('Itinerary added successfully. You can now add properties to this location.');
+      setError(null);
   };
 
 
@@ -461,9 +483,7 @@ const AdminDashboard = () => {
   }
 
   return (
-    // Changed main container to flex-col to stack header and content vertically
     <div className={`flex flex-col min-h-screen bg-[${primaryBgColor}] font-['Century_Gothic']`}>
-      {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white p-4 rounded-lg shadow-xl flex items-center">
@@ -476,7 +496,67 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Settings Modal */}
+      {showItineraryModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+              <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
+                  <button
+                      onClick={() => setShowItineraryModal(false)}
+                      className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`}
+                      aria-label="Close modal"
+                  >
+                      <X size={24} />
+                  </button>
+                  <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Add New Itinerary</h2>
+                  <div className="space-y-4">
+                      <div>
+                          <label htmlFor="itineraryLocation" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Location</label>
+                          <input
+                              type="text"
+                              id="itineraryLocation"
+                              value={newItinerary.location}
+                              onChange={(e) => setNewItinerary({ ...newItinerary, location: e.target.value })}
+                              className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`}
+                              placeholder="e.g., Queenstown"
+                              required
+                          />
+                      </div>
+                      <div>
+                          <label htmlFor="itineraryCheckIn" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Check-in Date</label>
+                          <input
+                              type="date"
+                              id="itineraryCheckIn"
+                              value={newItinerary.checkIn}
+                              onChange={(e) => setNewItinerary({ ...newItinerary, checkIn: e.target.value, checkOut: '' })} // Reset checkout on checkIn change
+                              className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`}
+                              required
+                          />
+                      </div>
+                      <div>
+                          <label htmlFor="itineraryCheckOut" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Check-out Date</label>
+                          <input
+                              type="date"
+                              id="itineraryCheckOut"
+                              value={newItinerary.checkOut}
+                              min={newItinerary.checkIn}
+                              onChange={(e) => setNewItinerary({ ...newItinerary, checkOut: e.target.value })}
+                              className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`}
+                              required
+                              disabled={!newItinerary.checkIn} // Disable until check-in is selected
+                          />
+                      </div>
+                      <button
+                          onClick={handleSaveItinerary}
+                          className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`}
+                          disabled={loading}
+                      >
+                          {loading ? 'Saving...' : 'Save Itinerary'}
+                      </button>
+                  </div>
+                  {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
+              </div>
+          </div>
+      )}
+
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
           <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
@@ -509,16 +589,15 @@ const AdminDashboard = () => {
                   className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100`}
                 />
                 {newGlobalLogoFile && <p className={`text-xs text-[${secondaryTextColor}] mt-1`}>Selected new file: {newGlobalLogoFile.name}</p>}
-                {globalLogoUrl && !newGlobalLogoFile && ( // Only show current logo if no new file is selected
+                {globalLogoUrl && !newGlobalLogoFile && (
                   <div className={`mt-2 text-sm text-[${secondaryTextColor}] flex items-center`}>
-                    {/* Display the Base64 encoded image directly */}
                     <img src={globalLogoUrl} alt="Current Global Logo" className="h-8 w-auto ml-2 rounded-md" />
                     <button type="button" onClick={() => { setGlobalLogoUrl(null); setNewGlobalLogoFile(null); }} className="ml-2 text-red-600 hover:text-red-700 text-xs">
                       Clear current
                     </button>
                   </div>
                 )}
-                {!globalLogoUrl && !newGlobalLogoFile && ( // If no logo is set and no new file is selected
+                {!globalLogoUrl && !newGlobalLogoFile && (
                   <p className={`mt-2 text-sm text-[${secondaryTextColor}]`}>No global logo currently set.</p>
                 )}
               </div>
@@ -536,7 +615,6 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Edit Client Details Modal */}
       {showEditClientModal && selectedClient && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
           <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
@@ -560,7 +638,6 @@ const AdminDashboard = () => {
                   required
                 />
               </div>
-              {/* Removed custom logo upload section for individual client */}
               <button
                 type="submit"
                 className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`}
@@ -575,12 +652,9 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Top Banner/Header - This is now consistently at the top */}
       <div className={`w-full flex flex-col sm:flex-row justify-between items-center py-4 px-8 mb-8 rounded-xl shadow-lg bg-[${headerBg}] text-white`}>
         <div className="flex items-center mb-4 sm:mb-0">
           {globalLogoUrl ? (
-            // The globalLogoUrl now directly contains the Base64 data if uploaded via file, or a URL if retrieved from storage.
-            // The <img> tag handles both data: URLs and standard URLs automatically.
             <img src={globalLogoUrl} alt="Company Logo" className="h-12 w-auto object-contain rounded-lg mr-4" />
           ) : (
             <div className="h-12 w-12 rounded-lg bg-gray-700 flex items-center justify-center text-gray-400 text-xs mr-4">Logo</div>
@@ -613,10 +687,8 @@ const AdminDashboard = () => {
       </div>
 
 
-      {/* Main Content Area BELOW the Banner */}
       <div className={`flex-grow flex p-4 md:p-8 pt-0`}>
-        {/* Sidebar for Clients */}
-        {activeTab === 'clients' && ( // Only show sidebar if clients tab is active
+        {activeTab === 'clients' && (
           <div className={`bg-[${sidebarBg}] text-white transition-all duration-300 ease-in-out
                           ${isSidebarMinimized ? 'w-16' : 'w-72'} flex-shrink-0 relative shadow-lg z-10 rounded-xl mr-8`}>
             <div className={`flex items-center justify-between p-4 border-b border-gray-700
@@ -658,7 +730,6 @@ const AdminDashboard = () => {
                       required
                     />
                   </div>
-                  {/* Removed custom logo input for Add New Client */}
                   <button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
@@ -716,7 +787,6 @@ const AdminDashboard = () => {
                         </>
                       ) : (
                         <div className="text-center">
-                          {/* MODIFIED: Always show global logo in sidebar minimized view */}
                           {globalLogoUrl ? (
                             <img src={globalLogoUrl} alt="Global Logo" className="h-8 w-8 object-contain mx-auto mb-1" title={client.client_name}/>
                           ) : (
@@ -733,7 +803,6 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Main Content Panel - Conditional Rendering based on activeTab */}
         <div className={`flex-grow bg-[${secondaryBgColor}] rounded-xl shadow-lg p-6 border border-gray-200`}>
           {activeTab === 'clients' && (
             selectedClient ? (
@@ -742,6 +811,13 @@ const AdminDashboard = () => {
                   <h2 className={`text-2xl font-bold text-[${primaryTextColor}] mb-3 sm:mb-0`}>
                     Properties for "{selectedClient.client_name}"
                   </h2>
+                   <button
+                        onClick={() => setShowItineraryModal(true)}
+                        className={`flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out`}
+                    >
+                        <MapPin size={20} className="mr-2" />
+                        Add Itinerary
+                    </button>
                 </div>
                 <PropertyForm
                   properties={currentClientProperties}
@@ -749,7 +825,6 @@ const AdminDashboard = () => {
                   onSave={handleSaveProperties}
                   adminMode={true}
                 />
-                {/* Added the button at the bottom */}
                 <div className="mt-6 text-center">
                   <button
                     onClick={() => handleSaveProperties(currentClientProperties)}
@@ -768,8 +843,6 @@ const AdminDashboard = () => {
               </div>
             )
           )}
-          {/* Settings content is handled by the modal */}
-          {/* This section would be for other tabs if they were full-page content */}
         </div>
       </div>
     </div>

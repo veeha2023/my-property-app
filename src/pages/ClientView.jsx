@@ -1,23 +1,21 @@
-// src/pages/ClientView.jsx - Version 1.1 (Global Logo Display)
+// src/pages/ClientView.jsx - Version 1.3 (Public Access Ready)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../supabaseClient.js'; // Import Supabase client
+import { supabase } from '../supabaseClient.js';
 
 import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight, Maximize2,
-  BedDouble, Bath, Image // Include Image for home image icon
-} from 'lucide-react'; // Re-added necessary Lucide icons
+  BedDouble, Bath, Image
+} from 'lucide-react';
 
 const ClientView = () => {
-  const { clientId } = useParams(); // Get the client ID from the URL
-  const [properties, setProperties] = useState([]); // Renamed from clientProperties for consistency
+  const { clientId } = useParams();
+  const [properties, setProperties] = useState([]);
   const [clientName, setClientName] = useState('Client Selection');
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState(''); // Added for success/loading messages
+  const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
-  // No longer fetching customLogoUrl per client, instead will fetch global logo
-  // const [customLogoUrl, setCustomLogoUrl] = useState(null);
-  const [globalLogoUrl, setGlobalLogoUrl] = useState(null); // State for the global logo
+  const [globalLogoUrl, setGlobalLogoUrl] = useState(null);
 
   const [currentImageIndex, setCurrentImageIndex] = useState({});
   const [expandedImage, setExpandedImage] = useState(null);
@@ -27,24 +25,45 @@ const ClientView = () => {
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
 
-  // A fixed ID for global settings in 'clients' table (must match AdminDashboard)
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
-  // NEW: Helper function to safely parse numeric values from currency strings
+  const getCurrencySymbol = (currencyCode) => {
+    switch (currencyCode) {
+      case 'NZD':
+        return 'NZ$';
+      case 'USD':
+        return '$';
+      case 'EUR':
+        return '€';
+      case 'INR':
+        return '₹';
+      default:
+        return currencyCode;
+    }
+  };
+  
+  const sortPropertiesByDate = (properties) => {
+    return properties.sort((a, b) => {
+      const dateA = new Date(a.checkIn);
+      const dateB = new Date(b.checkIn);
+      if (isNaN(dateA.getTime())) return 1;
+      if (isNaN(dateB.getTime())) return -1;
+      return dateA - dateB;
+    });
+  };
+
   const parseCurrencyToNumber = useCallback((currencyString) => {
     if (typeof currencyString === 'number') {
       return currencyString;
     }
     if (typeof currencyString !== 'string') {
-      return 0; // Default for null, undefined, etc.
+      return 0;
     }
-    // Remove all non-numeric characters except for the decimal point and the leading hyphen
     const numericString = currencyString.replace(/[^\d.-]/g, '');
     const parsed = parseFloat(numericString);
     return isNaN(parsed) ? 0 : parsed;
   }, []);
 
-  // Function to fetch client's properties and the global logo
   const fetchClientProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -57,10 +76,9 @@ const ClientView = () => {
     }
 
     try {
-      // 1. Fetch data for the specific client
       const { data: clientData, error: clientFetchError } = await supabase
         .from('clients')
-        .select('client_name, client_properties') // Exclude custom_logo_url as we're using global
+        .select('client_name, client_properties')
         .eq('id', clientId)
         .single();
 
@@ -91,24 +109,22 @@ const ClientView = () => {
         parsedProperties = clientData.client_properties;
       }
 
-      const sanitizedProperties = parsedProperties.map(prop => ({
+      const sanitizedAndSortedProperties = sortPropertiesByDate(parsedProperties.map(prop => ({
         ...prop,
         price: parseCurrencyToNumber(prop.price)
-      }));
+      })));
 
-      setProperties(sanitizedProperties);
+      setProperties(sanitizedAndSortedProperties);
       setClientName(clientData.client_name || `Selection for ${clientId}`);
 
-      // Initialize currentImageIndex for each property based on homeImageIndex
       const initialImageIndices = {};
-      sanitizedProperties.forEach(prop => {
+      sanitizedAndSortedProperties.forEach(prop => {
         if (prop && prop.id !== undefined) {
           initialImageIndices[prop.id] = prop.homeImageIndex || 0;
         }
       });
       setCurrentImageIndex(initialImageIndices);
 
-      // 2. Fetch global settings for the global logo
       const { data: globalSettingsData, error: globalSettingsError } = await supabase
         .from('clients')
         .select('custom_logo_url')
@@ -117,11 +133,10 @@ const ClientView = () => {
 
       if (globalSettingsError && globalSettingsError.code !== 'PGRST116') {
         console.error("Error fetching global logo settings:", globalSettingsError.message);
-        // Do not set error for UI, just log, as client view can still function
       } else if (globalSettingsData) {
         setGlobalLogoUrl(globalSettingsData.custom_logo_url || null);
       } else {
-        setGlobalLogoUrl(null); // No global logo found
+        setGlobalLogoUrl(null);
       }
 
     } catch (err) {
@@ -132,12 +147,10 @@ const ClientView = () => {
     }
   }, [clientId, parseCurrencyToNumber]);
 
-  // Effect to run fetch on component mount or clientId change
   useEffect(() => {
     fetchClientProperties();
   }, [fetchClientProperties]);
 
-  // NEW: Function to handle saving client's property selections
   const handleSaveSelection = useCallback(async () => {
     setLoading(true);
     setMessage('');
@@ -150,11 +163,9 @@ const ClientView = () => {
     }
 
     try {
-      // Stringify the entire properties array before saving to Supabase
-      // Ensure all price values are numbers before saving
       const propertiesToSave = properties.map(prop => ({
         ...prop,
-        price: parseCurrencyToNumber(prop.price) // Ensure numeric before saving
+        price: parseCurrencyToNumber(prop.price)
       }));
       const propertiesJson = JSON.stringify(propertiesToSave);
 
@@ -168,7 +179,6 @@ const ClientView = () => {
         setError('Error saving your selection: ' + updateError.message);
       } else {
         setMessage('Your selection has been successfully saved!');
-        // No need to re-fetch here, as the state is already updated locally
       }
     } catch (unexpectedError) {
       console.error("An unexpected error occurred during save:", unexpectedError);
@@ -179,7 +189,6 @@ const ClientView = () => {
   }, [clientId, properties, parseCurrencyToNumber]);
 
 
-  // Helper functions (copied from PropertyForm, but without admin parts)
   const calculateNights = (checkIn, checkOut) => {
     if (!checkIn || !checkOut) return 0;
     const start = new Date(checkIn + 'T00:00:00');
@@ -190,11 +199,10 @@ const ClientView = () => {
   };
 
   const formatDate = (dateString) => {
-    // Add a check for a valid dateString before creating a Date object
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString + 'T00:00:00');
-      if (isNaN(date.getTime())) { // Check for invalid date
+      if (isNaN(date.getTime())) {
         return 'Invalid Date';
       }
       return date.toLocaleDateString('en-NZ', {
@@ -211,7 +219,7 @@ const ClientView = () => {
   const groupPropertiesByLocation = () => {
     const grouped = {};
     (properties || []).forEach(property => {
-      if (property && property.location) { // Ensure property and property.location are defined
+      if (property && property.location) {
         if (!grouped[property.location]) {
           grouped[property.location] = [];
         }
@@ -222,17 +230,17 @@ const ClientView = () => {
   };
 
   const getSelectedProperty = (location) => {
-    return (properties || []).find(prop => prop && prop.location === location && prop.selected);
+    return (properties || []).find(prop => prop && prop.location === location && prop.selected && !prop.isPlaceholder);
   };
 
-  const totalChangeValue = (properties || []) // Renamed from totalChange for clarity
-    .filter(prop => prop && prop.selected) // Ensure prop is defined
-    .reduce((total, prop) => total + parseCurrencyToNumber(prop.price), 0); // Used new helper
+  const totalChangeValue = (properties || [])
+    .filter(prop => prop && prop.selected)
+    .reduce((total, prop) => total + parseCurrencyToNumber(prop.price), 0);
   const totalChangeColorStyle = { color: totalChangeValue >= 0 ? extraColor : savingsColor };
 
   const nextImage = (propertyId) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
@@ -243,7 +251,7 @@ const ClientView = () => {
 
   const prevImage = (propertyId) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[propertyId] !== undefined ? prev[propertyId] : property.homeImageIndex || 0;
@@ -254,14 +262,14 @@ const ClientView = () => {
 
   const openExpandedImage = (propertyId, imageIndex) => {
     const property = (properties || []).find(p => p.id === propertyId);
-    if (property && Array.isArray(property.images) && property.images.length > 0) { // Add check for images array
+    if (property && Array.isArray(property.images) && property.images.length > 0) {
       setExpandedImage(property.images[imageIndex]);
       setExpandedImagePropertyId(propertyId);
       setCurrentImageIndex(prev => ({ ...prev, [propertyId]: imageIndex }));
     }
   };
 
-  const closeExpandedImage = useCallback(() => { // Added useCallback
+  const closeExpandedImage = useCallback(() => {
     setExpandedImage(null);
     setExpandedImagePropertyId(null);
   }, []);
@@ -269,7 +277,7 @@ const ClientView = () => {
   const nextExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
@@ -277,12 +285,12 @@ const ClientView = () => {
       setExpandedImage(property.images[nextIdx]);
       return { ...prev, [expandedImagePropertyId]: nextIdx };
     });
-  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
+  }, [expandedImagePropertyId, properties]);
 
   const prevExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
     const property = (properties || []).find(p => p.id === expandedImagePropertyId);
-    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return; // Add check for images array
+    if (!property || !Array.isArray(property.images) || property.images.length <= 1) return;
 
     setCurrentImageIndex(prev => {
       const currentIdx = prev[expandedImagePropertyId] !== undefined ? prev[expandedImagePropertyId] : property.homeImageIndex || 0;
@@ -290,9 +298,8 @@ const ClientView = () => {
       setExpandedImage(property.images[prevIdx]);
       return { ...prev, [expandedImagePropertyId]: prevIdx };
     });
-  }, [expandedImagePropertyId, properties]); // Depend on properties to ensure latest data
+  }, [expandedImagePropertyId, properties]);
 
-  // Keyboard navigation for expanded image
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (expandedImage) {
@@ -301,7 +308,7 @@ const ClientView = () => {
         } else if (event.key === 'ArrowLeft') {
           prevExpandedImage();
         } else if (event.key === 'Escape') {
-          closeExpandedImage(); // Use the new useCallback version
+          closeExpandedImage();
         }
       }
     };
@@ -310,7 +317,7 @@ const ClientView = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [expandedImage, nextExpandedImage, prevExpandedImage, closeExpandedImage]); // Dependencies
+  }, [expandedImage, nextExpandedImage, prevExpandedImage, closeExpandedImage]);
 
   const getCategoryColor = (category) => {
     switch (category) {
@@ -321,22 +328,20 @@ const ClientView = () => {
     }
   };
 
-  // NEW: Add toggleSelection function for client view
   const toggleSelection = useCallback((locationId, propertyId) => {
     setProperties(prevProperties => (prevProperties || []).map(prop => {
       if (prop && prop.location === locationId) {
-        // Toggle selection for the clicked property, deselect others in the same location
         return { ...prop, selected: prop.id === propertyId };
       }
       return prop;
     }));
   }, []);
 
-  if (loading && !properties.length && !error) { // Show initial loading only if no properties are loaded yet and no error
+  if (loading && !properties.length && !error) {
     return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl">Loading client selection...</div>;
   }
 
-  if (error && !properties.length) { // Show error if no properties are loaded due to error
+  if (error && !properties.length) {
     return <div className="min-h-screen flex items-center justify-center font-century-gothic text-xl text-red-600">Error: {error}</div>;
   }
 
@@ -358,8 +363,7 @@ const ClientView = () => {
         }
       `}</style>
 
-      {/* Loading/Message Overlay for save operations */}
-      {loading && message === '' && error === null && ( // Show only for save operations, not initial load
+      {loading && message === '' && error === null && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white p-4 rounded-lg shadow-xl flex items-center">
             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -375,9 +379,9 @@ const ClientView = () => {
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
           <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[calc(100vh-80px)] bg-black flex items-center justify-center rounded-xl shadow-lg">
             <button
-              onClick={closeExpandedImage} // Changed to closeExpandedImage
+              onClick={closeExpandedImage}
               className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-10"
-              aria-label="Close image"
+              aria-label="Close"
             >
               <X size={24} />
             </button>
@@ -422,7 +426,6 @@ const ClientView = () => {
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white rounded-xl shadow-md p-4 md:p-6">
           <div className="flex items-center mb-4 md:mb-0">
-            {/* MODIFIED: Use globalLogoUrl here */}
             {globalLogoUrl ? (
               <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" />
             ) : (
@@ -444,7 +447,6 @@ const ClientView = () => {
           </div>
         </div>
 
-        {/* Message and Error Displays */}
         {message && <p className="mb-4 text-center text-sm text-blue-600">{message}</p>}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -454,7 +456,10 @@ const ClientView = () => {
         )}
 
         <div className="space-y-10">
-          {Object.entries(groupedProperties).map(([location, locationProperties]) => (
+          {Object.entries(groupedProperties).map(([location, locationProperties]) => {
+            const actualProperties = locationProperties.filter(p => !p.isPlaceholder);
+            const itineraryDetails = locationProperties[0];
+            return(
             <div key={location} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
               <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -464,8 +469,8 @@ const ClientView = () => {
                     </h2>
                     <p className="text-sm text-gray-600">
                       <Calendar size={14} className="inline mr-1 text-gray-500" />
-                      {locationProperties[0]?.checkIn && locationProperties[0]?.checkOut ? (
-                        `${formatDate(locationProperties[0].checkIn)} - ${formatDate(locationProperties[0].checkOut)} · ${calculateNights(locationProperties[0].checkIn, locationProperties[0].checkOut)} nights`
+                      {itineraryDetails?.checkIn && itineraryDetails?.checkOut ? (
+                        `${formatDate(itineraryDetails.checkIn)} - ${formatDate(itineraryDetails.checkOut)} · ${calculateNights(itineraryDetails.checkIn, itineraryDetails.checkOut)} nights`
                     ) : 'Dates N/A'}
                     </p>
                   </div>
@@ -480,12 +485,11 @@ const ClientView = () => {
 
               <div className="p-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                  {(locationProperties || []).map((property) => (
+                  {actualProperties.map((property) => (
                     <div
                       key={property.id}
                       className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
                         ${property.selected ? 'selected-border' : ''}`}
-                      // ADDED onClick handler to enable selection in client view
                       onClick={() => toggleSelection(location, property.id)}
                     >
                       <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
@@ -508,7 +512,7 @@ const ClientView = () => {
                             openExpandedImage(property.id, currentImageIndex[property.id] !== undefined ? currentImageIndex[property.id] : property.homeImageIndex || 0);
                           }}
                           className="absolute top-3 right-3 bg-black bg-opacity-40 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
-                          aria-label="Expand image"
+                          aria-label="Expand"
                         >
                           <Maximize2 size={16} />
                         </button>
@@ -535,7 +539,7 @@ const ClientView = () => {
                                 prevImage(property.id);
                               }}
                               className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
-                              aria-label="Previous image"
+                              aria-label="Previous"
                             >
                               <ChevronLeft size={18} />
                             </button>
@@ -545,7 +549,7 @@ const ClientView = () => {
                                 nextImage(property.id);
                               }}
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100 shadow-md"
-                              aria-label="Next image"
+                              aria-label="Next"
                             >
                               <ChevronRight size={18} />
                             </button>
@@ -584,7 +588,6 @@ const ClientView = () => {
                               <span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span>
                             </div>
                           )}
-                          {/* Simplified Bathroom Conditional */}
                           {property.bathrooms > 0 && (
                             <div className="flex items-center">
                               <Bath size={16} className="mr-1 text-gray-500" />
@@ -599,7 +602,7 @@ const ClientView = () => {
                           </span>
                           <div className="text-right">
                             <span className="font-bold text-xl text-gray-900" style={{ color: parseCurrencyToNumber(property.price) >= 0 ? extraColor : savingsColor }}>
-                              {property.currency}{Math.abs(parseCurrencyToNumber(property.price)).toFixed(2)}
+                              {getCurrencySymbol(property.currency)}{Math.abs(parseCurrencyToNumber(property.price)).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -609,7 +612,7 @@ const ClientView = () => {
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
 
         <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-century-gothic border border-gray-100 text-left">
@@ -622,7 +625,7 @@ const ClientView = () => {
                 const selectedProperty = getSelectedProperty(location);
                 if (!selectedProperty) return null;
 
-                const priceText = parseCurrencyToNumber(selectedProperty.price); // Used new helper
+                const priceText = parseCurrencyToNumber(selectedProperty.price);
                 const priceColorStyle = { color: priceText >= 0 ? extraColor : savingsColor };
 
                 return (
@@ -648,7 +651,6 @@ const ClientView = () => {
                               <span>{selectedProperty.bedrooms}</span>
                             </div>
                           )}
-                          {/* Simplified Bathroom Conditional */}
                           {selectedProperty.bathrooms > 0 && (
                             <div className="flex items-center">
                               <Bath size={12} className="mr-0.5" />
@@ -660,7 +662,7 @@ const ClientView = () => {
                     </div>
                     <div className="text-right w-full sm:w-auto">
                       <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>
-                        {selectedProperty.currency}{Math.abs(priceText).toFixed(2)}
+                        {getCurrencySymbol(selectedProperty.currency)}{Math.abs(priceText).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -679,7 +681,6 @@ const ClientView = () => {
           )}
         </div>
 
-        {/* NEWLY ADDED: Confirm Selection Button - now at the very bottom */}
         <div className="mt-6 mb-12">
           <button
             onClick={handleSaveSelection}
