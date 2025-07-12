@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 1.8 (RLS Update Fix)
+// src/pages/ClientView.jsx - Version 1.9 (RLS Save Logic Refined)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -39,7 +39,6 @@ const ClientView = () => {
   
   const sortItinerariesByDate = (itins) => {
     if (!Array.isArray(itins)) return [];
-    // The data structure from AdminDashboard uses 'checkIn', not 'checkInDate'
     return itins.sort((a, b) => {
         const dateA = a.checkIn ? parseISO(a.checkIn).getTime() : 0;
         const dateB = b.checkIn ? parseISO(b.checkIn).getTime() : 0;
@@ -65,8 +64,6 @@ const ClientView = () => {
     setError(null);
 
     try {
-        // This RPC call is crucial. It sets the 'app.client_id' variable for the current session,
-        // which your RLS policies will use to authorize the SELECT and UPDATE queries below.
         const { error: rpcError } = await supabase.rpc('set_client_id_session_variable', { client_id_param: clientId });
         if (rpcError) throw rpcError;
 
@@ -90,12 +87,11 @@ const ClientView = () => {
             parsedProperties = clientData.client_properties;
         }
 
-        // Group properties into itineraries
         const itinerariesMap = parsedProperties.reduce((acc, prop) => {
             if (!prop.location) return acc;
             if (!acc[prop.location]) {
                 acc[prop.location] = {
-                    id: prop.location, // Use location as a unique ID for the itinerary group
+                    id: prop.location,
                     location: prop.location,
                     checkIn: prop.checkIn,
                     checkOut: prop.checkOut,
@@ -147,7 +143,6 @@ const ClientView = () => {
   }, [clientId, parseCurrencyToNumber]);
 
   useEffect(() => {
-    // This effect handles the initial anonymous sign-in.
     const signInAndFetch = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -158,7 +153,6 @@ const ClientView = () => {
                 return;
             }
         }
-        // Once signed in (or if already signed in), fetch the data.
         fetchClientData();
     };
     signInAndFetch();
@@ -176,16 +170,20 @@ const ClientView = () => {
     }
 
     try {
-      // **THE FIX IS HERE:** Call the RPC to set the session variable *before* the update.
       const { error: rpcError } = await supabase.rpc('set_client_id_session_variable', { client_id_param: clientId });
       if (rpcError) throw rpcError;
 
-      // Re-flatten the itineraries back into the properties array structure for saving
+      // **REFINED LOGIC:** Re-flatten the itineraries state into a single properties array.
+      // This is a more robust way to reconstruct the data for saving.
       const propertiesToSave = itineraries.flatMap(itinerary => {
-          if (itinerary.properties.length === 0) {
-              // If an itinerary has no properties, save a placeholder to keep the group
+          const hasProperties = itinerary.properties && itinerary.properties.length > 0;
+          if (hasProperties) {
+              return itinerary.properties;
+          } else {
+              // If the itinerary has no properties, we create a placeholder
+              // to ensure the itinerary group itself isn't lost upon saving.
               return [{
-                  id: `itinerary-placeholder-${Date.now()}`,
+                  id: `itinerary-placeholder-${itinerary.id}-${Date.now()}`,
                   name: 'Itinerary Placeholder',
                   location: itinerary.location,
                   checkIn: itinerary.checkIn,
@@ -193,12 +191,10 @@ const ClientView = () => {
                   isPlaceholder: true
               }];
           }
-          return itinerary.properties;
       });
 
       const propertiesJson = JSON.stringify(propertiesToSave);
       
-      // Now this update call will be authorized by the RLS policy
       const { error: updateError } = await supabase
         .from('clients')
         .update({ client_properties: propertiesJson })
