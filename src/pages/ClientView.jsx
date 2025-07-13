@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 4.2 (Activities Sorting)
+// src/pages/ClientView.jsx - Version 5.0 (Transportation UI & Selection Fix)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -6,11 +6,10 @@ import { supabase } from '../supabaseClient.js';
 import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight, Maximize2,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
-  Clock, Users, DollarSign, ChevronsRight
+  Clock, Users, DollarSign, ChevronsRight, ShieldCheck, CheckCircle, Ship, Bus
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
-// A new component for the tab content placeholders
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
     <h3 className="text-2xl font-bold">{title}</h3>
@@ -19,26 +18,24 @@ const PlaceholderContent = ({ title }) => (
 );
 
 const ClientView = () => {
-  // --- STATE MANAGEMENT ---
   const { clientId } = useParams();
   const location = useLocation();
-  const [clientData, setClientData] = useState(null); // Holds the new data object {properties, activities, etc.}
+  const [clientData, setClientData] = useState(null);
   const [clientName, setClientName] = useState('Client Selection');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [globalLogoUrl, setGlobalLogoUrl] = useState(null);
-  const [activeTab, setActiveTab] = useState('summary'); // Tracks the selected tab
+  const [activeTab, setActiveTab] = useState('summary');
 
   const [currentImageIndex, setCurrentImageIndex] = useState({});
   const [expandedImage, setExpandedImage] = useState(null);
   const [expandedImagePropertyId, setExpandedImagePropertyId] = useState(null);
   
   const accentColor = '#FFD700';
-  const savingsColor = '#10B981'; // For negative price changes (savings)
-  const extraColor = '#EF4444'; // For positive price changes (extra cost)
+  const savingsColor = '#10B981';
+  const extraColor = '#EF4444';
 
-  // --- UTILITY FUNCTIONS ---
   const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode) {
       case 'NZD': return 'NZ$';
@@ -49,7 +46,6 @@ const ClientView = () => {
     }
   };
   
-  // Sort itineraries (properties grouped by location) by check-in date
   const sortItinerariesByDate = (itins) => {
     if (!itins || !Array.isArray(itins)) return [];
     return itins.sort((a, b) => {
@@ -59,16 +55,14 @@ const ClientView = () => {
     });
   };
 
-  // Parses a currency string into a number, handling various formats
   const parseCurrencyToNumber = useCallback((currencyString) => {
     if (typeof currencyString === 'number') return currencyString;
     if (typeof currencyString !== 'string') return 0;
-    const numericString = currencyString.replace(/[^\d.-]/g, ''); // Remove non-numeric, non-dot, non-hyphen chars
+    const numericString = currencyString.replace(/[^\d.-]/g, '');
     const parsed = parseFloat(numericString);
     return isNaN(parsed) ? 0 : parsed;
   }, []);
 
-  // Calculates the number of nights between two dates
   const calculateNights = (checkIn, checkOut) => {
     if (!checkIn || !checkOut) return 0;
     try {
@@ -76,24 +70,18 @@ const ClientView = () => {
         const end = parseISO(checkOut);
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
         return differenceInDays(end, start);
-    } catch {
-        return 0;
-    }
+    } catch { return 0; }
   };
 
-  // Formats a date string into 'dd MMM yy'
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
       const date = parseISO(dateString);
       if (isNaN(date.getTime())) return 'Invalid Date';
       return format(date, 'dd MMM yy');
-    } catch (e) {
-      return 'Error';
-    }
+    } catch (e) { return 'Error'; }
   };
 
-  // Formats a time string into 'hh:mm AM/PM'
   const formatTime = (timeString) => {
     if (!timeString) return 'N/A';
     try {
@@ -104,7 +92,6 @@ const ClientView = () => {
     } catch { return 'Invalid Time'; }
   };
 
-  // Calculates the final price for an activity based on pax, price per pax, and adjustment
   const calculateFinalActivityPrice = useCallback((activity) => {
     const pax = parseInt(activity.pax, 10) || 0;
     const pricePerPax = parseFloat(activity.price_per_pax) || 0;
@@ -112,14 +99,12 @@ const ClientView = () => {
     return (pax * pricePerPax) + adjustment;
   }, []);
 
-  // Determines the color for price display (green for savings, red for extra cost)
   const getPriceColor = (price) => {
     if (price < 0) return savingsColor;
     if (price > 0) return extraColor;
-    return '#333'; // Neutral color for zero
+    return '#333';
   };
 
-  // --- DATA FETCHING AND SAVING ---
   const fetchClientData = useCallback(async () => {
     const searchParams = new URLSearchParams(location.search);
     const token = searchParams.get('token');
@@ -133,29 +118,16 @@ const ClientView = () => {
     setError(null);
 
     try {
-        // Call the Supabase RPC function to get client data
-        const { data: responseData, error: rpcError } = await supabase.rpc('get_client_data_with_token', {
-            p_client_id: clientId,
-            p_token: token
-        });
-
+        const { data: responseData, error: rpcError } = await supabase.rpc('get_client_data_with_token', { p_client_id: clientId, p_token: token });
         if (rpcError) throw rpcError;
         if (!responseData) throw new Error("Invalid or expired share link.");
 
-        // The 'data' key now holds our object with properties, activities, etc.
-        const baseData = { properties: [], activities: [], flights: [], cars: [] };
+        const baseData = { properties: [], activities: [], flights: [], transportation: [] };
         const fullClientData = { ...baseData, ...responseData.data };
 
-        // Ensure properties and activities prices are parsed to numbers
-        fullClientData.properties = fullClientData.properties.map(p => ({
-            ...p,
-            price: parseCurrencyToNumber(p.price)
-        }));
-        fullClientData.activities = fullClientData.activities.map(a => ({
-            ...a,
-            price_per_pax: parseCurrencyToNumber(a.price_per_pax),
-            price_adjustment: parseCurrencyToNumber(a.price_adjustment)
-        }));
+        fullClientData.properties = fullClientData.properties.map(p => ({ ...p, price: parseCurrencyToNumber(p.price) }));
+        fullClientData.activities = fullClientData.activities.map(a => ({ ...a, price_per_pax: parseCurrencyToNumber(a.price_per_pax), price_adjustment: parseCurrencyToNumber(a.price_adjustment) }));
+        fullClientData.transportation = (fullClientData.transportation || []).map(t => ({ ...t, price: parseCurrencyToNumber(t.price), excessAmount: parseCurrencyToNumber(t.excessAmount) }));
 
         setClientData(fullClientData);
         setClientName(responseData.clientName || 'Client Selection');
@@ -169,98 +141,54 @@ const ClientView = () => {
     }
   }, [clientId, location.search, parseCurrencyToNumber]);
 
-  useEffect(() => {
-    fetchClientData();
-  }, [fetchClientData]);
+  useEffect(() => { fetchClientData(); }, [fetchClientData]);
 
-  // Saves the client's selections back to the database
   const handleSaveSelection = useCallback(async () => {
     const searchParams = new URLSearchParams(location.search);
     const token = searchParams.get('token');
-
-    if (!clientId || !token) {
-      setError('Client ID or share token is missing. Cannot save.');
-      return;
-    }
-
+    if (!clientId || !token) { setError('Client ID or share token is missing. Cannot save.'); return; }
     setLoading(true);
     setMessage('');
     setError(null);
-
     try {
-      // The entire clientData object is saved
       const dataToSave = { ...clientData };
-      
-      const { data: success, error: rpcError } = await supabase.rpc('update_client_data_with_token', {
-          p_client_id: clientId,
-          p_token: token,
-          new_properties: dataToSave // The RPC parameter name is still new_properties, but it expects the full JSON object
-      });
-
+      const { data: success, error: rpcError } = await supabase.rpc('update_client_data_with_token', { p_client_id: clientId, p_token: token, new_properties: dataToSave });
       if (rpcError) throw rpcError;
       if (!success) throw new Error("Update failed. The link may be invalid or expired.");
-      
       setMessage('Your selection has been successfully saved!');
-
     } catch (err) {
       console.error("Error saving client selection:", err);
       setError("Error saving your selection: " + err.message);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [clientId, location.search, clientData]);
 
-  // --- DATA TRANSFORMATION & SELECTION LOGIC ---
-
-  // Groups properties by location for display
   const groupedProperties = useMemo(() => {
     if (!clientData?.properties) return {};
     return clientData.properties.reduce((acc, prop) => {
         if (!prop.location) return acc;
         if (!acc[prop.location]) {
-            acc[prop.location] = {
-                id: prop.location, // Using location as ID for itinerary leg
-                location: prop.location,
-                checkIn: prop.checkIn,
-                checkOut: prop.checkOut,
-                properties: []
-            };
+            acc[prop.location] = { id: prop.location, location: prop.location, checkIn: prop.checkIn, checkOut: prop.checkOut, properties: [] };
         }
-        if (!prop.isPlaceholder) { // Only include actual properties, not placeholders
-             acc[prop.location].properties.push({
-                ...prop,
-                price: parseCurrencyToNumber(prop.price)
-             });
-        }
+        if (!prop.isPlaceholder) { acc[prop.location].properties.push({ ...prop, price: parseCurrencyToNumber(prop.price) }); }
         return acc;
     }, {});
   }, [clientData, parseCurrencyToNumber]);
 
-  // Derives a sorted list of itineraries (locations with properties)
   const itineraries = useMemo(() => sortItinerariesByDate(Object.values(groupedProperties)), [groupedProperties]);
 
-  // Group activities by location for rendering and sort them
   const groupedActivities = useMemo(() => {
     if (!clientData?.activities) return {};
     const grouped = clientData.activities.reduce((acc, activity) => {
       if (!activity.location) return acc;
-      if (!acc[activity.location]) {
-        acc[activity.location] = [];
-      }
+      if (!acc[activity.location]) { acc[activity.location] = []; }
       acc[activity.location].push(activity);
       return acc;
     }, {});
-
-    // Sort activities within each location group by date and time
     for (const locationKey in grouped) {
       grouped[locationKey].sort((a, b) => {
-        // Sort by date first
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
-        if (dateA.getTime() !== dateB.getTime()) {
-          return dateA.getTime() - dateB.getTime();
-        }
-        // If dates are the same, sort by time
+        if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
         const timeA = a.time ? parseInt(a.time.replace(':', ''), 10) : 0;
         const timeB = b.time ? parseInt(b.time.replace(':', ''), 10) : 0;
         return timeA - timeB;
@@ -269,61 +197,79 @@ const ClientView = () => {
     return grouped;
   }, [clientData]);
 
-  // Gets the currently selected property for a given itinerary
+  const groupedTransportation = useMemo(() => {
+    if (!clientData?.transportation) return {};
+    return clientData.transportation.reduce((acc, item) => {
+      const location = item.pickupLocation || item.boardingFrom || item.location;
+      if (!location) return acc;
+      if (!acc[location]) { acc[location] = []; }
+      acc[location].push(item);
+      return acc;
+    }, {});
+  }, [clientData]);
+
   const getSelectedProperty = useCallback((itineraryId) => {
     const itinerary = itineraries.find(it => it.id === itineraryId);
     return itinerary?.properties?.find(prop => prop.selected);
   }, [itineraries]);
 
-  // Toggles the selection of a property, deselecting others in the same itinerary
   const toggleSelection = useCallback((itineraryId, propertyId) => {
     setClientData(prevData => {
         const newProperties = prevData.properties.map(prop => {
-            if (prop.location === itineraryId) { // Check if property belongs to the current itinerary leg
-                return { ...prop, selected: prop.id === propertyId ? !prop.selected : false };
-            }
+            if (prop.location === itineraryId) { return { ...prop, selected: prop.id === propertyId ? !prop.selected : false }; }
             return prop;
         });
         return { ...prevData, properties: newProperties };
     });
   }, []);
 
-  // Toggles the selection of an activity, deselecting others in the same location
   const toggleActivitySelection = useCallback((activityId) => {
     setClientData(prevData => {
         const newActivities = prevData.activities.map(act => {
-            const activityLocation = act.location; // Assuming activities have a location property
             const targetActivity = prevData.activities.find(a => a.id === activityId);
-
-            if (targetActivity && activityLocation === targetActivity.location) {
-                // If it's the target activity, toggle its selection. Otherwise, deselect other activities in the same location.
+            if (targetActivity && act.location === targetActivity.location) {
                 return act.id === activityId ? { ...act, selected: !act.selected } : { ...act, selected: false };
             }
-            return act; // Return unchanged if not in the same location
+            return act;
         });
         return { ...prevData, activities: newActivities };
     });
   }, []);
 
-  // Calculates the total price change from all selected properties and activities
+  const toggleTransportationSelection = useCallback((itemId) => {
+    setClientData(prevData => {
+        const targetItem = prevData.transportation.find(t => t.id === itemId);
+        if (!targetItem) return prevData;
+
+        const location = targetItem.pickupLocation || targetItem.boardingFrom || targetItem.location;
+        
+        const newTransportation = prevData.transportation.map(item => {
+            const itemLocation = item.pickupLocation || item.boardingFrom || item.location;
+            if (location === itemLocation) {
+                return { ...item, selected: item.id === itemId ? !item.selected : false };
+            }
+            return item;
+        });
+        return { ...prevData, transportation: newTransportation };
+    });
+  }, []);
+
   const totalChangeValue = useMemo(() => {
     let total = 0;
     if (clientData?.properties) {
-        total += clientData.properties.reduce((sum, prop) => {
-            return sum + (prop.selected ? parseCurrencyToNumber(prop.price) : 0);
-        }, 0);
+        total += clientData.properties.reduce((sum, prop) => sum + (prop.selected ? parseCurrencyToNumber(prop.price) : 0), 0);
     }
     if (clientData?.activities) {
-        total += clientData.activities.reduce((sum, act) => {
-            return sum + (act.selected ? calculateFinalActivityPrice(act) : 0);
-        }, 0);
+        total += clientData.activities.reduce((sum, act) => sum + (act.selected ? calculateFinalActivityPrice(act) : 0), 0);
+    }
+    if (clientData?.transportation) {
+        total += clientData.transportation.reduce((sum, item) => sum + (item.selected ? parseCurrencyToNumber(item.price) : 0), 0);
     }
     return total;
   }, [clientData, parseCurrencyToNumber, calculateFinalActivityPrice]);
 
   const totalChangeColorStyle = { color: getPriceColor(totalChangeValue) };
 
-  // --- IMAGE GALLERY FUNCTIONS ---
   const nextImage = (propertyId) => {
     setCurrentImageIndex(prev => {
         const property = clientData?.properties?.find(p => p.id === propertyId);
@@ -353,14 +299,8 @@ const ClientView = () => {
     }
   };
 
-  const closeExpandedImage = useCallback(() => {
-    setExpandedImage(null);
-    setExpandedImagePropertyId(null);
-  }, []);
-
-  const findPropertyForExpandedView = (propId) => {
-      return clientData?.properties?.find(p => p.id === propId) || null;
-  }
+  const closeExpandedImage = useCallback(() => { setExpandedImage(null); setExpandedImagePropertyId(null); }, []);
+  const findPropertyForExpandedView = (propId) => clientData?.properties?.find(p => p.id === propId) || null;
 
   const nextExpandedImage = useCallback(() => {
     if (!expandedImagePropertyId) return;
@@ -398,33 +338,23 @@ const ClientView = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [expandedImage, nextExpandedImage, prevExpandedImage, closeExpandedImage]);
 
-  // --- RENDER LOGIC ---
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl">Loading client selection...</div>;
-  }
-
-  if (error) {
-    return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl text-red-600 p-8 text-center">{error}</div>;
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl">Loading client selection...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl text-red-600 p-8 text-center">{error}</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Century_Gothic']">
       <style>{`
         .font-century-gothic { font-family: 'Century Gothic', sans-serif; }
-        .selected-border {
+        .selected-border, .selected-activity-card, .selected-transport-row {
             border-color: ${accentColor};
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
-            border-width: 5px;
-            border-radius: 1rem;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            border-width: 2px;
         }
-        .selected-activity-card {
-            border-color: ${accentColor};
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
-            border-width: 4px;
+        .selected-border, .selected-activity-card {
+            border-radius: 1rem;
         }
       `}</style>
 
-      {/* Expanded Image Modal */}
       {expandedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
           <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[calc(100vh-80px)] bg-black flex items-center justify-center rounded-xl shadow-lg">
@@ -440,15 +370,10 @@ const ClientView = () => {
         </div>
       )}
 
-      {/* Header Section */}
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white rounded-xl shadow-md p-4 md:p-6">
           <div className="flex items-center mb-4 md:mb-0">
-            {globalLogoUrl ? (
-              <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" />
-            ) : (
-              <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div>
-            )}
+            {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" /> ) : ( <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div> )}
             <div className="text-left">
               <h1 className="text-4xl font-extrabold text-gray-900 mb-1">Veeha Travels</h1>
               <p className="text-xl font-bold text-gray-900">Your Curated Selections</p>
@@ -458,45 +383,30 @@ const ClientView = () => {
           <div className="flex items-center gap-4">
             <div className={`text-right p-3 rounded-lg border ${totalChangeValue >= 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
               <p className="text-xs text-gray-600">Total Price Change</p>
-              <p className={`text-2xl font-bold`} style={totalChangeColorStyle}>
-                {getCurrencySymbol('NZD')}{totalChangeValue >= 0 ? '+' : ''}{totalChangeValue.toFixed(2)}
-              </p>
+              <p className={`text-2xl font-bold`} style={totalChangeColorStyle}>{`${totalChangeValue >= 0 ? '+' : '-'}${getCurrencySymbol('NZD')}${Math.abs(totalChangeValue).toFixed(2)}`}</p>
             </div>
           </div>
         </div>
 
         {message && <p className="mb-4 text-center text-sm text-blue-600 bg-blue-100 p-3 rounded-lg">{message}</p>}
         
-        {/* Tab Navigation */}
         <div className="border-b border-gray-200 mb-8">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                <button onClick={() => setActiveTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'summary' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    <ClipboardList size={18} className="mr-2" /> Summary
-                </button>
-                <button onClick={() => setActiveTab('property')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'property' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    <Building size={18} className="mr-2" /> Property
-                </button>
-                <button onClick={() => setActiveTab('activities')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'activities' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    <Activity size={18} className="mr-2" /> Activities
-                </button>
-                <button onClick={() => setActiveTab('flights')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'flights' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    <Plane size={18} className="mr-2" /> Flights
-                </button>
-                <button onClick={() => setActiveTab('car')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'car' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    <Car size={18} className="mr-2" /> Car
-                </button>
+                <button onClick={() => setActiveTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'summary' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
+                <button onClick={() => setActiveTab('property')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'property' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
+                <button onClick={() => setActiveTab('activities')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'activities' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Activity size={18} className="mr-2" /> Activities </button>
+                <button onClick={() => setActiveTab('flights')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'flights' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Plane size={18} className="mr-2" /> Flights </button>
+                <button onClick={() => setActiveTab('transportation')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'transportation' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Car size={18} className="mr-2" /> Transportation </button>
             </nav>
         </div>
 
-        {/* Conditional Content Rendering based on activeTab */}
         {activeTab === 'summary' && (
             <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-['Century_Gothic'] border border-gray-100 text-left">
               <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
-              {itineraries.every(it => !getSelectedProperty(it.id)) && clientData?.activities.every(act => !act.selected) ? (
-                <p className="text-gray-500 text-center py-8 text-lg">No properties or activities selected yet. Start choosing!</p>
+              {itineraries.every(it => !getSelectedProperty(it.id)) && clientData?.activities.every(act => !act.selected) && clientData?.transportation.every(t => !t.selected) ? (
+                <p className="text-gray-500 text-center py-8 text-lg">No properties, activities, or transportation selected yet. Start choosing!</p>
               ) : (
                 <div className="space-y-4">
-                  {/* Selected Properties Summary */}
                   {itineraries.map((itinerary) => {
                     const selectedProperty = getSelectedProperty(itinerary.id);
                     if (!selectedProperty) return null;
@@ -511,15 +421,10 @@ const ClientView = () => {
                             <p className="text-sm text-gray-700 font-medium">{selectedProperty.name}</p>
                           </div>
                         </div>
-                        <div className="text-right w-full sm:w-auto">
-                          <span className="font-bold text-xl" style={priceColorStyle}>{getCurrencySymbol(selectedProperty.currency)}{priceText >= 0 ? '+' : ''}{Math.abs(priceText).toFixed(2)}</span>
-                        </div>
+                        <div className="text-right w-full sm:w-auto"> <span className="font-bold text-xl" style={priceColorStyle}>{`${priceText < 0 ? '-' : '+'}${getCurrencySymbol(selectedProperty.currency)}${Math.abs(priceText).toFixed(2)}`}</span> </div>
                       </div>
                     );
                   })}
-
-                  {/* Selected Activities Summary */}
-                  {/* Iterate over sorted activities for summary */}
                   {Object.values(groupedActivities).flat().filter(act => act.selected).map((activity) => {
                     const finalPrice = calculateFinalActivityPrice(activity);
                     const priceColorStyle = { color: getPriceColor(finalPrice) };
@@ -532,17 +437,31 @@ const ClientView = () => {
                             <p className="text-sm text-gray-700 font-medium">{activity.name}</p>
                           </div>
                         </div>
-                        <div className="text-right w-full sm:w-auto">
-                          <span className="font-bold text-xl" style={priceColorStyle}>{getCurrencySymbol(activity.currency)}{finalPrice >= 0 ? '+' : ''}{Math.abs(finalPrice).toFixed(2)}</span>
-                        </div>
+                        <div className="text-right w-full sm:w-auto"> <span className="font-bold text-xl" style={priceColorStyle}>{`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(finalPrice).toFixed(2)}`}</span> </div>
                       </div>
                     );
                   })}
-
+                   {Object.values(groupedTransportation).flat().filter(t => t.selected).map((item) => {
+                    const finalPrice = parseCurrencyToNumber(item.price);
+                    const priceColorStyle = { color: getPriceColor(finalPrice) };
+                    const location = item.pickupLocation || item.boardingFrom || item.location;
+                    return (
+                      <div key={`summary-transport-${item.id}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border">
+                        <div className="flex items-center space-x-4 mb-3 sm:mb-0">
+                          <img src={item.images?.[0] || 'https://placehold.co/60x60/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0" onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}/>
+                          <div className="text-left">
+                            <h4 className="font-semibold text-gray-900 text-base">{location} (Transportation)</h4>
+                            <p className="text-sm text-gray-700 font-medium">{item.name}</p>
+                          </div>
+                        </div>
+                        <div className="text-right w-full sm:w-auto"> <span className="font-bold text-xl" style={priceColorStyle}>{`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(item.currency)}${Math.abs(finalPrice).toFixed(2)}`}</span> </div>
+                      </div>
+                    );
+                  })}
                   <div className="pt-6 border-t border-gray-200">
                     <div className="flex justify-between items-center">
                       <span className="text-xl font-bold text-gray-900">Total Price Change:</span>
-                      <span className={`text-3xl font-extrabold`} style={totalChangeColorStyle}>{getCurrencySymbol('NZD')}{totalChangeValue >= 0 ? '+' : ''}{totalChangeValue.toFixed(2)}</span>
+                      <span className={`text-3xl font-extrabold`} style={totalChangeColorStyle}>{`${totalChangeValue >= 0 ? '+' : '-'}${getCurrencySymbol('NZD')}${Math.abs(totalChangeValue).toFixed(2)}`}</span>
                     </div>
                   </div>
                 </div>
@@ -558,10 +477,7 @@ const ClientView = () => {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                       <div className="mb-2 md:mb-0">
                         <h2 className="text-2xl font-bold text-gray-900 text-left">{itinerary.location}</h2>
-                        <p className="text-sm text-gray-600">
-                          <Calendar size={14} className="inline mr-1 text-gray-500" />
-                          {itinerary.checkIn && itinerary.checkOut ? `${formatDate(itinerary.checkIn)} - ${formatDate(itinerary.checkOut)} · ${calculateNights(itinerary.checkIn, itinerary.checkOut)} nights` : 'Dates N/A'}
-                        </p>
+                        <p className="text-sm text-gray-600"> <Calendar size={14} className="inline mr-1 text-gray-500" /> {itinerary.checkIn && itinerary.checkOut ? `${formatDate(itinerary.checkIn)} - ${formatDate(itinerary.checkOut)} · ${calculateNights(itinerary.checkIn, itinerary.checkOut)} nights` : 'Dates N/A'} </p>
                       </div>
                       <div className="text-left md:text-right">
                         <p className="text-sm text-gray-600">Selected Property:</p>
@@ -569,12 +485,9 @@ const ClientView = () => {
                       </div>
                     </div>
                   </div>
-
                   <div className="p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(itinerary.properties || []).length === 0 ? (
-                        <div className="col-span-full text-center py-8 text-gray-500"><p>No properties for this itinerary.</p></div>
-                      ) : (
+                      {(itinerary.properties || []).length === 0 ? ( <div className="col-span-full text-center py-8 text-gray-500"><p>No properties for this itinerary.</p></div> ) : (
                         itinerary.properties.map((property) => {
                           const priceValue = parseCurrencyToNumber(property.price);
                           const priceColorStyle = { color: getPriceColor(priceValue) };
@@ -592,9 +505,7 @@ const ClientView = () => {
                                 </div>
                                 <div className="flex items-center justify-between mt-2">
                                     <span className="text-base text-gray-700 font-medium">{calculateNights(property.checkIn, property.checkOut)} nights</span>
-                                    <div className="text-right">
-                                        <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>{getCurrencySymbol(property.currency)}{priceValue >= 0 ? '+' : ''}{Math.abs(priceValue).toFixed(2)}</span>
-                                    </div>
+                                    <div className="text-right"> <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>{`${priceValue < 0 ? '-' : '+'}${getCurrencySymbol(property.currency)}${Math.abs(priceValue).toFixed(2)}`}</span> </div>
                                 </div>
                               </div>
                             </div>
@@ -610,9 +521,7 @@ const ClientView = () => {
 
         {activeTab === 'activities' && (
             <div className="space-y-10">
-                {Object.entries(groupedActivities).length === 0 ? (
-                    <PlaceholderContent title="Activities" />
-                ) : (
+                {Object.entries(groupedActivities).length === 0 ? ( <PlaceholderContent title="Activities" /> ) : (
                     Object.entries(groupedActivities).map(([location, activitiesInLocation]) => (
                         <div key={location} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
                             <h3 className="text-2xl font-bold text-gray-800 mb-4">{location} Activities</h3>
@@ -621,24 +530,10 @@ const ClientView = () => {
                                     const finalPrice = calculateFinalActivityPrice(activity);
                                     const priceColorStyle = { color: getPriceColor(finalPrice) };
                                     return (
-                                        <div 
-                                            key={activity.id} 
-                                            className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 cursor-pointer group overflow-hidden ${activity.selected ? 'selected-activity-card' : 'border-gray-200'}`}
-                                            onClick={() => toggleActivitySelection(activity.id)}
-                                        >
+                                        <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 cursor-pointer group overflow-hidden ${activity.selected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => toggleActivitySelection(activity.id)}>
                                             <div className="relative aspect-video">
-                                                {activity.images && activity.images.length > 0 ? (
-                                                    <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/>
-                                                ) : (
-                                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
-                                                        <Image size={40} />
-                                                    </div>
-                                                )}
-                                                {activity.selected && (
-                                                    <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg">
-                                                        <Check size={24} className="text-green-500" />
-                                                    </div>
-                                                )}
+                                                {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
+                                                {activity.selected && ( <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg"> <Check size={24} className="text-green-500" /> </div> )}
                                             </div>
                                             <div className="p-4 flex flex-col justify-between flex-grow">
                                                 <div>
@@ -650,9 +545,55 @@ const ClientView = () => {
                                                         <div className="flex items-center"><Users size={16} className="mr-2 text-gray-400" /> <span>{activity.pax} Pax</span></div>
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 text-right">
-                                                    <span className={`text-2xl font-bold`} style={priceColorStyle}>
-                                                        {finalPrice < 0 ? `-` : `+`}{getCurrencySymbol(activity.currency)}{Math.abs(finalPrice).toFixed(2)}
+                                                <div className="mt-4 text-right"> <span className={`text-2xl font-bold`} style={priceColorStyle}> {`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(finalPrice).toFixed(2)}`} </span> </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        )}
+
+        {activeTab === 'transportation' && (
+            <div className="space-y-10">
+                {Object.entries(groupedTransportation).length === 0 ? ( <PlaceholderContent title="Transportation" /> ) : (
+                    Object.entries(groupedTransportation).map(([location, itemsInLocation]) => (
+                        <div key={location} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+                            <h3 className="text-2xl font-bold text-gray-800 mb-6">{location} Transportation</h3>
+                            <div className="space-y-6">
+                                {itemsInLocation.map(item => {
+                                    const price = parseCurrencyToNumber(item.price);
+                                    const priceColorStyle = { color: getPriceColor(price) };
+                                    return (
+                                        <div key={item.id} className={`relative p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
+                                            {item.selected && (
+                                                <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}>
+                                                    <Check size={18} />
+                                                </div>
+                                            )}
+                                            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full lg:pl-12">
+                                                <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md" />
+                                                <div className="flex-grow">
+                                                    <h4 className="font-bold text-xl text-gray-800">{item.name}</h4>
+                                                    <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+                                                        <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom}</div>
+                                                        <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
+                                                        <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo}</div>
+                                                        <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>
+                                                        {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>}
+                                                        {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
+                                                        {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                                        {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
+                                                        {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                                    </div>
+                                                </div>
+                                                <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto">
+                                                    <span className={`text-3xl font-bold whitespace-nowrap`} style={priceColorStyle}>
+                                                        {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
                                                     </span>
                                                 </div>
                                             </div>
@@ -667,9 +608,7 @@ const ClientView = () => {
         )}
 
         {activeTab === 'flights' && <PlaceholderContent title="Flights" />}
-        {activeTab === 'car' && <PlaceholderContent title="Car Rentals" />}
 
-        {/* Save Selections Button */}
         <div className="mt-6 mb-12">
           <button onClick={handleSaveSelection} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" disabled={loading}>{loading ? 'Saving...' : 'Confirm My Selections'}</button>
         </div>
