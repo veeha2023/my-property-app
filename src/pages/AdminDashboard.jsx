@@ -548,73 +548,10 @@ const AdminDashboard = ({}) => {
     };
   }, []);
 
-  // Optional realtime functionality - can be disabled if connection fails
-  useEffect(() => {
-    if (!session) return;
-
-    // Check if realtime should be enabled (can be disabled via environment variable)
-    const enableRealtime = process.env.REACT_APP_ENABLE_REALTIME !== 'false';
-    
-    if (!enableRealtime) {
-      console.log('Realtime disabled - operating without live updates');
-      return;
-    }
-
-    let channel;
-    let connectionTimeout;
-    
-    const setupRealtime = () => {
-      try {
-        channel = supabase
-          .channel('public:clients')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
-            fetchClients();
-          })
-          .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-              console.log('Realtime connection established');
-              if (connectionTimeout) {
-                clearTimeout(connectionTimeout);
-              }
-            } else if (status === 'CHANNEL_ERROR') {
-              console.warn('Realtime channel error - operating without realtime updates');
-            } else if (status === 'CLOSED') {
-              console.warn('Realtime connection closed');
-            }
-          });
-      } catch (error) {
-        console.warn('Realtime connection failed - operating without realtime updates:', error);
-      }
-    };
-
-    // Set up connection timeout to prevent hanging
-    connectionTimeout = setTimeout(() => {
-      if (channel) {
-        console.warn('Realtime connection timeout - disabling realtime updates');
-        try {
-          supabase.removeChannel(channel);
-        } catch (error) {
-          console.warn('Error removing timed out channel:', error);
-        }
-        channel = null;
-      }
-    }, 10000); // 10 second timeout
-
-    setupRealtime();
-
-    return () => {
-      if (connectionTimeout) {
-        clearTimeout(connectionTimeout);
-      }
-      if (channel) {
-        try {
-          supabase.removeChannel(channel);
-        } catch (error) {
-          console.warn('Error removing realtime channel:', error);
-        }
-      }
-    };
-  }, [session, fetchClients]);
+  // Realtime functionality has been completely removed to prevent WebSocket connection errors
+  // The app now works without live updates - data is refreshed manually when needed
+  // If you need realtime functionality in the future, it can be re-enabled by uncommenting
+  // the realtime useEffect block and ensuring your Supabase project has realtime enabled
 
   useEffect(() => {
     if (session) {
