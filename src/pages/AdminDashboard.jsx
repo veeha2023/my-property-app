@@ -1,10 +1,11 @@
-// src/pages/AdminDashboard.jsx - Version 7.23 (Corrected Admin Summary Pricing)
+// src/pages/AdminDashboard.jsx - Version 7.26 (Self-Contained Auth & Session Handling)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
 import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
+import { useNavigate } from 'react-router-dom';
 import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -158,11 +159,10 @@ const AdminSummaryView = ({ clientData, setActiveTab }) => {
     );
 };
 
-const AdminDashboard = ({}) => {
+const AdminDashboard = () => {
   const [session, setSession] = useState(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [clients, setClients] = useState([]);
@@ -202,6 +202,27 @@ const AdminDashboard = ({}) => {
   const buttonPrimary = accentColor;
   const buttonTextPrimary = '#1A202C';
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+
+  useEffect(() => {
+    const getSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setLoading(false);
+        if (!session) {
+            navigate('/login');
+        }
+    };
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session);
+        if (!session) {
+            navigate('/login');
+        }
+    });
+
+    return () => authListener.subscription.unsubscribe();
+  }, [navigate]);
 
   const formatDateForDisplay = (dateString) => {
     if (!dateString) return 'N/A';
@@ -591,43 +612,20 @@ const AdminDashboard = ({}) => {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); });
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => { setSession(session); });
-    return () => { authListener.subscription.unsubscribe(); };
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    const channel = supabase.channel('public:clients').on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => { fetchClients(); }).subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [session, fetchClients]);
-
-  useEffect(() => {
-    if (session) { fetchClients(); fetchGlobalSettings(); }
-    else { setClients([]); setSelectedClient(null); setClientData(null); setGlobalLogoUrl(null); setCompanyName('Veeha Travels'); }
+    if (session) {
+        fetchClients();
+        fetchGlobalSettings();
+    }
   }, [session, fetchClients, fetchGlobalSettings]);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-    setError(null);
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) throw signInError;
-      setMessage('Logged in successfully!');
-    } catch (err) { setError(err.error_description || err.message); }
-    finally { setLoading(false); }
-  };
 
   const handleLogout = async () => {
     setLoading(true);
     setError(null);
     const { error: signOutError } = await supabase.auth.signOut();
-    if (signOutError) console.error('Error logging out:', signOutError.message);
-    setSession(null);
-    setSelectedClient(null);
-    setClientData(null);
+    if (signOutError) {
+        console.error('Error logging out:', signOutError.message);
+        setError(signOutError.message);
+    }
     setLoading(false);
   };
 
@@ -774,33 +772,12 @@ const AdminDashboard = ({}) => {
     } finally { setLoading(false); }
   };
 
-  if (!session) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black p-4 font-['Century_Gothic'] text-white`}>
-        <div className={`bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-gray-700`}>
-          <h2 className="text-4xl font-extrabold text-white text-center mb-8">Veeha Travels Admin</h2>
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label htmlFor="email" className={`block text-gray-400 text-sm font-bold mb-2`}>Email:</label>
-              <input type="email" id="email" className={`shadow appearance-none border border-gray-600 rounded w-full py-3 px-4 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-[${accentColor}] bg-gray-700 placeholder-gray-500`} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@example.com" required />
-            </div>
-            <div>
-              <label htmlFor="password" className={`block text-gray-400 text-sm font-bold mb-2`}>Password:</label>
-              <input type="password" id="password" className={`shadow appearance-none border border-gray-600 rounded w-full py-3 px-4 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-[${accentColor}] bg-gray-700 placeholder-gray-500`} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" required />
-            </div>
-            <button type="submit" className={`w-full bg-[${buttonPrimary}] hover:bg-yellow-600 text-[${buttonTextPrimary}] font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-200 ease-in-out transform hover:scale-105`} disabled={loading}>
-              {loading ? 'Logging in...' : 'Log In'}
-            </button>
-          </form>
-          {error && <p className="mt-6 text-center text-red-400 text-sm">{error}</p>}
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
   return (
     <div className={`flex flex-col min-h-screen bg-[${primaryBgColor}] font-['Century_Gothic']`}>
-      {loading && ( <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"> <div className="bg-white p-4 rounded-lg shadow-xl flex items-center"> <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> Saving changes... </div> </div> )}
       {showItineraryModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
           <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
