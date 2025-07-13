@@ -1,12 +1,11 @@
-// src/pages/AdminDashboard.jsx - Version 7.20 (Quote Integration)
+// src/pages/AdminDashboard.jsx - Version 7.23 (Corrected Admin Summary Pricing)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
 import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
-import { Link } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO, differenceInDays } from 'date-fns';
 
@@ -23,10 +22,15 @@ const AdminSummaryView = ({ clientData, setActiveTab }) => {
     };
 
     const calculateFinalActivityPrice = useCallback((activity) => {
-        const pax = parseInt(activity.pax, 10) || 0;
-        const pricePerPax = parseFloat(activity.price_per_pax) || 0;
-        const adjustment = parseFloat(activity.price_adjustment) || 0;
-        return (pax * pricePerPax) + adjustment;
+        const priceSelected = parseFloat(activity.price_if_selected) || 0;
+        const priceNotSelected = parseFloat(activity.price_if_not_selected) || 0;
+        return activity.selected ? priceSelected : priceNotSelected;
+    }, []);
+
+    const calculateFinalFlightPrice = useCallback((flight) => {
+        const priceSelected = parseFloat(flight.price_if_selected) || 0;
+        const priceNotSelected = parseFloat(flight.price_if_not_selected) || 0;
+        return flight.selected ? priceSelected : priceNotSelected;
     }, []);
 
     const selectedProperties = useMemo(() => clientData?.properties?.filter(p => p.selected && !p.isPlaceholder) || [], [clientData]);
@@ -39,11 +43,11 @@ const AdminSummaryView = ({ clientData, setActiveTab }) => {
     const totalChange = useMemo(() => {
         let total = 0;
         total += selectedProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
-        total += selectedActivities.reduce((sum, act) => sum + calculateFinalActivityPrice(act), 0);
+        total += (clientData?.activities || []).reduce((sum, act) => sum + calculateFinalActivityPrice(act), 0);
         total += selectedTransportation.reduce((sum, item) => sum + (item.price || 0), 0);
-        total += selectedFlights.reduce((sum, item) => sum + (item.price || 0), 0);
+        total += (clientData?.flights || []).reduce((sum, item) => sum + calculateFinalFlightPrice(item), 0);
         return total;
-    }, [selectedProperties, selectedActivities, selectedTransportation, selectedFlights, calculateFinalActivityPrice]);
+    }, [clientData, selectedProperties, selectedTransportation, calculateFinalActivityPrice, calculateFinalFlightPrice]);
 
     const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
     const finalQuote = baseQuote + totalChange;
@@ -104,7 +108,7 @@ const AdminSummaryView = ({ clientData, setActiveTab }) => {
                                                 <p className="text-sm text-gray-600">{item.from} to {item.to}</p>
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalFlightPrice(item))}`}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateFinalFlightPrice(item)).toFixed(2)}`}</p>
                                     </div>
                                 ))}
                             </div>
@@ -169,6 +173,7 @@ const AdminDashboard = ({}) => {
   const [editingClientName, setEditingClientName] = useState('');
   const [editingClientQuote, setEditingClientQuote] = useState(0);
   const [showEditClientModal, setShowEditClientModal] = useState(false);
+  const [shareLink, setShareLink] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [globalLogoUrl, setGlobalLogoUrl] = useState(null);
   const [newGlobalLogoFile, setNewGlobalLogoFile] = useState(null);
@@ -264,9 +269,9 @@ const AdminDashboard = ({}) => {
 
     const data = typeof clientPropertiesData === 'object' && clientPropertiesData !== null ? clientPropertiesData : {};
     const existingProperties = Array.isArray(data.properties) ? data.properties : [];
-    const existingActivities = Array.isArray(data.activities) ? data.activities : [];
+    const existingActivities = (data.activities || []).map(a => ({ ...a, price_if_selected: parseFloat(a.price_if_selected) || 0, price_if_not_selected: parseFloat(a.price_if_not_selected) || 0 }));
     const existingTransportation = Array.isArray(data.transportation) ? data.transportation : [];
-    const existingFlights = Array.isArray(data.flights) ? data.flights : [];
+    const existingFlights = (data.flights || []).map(f => ({ ...f, price_if_selected: parseFloat(f.price_if_selected) || 0, price_if_not_selected: parseFloat(f.price_if_not_selected) || 0 }));
 
     const allLocations = new Set();
     existingProperties.forEach(p => { if (p.location) allLocations.add(p.location.trim()); });
@@ -644,14 +649,18 @@ const AdminDashboard = ({}) => {
     setLoading(false);
   };
 
-  const handleOpenEditClientModal = useCallback(() => {
-    if (selectedClient) { 
-        setEditingClientName(selectedClient.client_name);
-        const currentData = initializeClientData(selectedClient.client_properties);
-        setEditingClientQuote(currentData.quote);
-        setShowEditClientModal(true); 
+  const handleOpenEditClientModal = useCallback((client) => {
+    setSelectedClient(client);
+    setEditingClientName(client.client_name);
+    const currentData = initializeClientData(client.client_properties);
+    setEditingClientQuote(currentData.quote);
+    if (client.share_token) {
+        setShareLink(`${window.location.origin}/client/${client.id}?token=${client.share_token}`);
+    } else {
+        setShareLink('');
     }
-  }, [selectedClient]);
+    setShowEditClientModal(true);
+  }, []);
 
   const handleUpdateClientDetails = async (e) => {
     e.preventDefault();
@@ -685,14 +694,56 @@ const AdminDashboard = ({}) => {
     } finally { setLoading(false); }
   };
   
-  const handleGenerateShareLink = async () => {
-    if (!selectedClient) return;
-    setLoading(true);
-    setError(null);
-    try {
-        const { data: token, error: rpcError } = await supabase.rpc('generate_client_share_token', { p_client_id: selectedClient.id });
-        if (rpcError) throw rpcError;
-        const shareLink = `${window.location.origin}/client/${selectedClient.id}?token=${token}`;
+    const getOrGenerateShareLink = async (client) => {
+        let { data: existingToken, error: fetchError } = await supabase
+            .from('client_share_tokens')
+            .select('token')
+            .eq('client_id', client.id)
+            .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            setError(`Could not check for existing share link: ${fetchError.message}`);
+            return null;
+        }
+
+        if (existingToken) {
+            return `${window.location.origin}/client/${client.id}?token=${existingToken.token}`;
+        }
+
+        setLoading(true);
+        try {
+            const { data: token, error: rpcError } = await supabase.rpc('generate_client_share_token', { p_client_id: client.id });
+            if (rpcError) throw rpcError;
+            
+            fetchClients(); 
+
+            return `${window.location.origin}/client/${client.id}?token=${token}`;
+        } catch (err) {
+            setError(`Could not generate share link: ${err.message}`);
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleModalGenerateLink = async () => {
+        const link = await getOrGenerateShareLink(selectedClient);
+        if (link) {
+            setShareLink(link);
+            setMessage('Share link is ready.');
+        }
+    };
+
+    const handleViewClientPage = async (e, client) => {
+        e.stopPropagation();
+        const url = await getOrGenerateShareLink(client);
+        if (url) {
+            window.open(url, '_blank');
+        }
+    };
+
+    const copyShareLink = () => {
+        if (!shareLink) return;
         const el = document.createElement('textarea');
         el.value = shareLink;
         document.body.appendChild(el);
@@ -700,11 +751,7 @@ const AdminDashboard = ({}) => {
         document.execCommand('copy');
         document.body.removeChild(el);
         setMessage('Share link copied to clipboard!');
-    } catch (err) {
-        console.error('Error generating share link:', err.message);
-        setError(`Could not generate share link: ${err.message}`);
-    } finally { setLoading(false); }
-  };
+    };
 
   const handleUpdateGlobalSettings = async (newCompanyName, newLogoFileFromInput = null) => {
     setLoading(true);
@@ -855,7 +902,41 @@ const AdminDashboard = ({}) => {
         </div>
       )}
       {showSettingsModal && ( <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"> <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}> <button onClick={() => setShowSettingsModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close settings"> <X size={24} /> </button> <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Global Settings</h2> <div className="space-y-4"> <div> <label htmlFor="companyNameInput" className={`block text-sm font-medium text-[${primaryTextColor}] mb-1`}>Company Name</label> <input type="text" id="companyNameInput" value={companyName || ''} onChange={(e) => setCompanyName(e.target.value)} className={`w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} /> </div> <div> <label htmlFor="globalLogoFileUpload" className={`block text-sm font-medium text-[${primaryTextColor}] mb-1`}>Company Logo (Upload File)</label> <input type="file" id="globalLogoFileUpload" accept="image/*" onChange={(e) => setNewGlobalLogoFile(e.target.files[0])} className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100`} /> {newGlobalLogoFile && <p className={`text-xs text-[${secondaryTextColor}] mt-1`}>Selected new file: {newGlobalLogoFile.name}</p>} {globalLogoUrl && !newGlobalLogoFile && ( <div className={`mt-2 text-sm text-[${secondaryTextColor}] flex items-center`}> <img src={globalLogoUrl} alt="Current Global Logo" className="h-8 w-auto ml-2 rounded-md" /> <button type="button" onClick={() => { setGlobalLogoUrl(null); setNewGlobalLogoFile(null); }} className="ml-2 text-red-600 hover:text-red-700 text-xs"> Clear current </button> </div> )} {!globalLogoUrl && !newGlobalLogoFile && ( <p className={`mt-2 text-sm text-[${secondaryTextColor}]`}>No global logo currently set.</p> )} </div> <button onClick={() => handleUpdateGlobalSettings(companyName, newGlobalLogoFile)} className={`w-full bg-[${buttonPrimary}] hover:bg-yellow-600 text-[${buttonTextPrimary}] font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}> {loading ? 'Saving...' : 'Save Settings'} </button> </div> {error && <p className="text-red-600 text-sm mt-4">{error}</p>} {message && <p className="text-green-600 text-sm mt-4">{message}</p>} </div> </div> )}
-      {showEditClientModal && selectedClient && ( <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"> <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}> <button onClick={() => setShowEditClientModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close modal"> <X size={24} /> </button> <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Edit Client: {selectedClient.client_name}</h2> <form onSubmit={handleUpdateClientDetails} className="space-y-4"> <div> <label htmlFor="editingClientName" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Client Name</label> <input type="text" id="editingClientName" value={editingClientName} onChange={(e) => setEditingClientName(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required /> </div> <div> <label htmlFor="editingClientQuote" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Base Quote</label> <input type="number" step="0.01" id="editingClientQuote" value={editingClientQuote} onChange={(e) => setEditingClientQuote(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required /> </div> <button type="submit" className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}> {loading ? 'Updating...' : 'Update Details'} </button> </form> <div className="mt-6 border-t pt-4"> <button onClick={handleGenerateShareLink} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center" disabled={loading}> <Share2 size={16} className="mr-2"/> {loading ? 'Generating...' : 'Generate & Copy Share Link'} </button> </div> {error && <p className="text-red-600 text-sm mt-4">{error}</p>} {message && <p className="text-green-600 text-sm mt-4">{message}</p>} </div> </div> )}
+      {showEditClientModal && selectedClient && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+            <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
+                <button onClick={() => setShowEditClientModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close modal"><X size={24} /></button>
+                <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Edit Client: {selectedClient.client_name}</h2>
+                <form onSubmit={handleUpdateClientDetails} className="space-y-4">
+                    <div>
+                        <label htmlFor="editingClientName" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Client Name</label>
+                        <input type="text" id="editingClientName" value={editingClientName} onChange={(e) => setEditingClientName(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required />
+                    </div>
+                    <div>
+                        <label htmlFor="editingClientQuote" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Base Quote</label>
+                        <input type="number" step="0.01" id="editingClientQuote" value={editingClientQuote} onChange={(e) => setEditingClientQuote(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required />
+                    </div>
+                    <button type="submit" className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}>
+                        {loading ? 'Updating...' : 'Update Details'}
+                    </button>
+                </form>
+                <div className="mt-6 border-t pt-4">
+                    <button onClick={handleModalGenerateLink} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center" disabled={loading}>
+                        <Share2 size={16} className="mr-2"/>
+                        {loading ? 'Generating...' : (shareLink ? 'Show Share Link' : 'Generate Share Link')}
+                    </button>
+                    {shareLink && (
+                        <div className="mt-4 flex items-center space-x-2">
+                            <input type="text" value={shareLink} readOnly className="flex-grow p-2 border border-gray-300 rounded-md bg-gray-100 text-sm" />
+                            <button onClick={copyShareLink} className="p-2 bg-gray-200 rounded-md hover:bg-gray-300" title="Copy Link"><Copy size={16} /></button>
+                        </div>
+                    )}
+                </div>
+                {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
+                {message && <p className="text-green-600 text-sm mt-4">{message}</p>}
+            </div>
+        </div>
+      )}
 
       <div className={`w-full flex flex-col sm:flex-row justify-between items-center py-4 px-8 mb-8 rounded-xl shadow-lg bg-[${headerBg}] text-white`}>
         <div className="flex items-center mb-4 sm:mb-0">
@@ -879,7 +960,7 @@ const AdminDashboard = ({}) => {
             <button onClick={() => setIsAddingClient(!isAddingClient)} className={`flex items-center w-full bg-[${accentColor}] hover:bg-yellow-600 text-[${buttonTextPrimary}] font-bold py-2 px-4 rounded-lg mb-4 justify-center transition duration-200 ${isSidebarMinimized ? 'p-2 w-12 h-12 rounded-full mx-auto flex-shrink-0' : ''}`} title={isAddingClient ? 'Cancel Add Client' : 'Add New Client'}> <Plus size={20} className={`${isSidebarMinimized ? '' : 'mr-2'}`} /> {!isSidebarMinimized && (isAddingClient ? 'Cancel Add Client' : 'Add New Client')} </button>
             {isAddingClient && !isSidebarMinimized && ( <form onSubmit={handleAddClient} className={`space-y-4 mb-6 p-4 border border-gray-700 rounded-lg bg-[${headerBg}] text-[${secondaryTextColor}]`}> <h3 className={`text-xl font-semibold text-[${accentColor}]`}>New Client Details</h3> <div> <label htmlFor="newClientName" className="block text-sm font-bold mb-2">Client Name:</label> <input type="text" id="newClientName" className={`shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-[${accentColor}]`} value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Enter client name" required /> </div> <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200" disabled={loading}> Create Client </button> </form> )}
             <ul className="py-2 space-y-2">
-              {clients.length === 0 ? ( <li className={`text-gray-400 text-center py-4 ${isSidebarMinimized ? 'hidden' : ''}`}>No clients added yet.</li> ) : ( clients.map((client) => ( <li key={client.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition duration-200 ease-in-out ${selectedClient && selectedClient.id === client.id ? `bg-gray-700 border-[${accentColor}] shadow-lg` : 'bg-gray-800 hover:bg-gray-700 border-gray-700'} ${isSidebarMinimized ? 'justify-center p-2' : ''}`} onClick={() => handleSelectClient(client)}> {!isSidebarMinimized ? ( <> <div className="flex-1 min-w-0 pr-2"> <p className="font-semibold text-gray-100 truncate">{client.client_name}</p> <p className="text-sm text-gray-400 truncate">ID: {client.id.substring(0, 8)}...</p> </div> <div className="flex space-x-2 flex-shrink-0"> <Link to={`/client/${client.id}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" title="View Client Page" onClick={(e) => e.stopPropagation()}> <ExternalLink size={16} /> </Link> <button onClick={(e) => { e.stopPropagation(); handleOpenEditClientModal(); }} className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors" title="Edit Client Details"> <Edit size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }} className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors" title="Delete Client"> <Trash2 size={16} /> </button> </div> </> ) : ( <div className="text-center"> {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Global Logo" className="h-8 w-8 object-contain mx-auto mb-1" title={client.client_name}/> ) : ( <Eye size={20} className="text-gray-300 mx-auto mb-1" title={client.client_name} /> )} <p className="text-xs text-gray-300 leading-none">{client.client_name.split(' ')[0]}</p> </div> )} </li> )) )}
+              {clients.length === 0 ? ( <li className={`text-gray-400 text-center py-4 ${isSidebarMinimized ? 'hidden' : ''}`}>No clients added yet.</li> ) : ( clients.map((client) => ( <li key={client.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition duration-200 ease-in-out ${selectedClient && selectedClient.id === client.id ? `bg-gray-700 border-[${accentColor}] shadow-lg` : 'bg-gray-800 hover:bg-gray-700 border-gray-700'} ${isSidebarMinimized ? 'justify-center p-2' : ''}`} onClick={() => handleSelectClient(client)}> {!isSidebarMinimized ? ( <> <div className="flex-1 min-w-0 pr-2"> <p className="font-semibold text-gray-100 truncate">{client.client_name}</p> <p className="text-sm text-gray-400 truncate">ID: {client.id.substring(0, 8)}...</p> </div> <div className="flex space-x-2 flex-shrink-0"> <button onClick={(e) => handleViewClientPage(e, client)} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" title="View Client Page"> <ExternalLink size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleOpenEditClientModal(client); }} className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors" title="Edit Client Details"> <Edit size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }} className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors" title="Delete Client"> <Trash2 size={16} /> </button> </div> </> ) : ( <div className="text-center"> {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Global Logo" className="h-8 w-8 object-contain mx-auto mb-1" title={client.client_name}/> ) : ( <Eye size={20} className="text-gray-300 mx-auto mb-1" title={client.client_name} /> )} <p className="text-xs text-gray-300 leading-none">{client.client_name.split(' ')[0]}</p> </div> )} </li> )) )}
             </ul>
           </nav>
         </div>

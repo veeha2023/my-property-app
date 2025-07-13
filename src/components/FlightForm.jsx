@@ -1,11 +1,14 @@
-// src/components/FlightForm.jsx - Version 1.4
-import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Edit3, Trash2, X, Plane, Calendar, Clock, MapPin, Briefcase, DollarSign, CheckCircle } from 'lucide-react';
+// src/components/FlightForm.jsx - Version 1.5 (Enhanced Pricing Model)
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Plus, Edit3, Trash2, X, Plane, Calendar, Clock, MapPin, Briefcase, DollarSign, CheckCircle, Upload, Download } from 'lucide-react';
 
 const FlightForm = ({ flights, setFlights }) => {
   const [editingFlight, setEditingFlight] = useState(null);
   const [newFlight, setNewFlight] = useState(null);
   const [showTypeSelection, setShowTypeSelection] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
   const accentColor = '#FFD700';
 
   const flightTypes = [
@@ -19,10 +22,27 @@ const FlightForm = ({ flights, setFlights }) => {
     return symbols[currencyCode] || currencyCode || 'NZ$';
   };
 
+  const parseDateString = (dateString) => {
+    if (!dateString) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (parts) {
+      const day = parts[1].padStart(2, '0');
+      const month = parts[2].padStart(2, '0');
+      const year = parts[3];
+      return `${year}-${month}-${day}`;
+    }
+    return dateString;
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
-      const date = new Date(dateString + 'T00:00:00');
+      const parsedDateStr = parseDateString(dateString);
+      const date = new Date(parsedDateStr + 'T00:00:00');
+      if (isNaN(date.getTime())) return 'Invalid Date';
       return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
     } catch { return 'Invalid Date'; }
   };
@@ -58,6 +78,11 @@ const FlightForm = ({ flights, setFlights }) => {
     }
   };
 
+  const calculateFinalPrice = (flight) => {
+    const priceSelected = parseFloat(flight.price_if_selected) || 0;
+    const priceNotSelected = parseFloat(flight.price_if_not_selected) || 0;
+    return flight.selected ? priceSelected : priceNotSelected;
+  };
 
   const getPriceColor = (price) => {
     if (price < 0) return 'text-green-600';
@@ -95,7 +120,8 @@ const FlightForm = ({ flights, setFlights }) => {
       arrivalDate: '',
       arrivalTime: '14:00',
       duration: '',
-      price: '',
+      price_if_selected: 0,
+      price_if_not_selected: 0,
       currency: 'NZD',
       baggage: {
         checkInKgs: 23,
@@ -103,7 +129,7 @@ const FlightForm = ({ flights, setFlights }) => {
         cabinKgs: 7,
         cabinPieces: 1,
       },
-      selected: false,
+      selected: true,
     });
     setShowTypeSelection(false);
   };
@@ -112,7 +138,8 @@ const FlightForm = ({ flights, setFlights }) => {
     const flightToSave = editingFlight || newFlight;
     if (!flightToSave) return;
     
-    flightToSave.price = parseFloat(flightToSave.price) || 0;
+    flightToSave.price_if_selected = parseFloat(flightToSave.price_if_selected) || 0;
+    flightToSave.price_if_not_selected = parseFloat(flightToSave.price_if_not_selected) || 0;
     flightToSave.duration = calculateDuration(flightToSave.departureDate, flightToSave.departureTime, flightToSave.arrivalDate, flightToSave.arrivalTime);
 
     const updatedFlights = editingFlight
@@ -148,6 +175,86 @@ const FlightForm = ({ flights, setFlights }) => {
     setFlights(updatedFlights);
   };
 
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const text = e.target.result;
+            const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                setError("CSV file must contain a header row and at least one data row.");
+                return;
+            }
+            const headers = lines[0].split(',').map(h => h.trim());
+            const requiredHeaders = ['flightType', 'airline', 'airlineLogoUrl', 'flightNumber', 'from', 'to', 'departureDate', 'departureTime', 'arrivalDate', 'arrivalTime', 'price_if_selected', 'price_if_not_selected', 'currency', 'baggage_checkInKgs', 'baggage_checkInPieces', 'baggage_cabinKgs', 'baggage_cabinPieces'];
+            
+            if (!requiredHeaders.every(h => headers.includes(h))) {
+                setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
+                return;
+            }
+
+            const newFlightsFromCSV = lines.slice(1).map((line, index) => {
+                const data = line.split(',');
+                if (data.length < headers.length) return null;
+
+                const flight = {};
+                headers.forEach((header, i) => {
+                    flight[header] = data[i].trim();
+                });
+
+                return {
+                    id: `flight-csv-${Date.now()}-${index}`,
+                    flightType: flight.flightType || 'domestic',
+                    airline: flight.airline,
+                    airlineLogoUrl: flight.airlineLogoUrl,
+                    flightNumber: flight.flightNumber,
+                    from: flight.from,
+                    to: flight.to,
+                    departureDate: parseDateString(flight.departureDate),
+                    departureTime: flight.departureTime,
+                    arrivalDate: parseDateString(flight.arrivalDate),
+                    arrivalTime: flight.arrivalTime,
+                    duration: '',
+                    price_if_selected: parseFloat(flight.price_if_selected) || 0,
+                    price_if_not_selected: parseFloat(flight.price_if_not_selected) || 0,
+                    currency: flight.currency || 'NZD',
+                    baggage: {
+                        checkInKgs: parseInt(flight.baggage_checkInKgs, 10) || 0,
+                        checkInPieces: parseInt(flight.baggage_checkInPieces, 10) || 0,
+                        cabinKgs: parseInt(flight.baggage_cabinKgs, 10) || 0,
+                        cabinPieces: parseInt(flight.baggage_cabinPieces, 10) || 0,
+                    },
+                    selected: true,
+                };
+            }).filter(Boolean);
+
+            setFlights([...flights, ...newFlightsFromCSV]);
+            setMessage(`${newFlightsFromCSV.length} flights imported successfully!`);
+            setError(null);
+        } catch (err) {
+            setError(`Failed to process CSV file: ${err.message}`);
+        }
+    };
+    event.target.value = null;
+  };
+
+  const downloadTemplate = () => {
+    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price_if_selected,price_if_not_selected,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces";
+    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,0,-350,NZD,23,1,7,1";
+    const note = "\n# NOTE: Please use YYYY-MM-DD format for dates. Separate multiple image URLs with a semicolon (;). flightType can be 'domestic' or 'international'.";
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "flight_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // --- RENDER FUNCTIONS ---
   const renderFlightForm = (data, setData) => (
     <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-6 mt-4">
@@ -174,9 +281,22 @@ const FlightForm = ({ flights, setFlights }) => {
         <div><label className="block text-sm font-medium text-gray-700">Cabin (Kgs)</label><input type="number" value={data.baggage.cabinKgs} onChange={(e) => setData({...data, baggage: {...data.baggage, cabinKgs: e.target.value}})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-gray-700">Cabin (Pieces)</label><input type="number" value={data.baggage.cabinPieces} onChange={(e) => setData({...data, baggage: {...data.baggage, cabinPieces: e.target.value}})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
         
-        <div className="md:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Other Details</div>
-        <div><label className="block text-sm font-medium text-gray-700">Price (Differential)</label><input type="number" step="0.01" value={data.price} onChange={(e) => setData({...data, price: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., 150 or -50"/></div>
+        <div className="md:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Pricing</div>
+        <div><label className="block text-sm font-medium text-gray-700">Price if Selected</label><input type="number" step="0.01" value={data.price_if_selected} onChange={(e) => setData({...data, price_if_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
+        <div><label className="block text-sm font-medium text-gray-700">Price if Not Selected</label><input type="number" step="0.01" value={data.price_if_not_selected} onChange={(e) => setData({...data, price_if_not_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"><option value="NZD">NZ$</option><option value="USD">$</option><option value="EUR">€</option><option value="INR">₹</option></select></div>
+        <div className="lg:col-span-3 flex items-center">
+            <input
+                type="checkbox"
+                id="selected_by_default_flight"
+                checked={data.selected}
+                onChange={(e) => setData({ ...data, selected: e.target.checked })}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="selected_by_default_flight" className="ml-2 block text-sm font-medium text-gray-700">
+                Selected by default for client
+            </label>
+        </div>
       </div>
       <div className="flex items-center justify-end space-x-3 mt-6">
         <button onClick={resetForm} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
@@ -188,8 +308,8 @@ const FlightForm = ({ flights, setFlights }) => {
   );
   
   const renderItemRow = (item) => {
-    const price = parseFloat(item.price) || 0;
-    const priceColor = getPriceColor(price);
+    const currentPrice = calculateFinalPrice(item);
+    const priceColor = getPriceColor(currentPrice);
     const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
 
     return (
@@ -199,7 +319,6 @@ const FlightForm = ({ flights, setFlights }) => {
         onClick={() => toggleSelection(item.id)}
       >
         <div className="flex flex-col w-full">
-            {/* Top Row: Main Flight Info */}
             <div className="flex justify-between items-center w-full">
                 {item.selected && (
                     <div className="absolute top-1/2 -translate-y-1/2 left-6 rounded-full p-1 shadow-md bg-white z-10">
@@ -237,7 +356,7 @@ const FlightForm = ({ flights, setFlights }) => {
                 <div className="flex items-center justify-end flex-1 gap-6">
                     <div className="text-right">
                         <span className={`text-3xl font-bold whitespace-nowrap ${priceColor}`}>
-                            {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
+                            {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(item.currency)}{Math.abs(currentPrice).toFixed(2)}
                         </span>
                     </div>
                     <div className="flex flex-col space-y-2">
@@ -247,7 +366,6 @@ const FlightForm = ({ flights, setFlights }) => {
                 </div>
             </div>
             
-            {/* Bottom Row: Baggage Info */}
             <div className="w-full mt-4 pt-4 border-t border-gray-200 flex justify-center items-center gap-8 text-sm text-gray-600">
                 <p className="font-semibold text-gray-500">Baggage Allowance:</p>
                 <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Check-in: {item.baggage.checkInKgs}kg ({item.baggage.checkInPieces} pc)</div>
@@ -267,6 +385,32 @@ const FlightForm = ({ flights, setFlights }) => {
         }
       `}</style>
 
+      <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-bold text-gray-800">Manage All Flights</h3>
+            <div className="flex items-center gap-2">
+                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
+                    <Upload size={18} className="mr-2" /> Import from CSV
+                </button>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                />
+                <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
+                    <Plus size={18} className="mr-2" /> Add New Flight
+                </button>
+            </div>
+        </div>
+        <div className="text-right mb-4">
+            <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</a>
+        </div>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
+      </div>
+
       {showTypeSelection && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
@@ -283,12 +427,6 @@ const FlightForm = ({ flights, setFlights }) => {
           </div>
         </div>
       )}
-
-      <div className="text-center mb-8">
-        <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105 mx-auto">
-          <Plus size={18} className="mr-2" /> Add New Flight
-        </button>
-      </div>
 
       {(newFlight && !editingFlight) && renderFlightForm(newFlight, setNewFlight)}
       

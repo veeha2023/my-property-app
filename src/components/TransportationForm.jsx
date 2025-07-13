@@ -1,13 +1,14 @@
-// src/components/TransportationForm.jsx - Version 2.6
-import React, { useState, useMemo } from 'react';
-import { Plus, Edit3, Trash2, X, Car, Calendar, Clock, MapPin, ShieldCheck, Users, DollarSign, Image, Link2, Ship, Bus, CheckCircle } from 'lucide-react';
+// src/components/TransportationForm.jsx - Version 2.6 (Chronological Sort)
+import React, { useState, useMemo, useRef } from 'react';
+import { Plus, Edit3, Trash2, X, Car, Calendar, Clock, MapPin, ShieldCheck, Users, DollarSign, Image, Link2, Ship, Bus, CheckCircle, Upload, Download } from 'lucide-react';
 
 const TransportationForm = ({ transportation, setTransportation, itineraryLegs }) => {
   const [editingItem, setEditingItem] = useState(null);
-  const [addingToLocation, setAddingToLocation] = useState(null); // Kept for modal logic, but not for data coupling
   const [newItem, setNewItem] = useState(null);
-  const [imageLinks, setImageLinks] = useState('');
   const [showTypeSelection, setShowTypeSelection] = useState(false);
+  const fileInputRef = useRef(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const accentColor = '#FFD700';
 
   const transportationTypes = [
@@ -23,10 +24,25 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     return symbols[currencyCode] || currencyCode || 'NZ$';
   };
 
+  const parseDateString = (dateString) => {
+    if (!dateString) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
+    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (parts) {
+      const day = parts[1].padStart(2, '0');
+      const month = parts[2].padStart(2, '0');
+      const year = parts[3];
+      return `${year}-${month}-${day}`;
+    }
+    return dateString;
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
-      const date = new Date(dateString + 'T00:00:00');
+      const parsedDateStr = parseDateString(dateString);
+      const date = new Date(parsedDateStr + 'T00:00:00');
+      if (isNaN(date.getTime())) return 'Invalid Date';
       return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
     } catch { return 'Invalid Date'; }
   };
@@ -48,17 +64,22 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   };
 
   // --- DATA DERIVATION ---
-  const groupedTransportation = useMemo(() => {
-    const groups = {};
-    transportationTypes.forEach(t => groups[t.type] = []);
-    (transportation || []).forEach(item => {
-      if (groups[item.transportType]) {
-        groups[item.transportType].push(item);
-      }
-    });
-    return groups;
-  }, [transportation]);
+  const sortedTransportation = useMemo(() => {
+    if (!transportation || transportation.length === 0) return [];
+    
+    return [...transportation].sort((a, b) => {
+      const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
+      const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
 
+      const dateTimeA = new Date(`${parseDateString(getDate(a))}T${getTime(a)}`);
+      const dateTimeB = new Date(`${parseDateString(getDate(b))}T${getTime(b)}`);
+
+      if (isNaN(dateTimeA.getTime())) return 1;
+      if (isNaN(dateTimeB.getTime())) return -1;
+
+      return dateTimeA.getTime() - dateTimeB.getTime();
+    });
+  }, [transportation]);
 
   // --- HANDLER FUNCTIONS ---
   const handleStartAdding = () => {
@@ -118,24 +139,9 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   };
   
   const resetForm = () => {
-    setAddingToLocation(null);
     setEditingItem(null);
     setNewItem(null);
-    setImageLinks('');
     setShowTypeSelection(false);
-  };
-
-  const handleAddImageLinks = (currentItem, setFunc) => {
-    const urls = imageLinks.split('\n').map(url => url.trim()).filter(url => url);
-    if (urls.length > 0) {
-      setFunc(prev => ({ ...prev, images: [...(prev.images || []), ...urls] }));
-      setImageLinks('');
-    }
-  };
-
-  const handleRemoveImage = (imageToRemoveUrl, currentItem, setFunc) => {
-    const updatedImages = currentItem.images.filter(url => url !== imageToRemoveUrl);
-    setFunc(prev => ({ ...prev, images: updatedImages }));
   };
 
   const toggleSelection = (id) => {
@@ -217,15 +223,6 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
               <div className="lg:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Pricing & Images</div>
               <div><label className="block text-sm font-medium text-gray-700">Price (Differential)</label><input type="number" step="0.01" value={data.price} onChange={(e) => setData({...data, price: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., 150 or -50"/></div>
               <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"><option value="NZD">NZ$</option><option value="USD">$</option><option value="EUR">€</option><option value="INR">₹</option></select></div>
-              <div className="lg:col-span-3"><label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label><textarea rows="3" value={imageLinks} onChange={(e) => setImageLinks(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"></textarea><button onClick={() => handleAddImageLinks(data, setData)} className="mt-2 text-sm bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600 flex items-center"><Link2 size={14} className="mr-1" /> Add from Links</button></div>
-              <div className="lg:col-span-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                  {(data.images || []).map((img, index) => (
-                      <div key={index} className="relative group">
-                          <img src={img} alt={`${data.name} ${index + 1}`} className="w-full h-24 object-cover rounded-md" />
-                          <button onClick={() => handleRemoveImage(img, data, setData)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><X size={12} /></button>
-                      </div>
-                  ))}
-              </div>
           </div>
           <div className="flex items-center justify-end space-x-3 mt-6">
               <button onClick={resetForm} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
@@ -327,28 +324,19 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
 
       {(newItem && !editingItem) && renderForm(newItem, setNewItem)}
       
-      <div className="space-y-12">
-        {transportationTypes.map(typeInfo => {
-          const items = groupedTransportation[typeInfo.type];
-          if (!items || items.length === 0) {
-            return null; // Don't render section if no items of that type
-          }
-          return (
-            <div key={typeInfo.type} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">{typeInfo.icon} {typeInfo.label}</h3>
-              </div>
-              
-              <div className="space-y-4">
-                {items.map(item => (
-                  editingItem?.id === item.id 
-                    ? <div key={item.id}>{renderForm(editingItem, setEditingItem)}</div>
-                    : renderItemRow(item)
-                ))}
-              </div>
-            </div>
-          )
-        })}
+      <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3"><Car /> All Transportation</h3>
+        <div className="space-y-4">
+          {sortedTransportation.length > 0 ? (
+            sortedTransportation.map(item => (
+              editingItem?.id === item.id 
+                ? <div key={item.id}>{renderForm(editingItem, setEditingItem)}</div>
+                : renderItemRow(item)
+            ))
+          ) : (
+            <p className="text-center text-gray-500 py-4">No transportation options added yet.</p>
+          )}
+        </div>
       </div>
     </div>
   );

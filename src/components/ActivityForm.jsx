@@ -1,12 +1,15 @@
-// src/components/ActivityForm.jsx - Version 3.3 (Activity Sorting)
-import React, { useState, useMemo } from 'react';
-import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, MapPin, Users, DollarSign, ChevronsRight, CheckCircle } from 'lucide-react';
+// src/components/ActivityForm.jsx - Version 3.9 (Corrected Logic and UI)
+import React, { useState, useMemo, useRef } from 'react';
+import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, MapPin, Users, DollarSign, ChevronsRight, CheckCircle, Upload } from 'lucide-react';
 
 const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [editingActivity, setEditingActivity] = useState(null);
   const [addingToLocation, setAddingToLocation] = useState(null);
   const [newActivity, setNewActivity] = useState(null);
   const [imageLinks, setImageLinks] = useState('');
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState('');
+  const fileInputRef = useRef(null);
   const accentColor = '#FFD700';
 
   // --- UTILITY FUNCTIONS ---
@@ -19,11 +22,33 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       default: return currencyCode || 'NZ$';
     }
   };
+  
+  const parseDateString = (dateString) => {
+    if (!dateString) return '';
+    // Check for YYYY-MM-DD format (preferred)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    // Check for DD/MM/YYYY format
+    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (parts) {
+      const day = parts[1].padStart(2, '0');
+      const month = parts[2].padStart(2, '0');
+      const year = parts[3];
+      // Convert to YYYY-MM-DD which is reliably parsed by new Date()
+      return `${year}-${month}-${day}`;
+    }
+    // Return original string if format is not recognized, allowing new Date() to attempt parsing
+    return dateString;
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
-      const date = new Date(dateString + 'T00:00:00');
+      // Use the robust parser before creating a Date object
+      const parsedDateStr = parseDateString(dateString);
+      const date = new Date(parsedDateStr + 'T00:00:00'); // Add time part to avoid timezone issues
+      if (isNaN(date.getTime())) return 'Invalid Date';
       return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
     } catch { return 'Invalid Date'; }
   };
@@ -39,10 +64,10 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   };
 
   const calculateFinalPrice = (activity) => {
-    const pax = parseInt(activity.pax, 10) || 0;
-    const pricePerPax = parseFloat(activity.price_per_pax) || 0;
-    const adjustment = parseFloat(activity.price_adjustment) || 0;
-    return (pax * pricePerPax) + adjustment;
+    const priceSelected = parseFloat(activity.price_if_selected) || 0;
+    const priceNotSelected = parseFloat(activity.price_if_not_selected) || 0;
+    
+    return activity.selected ? priceSelected : priceNotSelected;
   };
 
   const getPriceColor = (price) => {
@@ -50,15 +75,42 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     if (price > 0) return 'text-red-600';
     return 'text-gray-900';
   };
+  
+  const sortedActivityGroups = useMemo(() => {
+    const groupedByLocation = (activities || []).reduce((acc, activity) => {
+      const location = activity.location || 'Uncategorized';
+      if (!acc[location]) {
+        acc[location] = [];
+      }
+      acc[location].push(activity);
+      return acc;
+    }, {});
 
-  // --- DATA DERIVATION ---
-  // MODIFIED: Derive locations from both itineraryLegs (properties) and existing activities
-  const locations = useMemo(() => {
-    const allLocationsFromProperties = (itineraryLegs || []).map(leg => leg.location).filter(Boolean);
-    const allLocationsFromActivities = (activities || []).map(act => act.location).filter(Boolean);
-    // Combine, remove duplicates, and sort for consistent display
-    return [...new Set([...allLocationsFromProperties, ...allLocationsFromActivities])].sort();
-  }, [itineraryLegs, activities]); // Added activities to dependency array
+    const locationGroups = Object.keys(groupedByLocation).map(location => {
+      const groupActivities = groupedByLocation[location];
+      
+      groupActivities.sort((a, b) => {
+        const dateA = new Date(parseDateString(a.date) + 'T' + (a.time || '00:00'));
+        const dateB = new Date(parseDateString(b.date) + 'T' + (b.time || '00:00'));
+        if (isNaN(dateA.getTime())) return 1;
+        if (isNaN(dateB.getTime())) return -1;
+        return dateA.getTime() - dateB.getTime();
+      });
+
+      const earliestActivity = groupActivities[0];
+      const sortDate = earliestActivity ? new Date(parseDateString(earliestActivity.date) + 'T' + (earliestActivity.time || '00:00')) : new Date(0);
+
+      return {
+        location,
+        activities: groupActivities,
+        sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate,
+      };
+    });
+
+    locationGroups.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+    
+    return locationGroups;
+  }, [activities]);
 
   // --- HANDLER FUNCTIONS ---
   const handleStartAdding = (location) => {
@@ -72,11 +124,11 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       location: location,
       duration: '',
       pax: 1,
-      price_per_pax: 0,
-      price_adjustment: 0,
+      price_if_selected: 0,
+      price_if_not_selected: 0,
       currency: 'NZD',
       images: [],
-      selected: false,
+      selected: true,
     });
   };
 
@@ -85,8 +137,8 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     const activityToSave = editingActivity || newActivity;
     
     activityToSave.pax = parseInt(activityToSave.pax, 10) || 1;
-    activityToSave.price_per_pax = parseFloat(activityToSave.price_per_pax) || 0;
-    activityToSave.price_adjustment = parseFloat(activityToSave.price_adjustment) || 0;
+    activityToSave.price_if_selected = parseFloat(activityToSave.price_if_selected) || 0;
+    activityToSave.price_if_not_selected = parseFloat(activityToSave.price_if_not_selected) || 0;
 
     if (editingActivity) {
       updatedActivities = activities.map(act => act.id === activityToSave.id ? activityToSave : act);
@@ -98,7 +150,6 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   };
 
   const handleDelete = (id) => {
-    // IMPORTANT: Replaced window.confirm with a console log as per instructions
     console.log("Confirm deletion of activity with ID:", id);
     const updatedActivities = activities.filter(act => act.id !== id);
     setActivities(updatedActivities);
@@ -112,12 +163,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   };
   
   const toggleSelection = (id) => {
-    const activityToToggle = activities.find(act => act.id === id);
-    if (!activityToToggle) return;
-
     const updatedActivities = activities.map(act => {
-      if (act.location === activityToToggle.location) {
-        return act.id === id ? { ...act, selected: !act.selected } : { ...act, selected: false };
+      if (act.id === id) {
+        return { ...act, selected: !act.selected };
       }
       return act;
     });
@@ -137,9 +185,76 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     setFunc(prev => ({ ...prev, images: updatedImages }));
   };
 
-  const totalChange = activities.reduce((sum, act) => {
-    return act.selected ? sum + calculateFinalPrice(act) : sum;
-  }, 0);
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const text = e.target.result;
+            const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                setError("CSV file must contain a header row and at least one data row.");
+                return;
+            }
+            const headers = lines[0].split(',').map(h => h.trim());
+            const requiredHeaders = ['name', 'date', 'time', 'location', 'duration', 'pax', 'price_if_selected', 'price_if_not_selected', 'currency', 'images'];
+            
+            if (!requiredHeaders.every(h => headers.includes(h))) {
+                setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
+                return;
+            }
+
+            const newActivitiesFromCSV = lines.slice(1).map((line, index) => {
+                const data = line.split(',');
+                if (data.length < headers.length) return null;
+
+                const activity = {};
+                headers.forEach((header, i) => {
+                    activity[header] = data[i].trim();
+                });
+
+                return {
+                    id: `act-csv-${Date.now()}-${index}`,
+                    name: activity.name,
+                    date: parseDateString(activity.date),
+                    time: activity.time,
+                    location: activity.location,
+                    duration: parseFloat(activity.duration) || 0,
+                    pax: parseInt(activity.pax, 10) || 1,
+                    price_if_selected: parseFloat(activity.price_if_selected) || 0,
+                    price_if_not_selected: parseFloat(activity.price_if_not_selected) || 0,
+                    currency: activity.currency || 'NZD',
+                    images: activity.images ? activity.images.split(';').map(url => url.trim()) : [],
+                    selected: true,
+                };
+            }).filter(Boolean);
+
+            setActivities([...activities, ...newActivitiesFromCSV]);
+            setMessage(`${newActivitiesFromCSV.length} activities imported successfully!`);
+            setError(null);
+        } catch (err) {
+            setError(`Failed to process CSV file: ${err.message}`);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = null;
+  };
+
+  const downloadTemplate = () => {
+    const headers = "name,date,time,location,duration,pax,price_if_selected,price_if_not_selected,currency,images";
+    const example = "Skydiving,2025-08-15,10:00,Queenstown,3,2,0,-280,NZD,https://example.com/image1.jpg;https://example.com/image2.jpg";
+    const note = "\n# NOTE: Please use YYYY-MM-DD format for dates for best compatibility. Separate multiple image URLs with a semicolon (;).";
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "activity_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // --- RENDER FUNCTIONS ---
   const renderForm = (activityData, setActivityData) => (
@@ -171,12 +286,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             <input type="number" min="1" value={activityData.pax} onChange={(e) => setActivityData({...activityData, pax: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700">Price per Pax</label>
-            <input type="number" min="0" step="0.01" value={activityData.price_per_pax} onChange={(e) => setActivityData({...activityData, price_per_pax: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Price if Selected</label>
+            <input type="number" step="0.01" value={activityData.price_if_selected} onChange={(e) => setActivityData({...activityData, price_if_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700">Price Adjustment</label>
-            <input type="number" step="0.01" placeholder="e.g., -50 for discount" value={activityData.price_adjustment} onChange={(e) => setActivityData({...activityData, price_adjustment: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Price if Not Selected</label>
+            <input type="number" step="0.01" value={activityData.price_if_not_selected} onChange={(e) => setActivityData({...activityData, price_if_not_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
             <label className="block text-sm font-medium text-gray-700">Currency</label>
@@ -186,6 +301,18 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                 <option value="EUR">€</option>
                 <option value="INR">₹</option>
             </select>
+        </div>
+        <div className="lg:col-span-3 flex items-center">
+            <input
+                type="checkbox"
+                id="selected_by_default"
+                checked={activityData.selected}
+                onChange={(e) => setActivityData({ ...activityData, selected: e.target.checked })}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="selected_by_default" className="ml-2 block text-sm font-medium text-gray-700">
+                Selected by default for client
+            </label>
         </div>
         <div className="lg:col-span-3">
             <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
@@ -220,25 +347,31 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         }
       `}</style>
       
-      <div className="space-y-8">
-        {locations.map(location => {
-          // Filter activities for the current location and then sort them
-          const locationActivities = activities
-            .filter(act => act.location === location)
-            .sort((a, b) => {
-              // Sort by date first
-              const dateA = new Date(a.date);
-              const dateB = new Date(b.date);
-              if (dateA.getTime() !== dateB.getTime()) {
-                return dateA.getTime() - dateB.getTime();
-              }
-              // If dates are the same, sort by time
-              const timeA = a.time ? parseInt(a.time.replace(':', ''), 10) : 0;
-              const timeB = b.time ? parseInt(b.time.replace(':', ''), 10) : 0;
-              return timeA - timeB;
-            });
+      <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-bold text-gray-800">Manage All Activities</h3>
+            <div className="flex items-center gap-2">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                />
+                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
+                    <Upload size={18} className="mr-2" /> Import from CSV
+                </button>
+            </div>
+        </div>
+        <div className="text-right mb-4">
+            <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</a>
+        </div>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
+      </div>
 
-          return (
+      <div className="space-y-8">
+        {sortedActivityGroups.map(({ location, activities: locationActivities }) => (
             <div key={location} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-2xl font-bold text-gray-800">{location}</h3>
@@ -255,8 +388,8 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     if (editingActivity && editingActivity.id === activity.id) {
                       return <div key={activity.id} className="sm:col-span-2 xl:col-span-3">{renderForm(editingActivity, setEditingActivity)}</div>;
                     }
-                    const finalPrice = calculateFinalPrice(activity);
-                    const priceColor = getPriceColor(finalPrice);
+                    const currentPrice = calculateFinalPrice(activity);
+                    const priceColor = getPriceColor(currentPrice);
                     return (
                       <div 
                         key={activity.id} 
@@ -292,7 +425,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                           </div>
                           <div className="mt-4 text-right">
                             <span className={`text-2xl font-bold ${priceColor}`}>
-                              {finalPrice < 0 ? `-` : `+`}{getCurrencySymbol(activity.currency)}{Math.abs(finalPrice).toFixed(2)}
+                              {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(activity.currency)}{Math.abs(currentPrice).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -305,19 +438,8 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
               )}
             </div>
           )
-        })}
+        )}
       </div>
-
-      {activities.length > 0 && (
-          <div className="mt-8 pt-6 border-t-2 border-dashed">
-              <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
-                  <span className="text-xl font-bold text-gray-800">Activities - Total Price Change:</span>
-                  <span className={`text-3xl font-extrabold ${getPriceColor(totalChange)}`}>
-                    {totalChange < 0 ? `-` : `+`}{getCurrencySymbol('NZD')}{Math.abs(totalChange).toFixed(2)}
-                  </span>
-              </div>
-          </div>
-      )}
     </div>
   );
 };
