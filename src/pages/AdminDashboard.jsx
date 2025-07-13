@@ -227,8 +227,32 @@ const AdminDashboard = ({}) => {
     } else {
       setMessage('Client data saved successfully!');
       // Re-fetch client data after successful save to ensure UI is fully updated
-      // This will also re-initialize clientData with latest from DB, including sorting
-      fetchClients(); 
+      await fetchClients();
+      // Re-initialize the selected client's data from the updated database
+      const updatedClient = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', selectedClient.id)
+        .single();
+      
+      if (updatedClient.data) {
+        // Re-initialize clientData with the fresh data from database
+        let parsedClientProperties = null;
+        try {
+          if (typeof updatedClient.data.client_properties === 'string') {
+            parsedClientProperties = JSON.parse(updatedClient.data.client_properties);
+          } else {
+            parsedClientProperties = updatedClient.data.client_properties;
+          }
+        } catch (e) {
+          console.error("Error parsing client_properties:", e);
+          parsedClientProperties = null;
+        }
+        
+        const fullClientData = initializeClientData(parsedClientProperties);
+        setClientData(fullClientData);
+        setSelectedClient(updatedClient.data);
+      }
     }
     setLoading(false);
   };
@@ -527,15 +551,30 @@ const AdminDashboard = ({}) => {
   useEffect(() => {
     if (!session) return;
 
-    const channel = supabase
-      .channel('public:clients')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
-        fetchClients();
-      })
-      .subscribe();
+    let channel;
+    try {
+      channel = supabase
+        .channel('public:clients')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+          fetchClients();
+        })
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR') {
+            console.warn('Realtime channel error - operating without realtime updates');
+          }
+        });
+    } catch (error) {
+      console.warn('Realtime connection failed - operating without realtime updates:', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch (error) {
+          console.warn('Error removing realtime channel:', error);
+        }
+      }
     };
   }, [session, fetchClients]);
 
