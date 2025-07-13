@@ -227,8 +227,32 @@ const AdminDashboard = ({}) => {
     } else {
       setMessage('Client data saved successfully!');
       // Re-fetch client data after successful save to ensure UI is fully updated
-      // This will also re-initialize clientData with latest from DB, including sorting
-      fetchClients(); 
+      await fetchClients();
+      // Re-initialize the selected client's data from the updated database
+      const updatedClient = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', selectedClient.id)
+        .single();
+      
+      if (updatedClient.data) {
+        // Re-initialize clientData with the fresh data from database
+        let parsedClientProperties = null;
+        try {
+          if (typeof updatedClient.data.client_properties === 'string') {
+            parsedClientProperties = JSON.parse(updatedClient.data.client_properties);
+          } else {
+            parsedClientProperties = updatedClient.data.client_properties;
+          }
+        } catch (e) {
+          console.error("Error parsing client_properties:", e);
+          parsedClientProperties = null;
+        }
+        
+        const fullClientData = initializeClientData(parsedClientProperties);
+        setClientData(fullClientData);
+        setSelectedClient(updatedClient.data);
+      }
     }
     setLoading(false);
   };
@@ -524,20 +548,10 @@ const AdminDashboard = ({}) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!session) return;
-
-    const channel = supabase
-      .channel('public:clients')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
-        fetchClients();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [session, fetchClients]);
+  // Realtime functionality has been completely removed to prevent WebSocket connection errors
+  // The app now works without live updates - data is refreshed manually when needed
+  // If you need realtime functionality in the future, it can be re-enabled by uncommenting
+  // the realtime useEffect block and ensuring your Supabase project has realtime enabled
 
   useEffect(() => {
     if (session) {
