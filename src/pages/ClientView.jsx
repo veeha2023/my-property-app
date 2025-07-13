@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 5.0 (Transportation UI & Selection Fix)
+// src/pages/ClientView.jsx - Version 5.9 (Pricing Color Fix)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient.js';
 import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight, Maximize2,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
-  Clock, Users, DollarSign, ChevronsRight, ShieldCheck, CheckCircle, Ship, Bus
+  Clock, Users, DollarSign, ChevronsRight, ShieldCheck, CheckCircle, Ship, Bus, Briefcase
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
@@ -35,6 +35,18 @@ const ClientView = () => {
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
+
+  const transportationTypes = {
+    car: { label: 'Car Rental', icon: <Car/> },
+    ferry: { label: 'Ferry', icon: <Ship/> },
+    bus: { label: 'Bus', icon: <Bus/> },
+    driver: { label: 'Car with Driver', icon: <Car/> },
+  };
+
+  const flightTypes = {
+    domestic: { label: 'Domestic Flight', icon: <Plane /> },
+    international: { label: 'International Flight', icon: <Plane /> },
+  };
 
   const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode) {
@@ -91,6 +103,28 @@ const ClientView = () => {
       return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(date);
     } catch { return 'Invalid Time'; }
   };
+  
+  const calculateDuration = (departureDate, departureTime, arrivalDate, arrivalTime) => {
+    if (!departureDate || !departureTime || !arrivalDate || !arrivalTime) {
+      return '';
+    }
+    try {
+      const start = new Date(`${departureDate}T${departureTime}`);
+      const end = new Date(`${arrivalDate}T${arrivalTime}`);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return '';
+
+      let diff = end.getTime() - start.getTime();
+      if (diff < 0) diff = 0;
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${hours}h ${minutes}m`;
+    } catch (e) {
+      return '';
+    }
+  };
+
 
   const calculateFinalActivityPrice = useCallback((activity) => {
     const pax = parseInt(activity.pax, 10) || 0;
@@ -122,12 +156,13 @@ const ClientView = () => {
         if (rpcError) throw rpcError;
         if (!responseData) throw new Error("Invalid or expired share link.");
 
-        const baseData = { properties: [], activities: [], flights: [], transportation: [] };
+        const baseData = { properties: [], activities: [], flights: [], transportation: [], quote: 0 };
         const fullClientData = { ...baseData, ...responseData.data };
 
         fullClientData.properties = fullClientData.properties.map(p => ({ ...p, price: parseCurrencyToNumber(p.price) }));
         fullClientData.activities = fullClientData.activities.map(a => ({ ...a, price_per_pax: parseCurrencyToNumber(a.price_per_pax), price_adjustment: parseCurrencyToNumber(a.price_adjustment) }));
         fullClientData.transportation = (fullClientData.transportation || []).map(t => ({ ...t, price: parseCurrencyToNumber(t.price), excessAmount: parseCurrencyToNumber(t.excessAmount) }));
+        fullClientData.flights = (fullClientData.flights || []).map(f => ({ ...f, price: parseCurrencyToNumber(f.price) }));
 
         setClientData(fullClientData);
         setClientName(responseData.clientName || 'Client Selection');
@@ -199,13 +234,26 @@ const ClientView = () => {
 
   const groupedTransportation = useMemo(() => {
     if (!clientData?.transportation) return {};
-    return clientData.transportation.reduce((acc, item) => {
-      const location = item.pickupLocation || item.boardingFrom || item.location;
-      if (!location) return acc;
-      if (!acc[location]) { acc[location] = []; }
-      acc[location].push(item);
-      return acc;
-    }, {});
+    const groups = {};
+    Object.keys(transportationTypes).forEach(type => groups[type] = []);
+    
+    (clientData.transportation || []).forEach(item => {
+      if (groups[item.transportType]) {
+        groups[item.transportType].push(item);
+      }
+    });
+    return groups;
+  }, [clientData, transportationTypes]);
+  
+  const groupedFlights = useMemo(() => {
+    if (!clientData?.flights) return {};
+    const groups = { domestic: [], international: [] };
+    (clientData.flights || []).forEach(flight => {
+        if (groups[flight.flightType]) {
+            groups[flight.flightType].push(flight);
+        }
+    });
+    return groups;
   }, [clientData]);
 
   const getSelectedProperty = useCallback((itineraryId) => {
@@ -238,19 +286,28 @@ const ClientView = () => {
 
   const toggleTransportationSelection = useCallback((itemId) => {
     setClientData(prevData => {
-        const targetItem = prevData.transportation.find(t => t.id === itemId);
-        if (!targetItem) return prevData;
+      const newTransportation = (prevData.transportation || []).map(item => {
+        if (item.id === itemId) {
+          return { ...item, selected: !item.selected };
+        }
+        return item;
+      });
+      return { ...prevData, transportation: newTransportation };
+    });
+  }, []);
 
-        const location = targetItem.pickupLocation || targetItem.boardingFrom || targetItem.location;
-        
-        const newTransportation = prevData.transportation.map(item => {
-            const itemLocation = item.pickupLocation || item.boardingFrom || item.location;
-            if (location === itemLocation) {
-                return { ...item, selected: item.id === itemId ? !item.selected : false };
-            }
-            return item;
-        });
-        return { ...prevData, transportation: newTransportation };
+  const toggleFlightSelection = useCallback((flightId) => {
+    setClientData(prevData => {
+      const flightToToggle = (prevData.flights || []).find(f => f.id === flightId);
+      if (!flightToToggle) return prevData;
+
+      const newFlights = (prevData.flights || []).map(f => {
+        if (f.flightType === flightToToggle.flightType) {
+          return { ...f, selected: f.id === flightId ? !f.selected : false };
+        }
+        return f;
+      });
+      return { ...prevData, flights: newFlights };
     });
   }, []);
 
@@ -265,9 +322,14 @@ const ClientView = () => {
     if (clientData?.transportation) {
         total += clientData.transportation.reduce((sum, item) => sum + (item.selected ? parseCurrencyToNumber(item.price) : 0), 0);
     }
+    if (clientData?.flights) {
+        total += clientData.flights.reduce((sum, item) => sum + (item.selected ? parseCurrencyToNumber(item.price) : 0), 0);
+    }
     return total;
   }, [clientData, parseCurrencyToNumber, calculateFinalActivityPrice]);
 
+  const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
+  const finalQuote = baseQuote + totalChangeValue;
   const totalChangeColorStyle = { color: getPriceColor(totalChangeValue) };
 
   const nextImage = (propertyId) => {
@@ -341,14 +403,20 @@ const ClientView = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl">Loading client selection...</div>;
   if (error) return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl text-red-600 p-8 text-center">{error}</div>;
 
+  const selectedProperties = clientData?.properties?.filter(p => p.selected && !p.isPlaceholder) || [];
+  const selectedActivities = clientData?.activities?.filter(a => a.selected) || [];
+  const selectedTransportation = clientData?.transportation?.filter(t => t.selected) || [];
+  const selectedFlights = clientData?.flights?.filter(f => f.selected) || [];
+  const hasSelections = selectedProperties.length > 0 || selectedActivities.length > 0 || selectedTransportation.length > 0 || selectedFlights.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 font-['Century_Gothic']">
       <style>{`
         .font-century-gothic { font-family: 'Century Gothic', sans-serif; }
-        .selected-border, .selected-activity-card, .selected-transport-row {
+        .selected-border, .selected-activity-card, .selected-transport-row, .selected-flight-row {
             border-color: ${accentColor};
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            border-width: 2px;
+            box-shadow: 0 0 12px 1px rgba(255, 215, 0, 0.8);
+            border-width: 3px;
         }
         .selected-border, .selected-activity-card {
             border-radius: 1rem;
@@ -371,7 +439,7 @@ const ClientView = () => {
       )}
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white rounded-xl shadow-md p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start mb-8 bg-white rounded-xl shadow-md p-4 md:p-6">
           <div className="flex items-center mb-4 md:mb-0">
             {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" /> ) : ( <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div> )}
             <div className="text-left">
@@ -380,11 +448,19 @@ const ClientView = () => {
               <p className="text-lg text-gray-700 mt-2">Viewing: {clientName}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className={`text-right p-3 rounded-lg border ${totalChangeValue >= 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
-              <p className="text-xs text-gray-600">Total Price Change</p>
-              <p className={`text-2xl font-bold`} style={totalChangeColorStyle}>{`${totalChangeValue >= 0 ? '+' : '-'}${getCurrencySymbol('NZD')}${Math.abs(totalChangeValue).toFixed(2)}`}</p>
-            </div>
+          <div className="grid grid-cols-3 gap-2 md:gap-4 w-full md:w-auto mt-4 md:mt-0">
+              <div className="text-center p-3 rounded-lg bg-gray-100">
+                  <p className="text-xs text-gray-600">Base Quote</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-800">{getCurrencySymbol('NZD')}{baseQuote.toFixed(2)}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-gray-100">
+                  <p className="text-xs text-gray-600">Selections</p>
+                  <p className="text-xl md:text-2xl font-bold" style={totalChangeColorStyle}>{totalChangeValue >= 0 ? '+' : '-'}{getCurrencySymbol('NZD')}{Math.abs(totalChangeValue).toFixed(2)}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-blue-100 border border-blue-200">
+                  <p className="text-xs text-blue-800">Final Quote</p>
+                  <p className="text-xl md:text-2xl font-bold text-blue-800">{getCurrencySymbol('NZD')}{finalQuote.toFixed(2)}</p>
+              </div>
           </div>
         </div>
 
@@ -392,78 +468,97 @@ const ClientView = () => {
         
         <div className="border-b border-gray-200 mb-8">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                <button onClick={() => setActiveTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'summary' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
-                <button onClick={() => setActiveTab('property')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'property' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
-                <button onClick={() => setActiveTab('activities')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'activities' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Activity size={18} className="mr-2" /> Activities </button>
-                <button onClick={() => setActiveTab('flights')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'flights' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Plane size={18} className="mr-2" /> Flights </button>
-                <button onClick={() => setActiveTab('transportation')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'transportation' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Car size={18} className="mr-2" /> Transportation </button>
+                <button onClick={() => setActiveTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
+                <button onClick={() => setActiveTab('property')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
+                <button onClick={() => setActiveTab('activities')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Activity size={18} className="mr-2" /> Activities </button>
+                <button onClick={() => setActiveTab('flights')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Plane size={18} className="mr-2" /> Flights </button>
+                <button onClick={() => setActiveTab('transportation')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base flex items-center ${activeTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Car size={18} className="mr-2" /> Transportation </button>
             </nav>
         </div>
 
         {activeTab === 'summary' && (
-            <div className="mt-12 bg-white rounded-2xl shadow-xl p-6 font-['Century_Gothic'] border border-gray-100 text-left">
-              <h2 className="text-2xl font-bold mb-5 text-gray-800">Your Selection Summary</h2>
-              {itineraries.every(it => !getSelectedProperty(it.id)) && clientData?.activities.every(act => !act.selected) && clientData?.transportation.every(t => !t.selected) ? (
-                <p className="text-gray-500 text-center py-8 text-lg">No properties, activities, or transportation selected yet. Start choosing!</p>
+            <div className="bg-white rounded-2xl shadow-xl p-6 font-['Century_Gothic'] border border-gray-100 text-left">
+              <h2 className="text-3xl font-bold mb-6 text-gray-800">Your Selection Summary</h2>
+              {!hasSelections ? (
+                <p className="text-gray-500 text-center py-10 text-lg">You haven't made any selections yet. Click on the other tabs to view your options!</p>
               ) : (
-                <div className="space-y-4">
-                  {itineraries.map((itinerary) => {
-                    const selectedProperty = getSelectedProperty(itinerary.id);
-                    if (!selectedProperty) return null;
-                    const priceText = parseCurrencyToNumber(selectedProperty.price);
-                    const priceColorStyle = { color: getPriceColor(priceText) };
-                    return (
-                      <div key={`summary-prop-${itinerary.id}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border">
-                        <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-                          <img src={selectedProperty.images?.[selectedProperty.homeImageIndex || 0] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"} alt={selectedProperty.name} className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0" onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}/>
-                          <div className="text-left">
-                            <h4 className="font-semibold text-gray-900 text-base">{itinerary.location} (Property)</h4>
-                            <p className="text-sm text-gray-700 font-medium">{selectedProperty.name}</p>
+                <div className="space-y-8">
+                  {selectedProperties.length > 0 && (
+                    <div onClick={() => setActiveTab('property')} className="cursor-pointer group">
+                      <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Building /> Properties</h3>
+                      <div className="space-y-4">
+                        {selectedProperties.map(item => (
+                          <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                            <div className="flex items-center gap-4">
+                              <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
+                              <div>
+                                <p className="font-bold text-gray-800">{item.name}</p>
+                                <p className="text-sm text-gray-600">{item.location}</p>
+                              </div>
+                            </div>
+                            <p className="font-bold text-lg" style={{color: getPriceColor(item.price)}}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
                           </div>
-                        </div>
-                        <div className="text-right w-full sm:w-auto"> <span className="font-bold text-xl" style={priceColorStyle}>{`${priceText < 0 ? '-' : '+'}${getCurrencySymbol(selectedProperty.currency)}${Math.abs(priceText).toFixed(2)}`}</span> </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                  {Object.values(groupedActivities).flat().filter(act => act.selected).map((activity) => {
-                    const finalPrice = calculateFinalActivityPrice(activity);
-                    const priceColorStyle = { color: getPriceColor(finalPrice) };
-                    return (
-                      <div key={`summary-act-${activity.id}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border">
-                        <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-                          <img src={activity.images?.[0] || "https://placehold.co/60x60/E0E0E0/333333?text=No+Image"} alt={activity.name} className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0" onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}/>
-                          <div className="text-left">
-                            <h4 className="font-semibold text-gray-900 text-base">{activity.location} (Activity)</h4>
-                            <p className="text-sm text-gray-700 font-medium">{activity.name}</p>
-                          </div>
-                        </div>
-                        <div className="text-right w-full sm:w-auto"> <span className="font-bold text-xl" style={priceColorStyle}>{`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(finalPrice).toFixed(2)}`}</span> </div>
-                      </div>
-                    );
-                  })}
-                   {Object.values(groupedTransportation).flat().filter(t => t.selected).map((item) => {
-                    const finalPrice = parseCurrencyToNumber(item.price);
-                    const priceColorStyle = { color: getPriceColor(finalPrice) };
-                    const location = item.pickupLocation || item.boardingFrom || item.location;
-                    return (
-                      <div key={`summary-transport-${item.id}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border">
-                        <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-                          <img src={item.images?.[0] || 'https://placehold.co/60x60/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0" onError={(e) => { e.target.src = "https://placehold.co/60x60/E0E0E0/333333?text=Image+Error"; }}/>
-                          <div className="text-left">
-                            <h4 className="font-semibold text-gray-900 text-base">{location} (Transportation)</h4>
-                            <p className="text-sm text-gray-700 font-medium">{item.name}</p>
-                          </div>
-                        </div>
-                        <div className="text-right w-full sm:w-auto"> <span className="font-bold text-xl" style={priceColorStyle}>{`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(item.currency)}${Math.abs(finalPrice).toFixed(2)}`}</span> </div>
-                      </div>
-                    );
-                  })}
-                  <div className="pt-6 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xl font-bold text-gray-900">Total Price Change:</span>
-                      <span className={`text-3xl font-extrabold`} style={totalChangeColorStyle}>{`${totalChangeValue >= 0 ? '+' : '-'}${getCurrencySymbol('NZD')}${Math.abs(totalChangeValue).toFixed(2)}`}</span>
                     </div>
-                  </div>
+                  )}
+                  {selectedFlights.length > 0 && (
+                    <div onClick={() => setActiveTab('flights')} className="cursor-pointer group">
+                      <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Plane /> Flights</h3>
+                      <div className="space-y-4">
+                        {selectedFlights.map(item => (
+                          <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                            <div className="flex items-center gap-4">
+                              <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-10 object-contain"/>
+                              <div>
+                                <p className="font-bold text-gray-800">{item.airline} ({item.flightNumber})</p>
+                                <p className="text-sm text-gray-600">{item.from} to {item.to}</p>
+                              </div>
+                            </div>
+                            <p className="font-bold text-lg" style={{color: getPriceColor(item.price)}}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {selectedActivities.length > 0 && (
+                    <div onClick={() => setActiveTab('activities')} className="cursor-pointer group">
+                      <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
+                      <div className="space-y-4">
+                        {selectedActivities.map(item => (
+                          <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                            <div className="flex items-center gap-4">
+                              <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
+                              <div>
+                                <p className="font-bold text-gray-800">{item.name}</p>
+                                <p className="text-sm text-gray-600">{item.location}</p>
+                              </div>
+                            </div>
+                            <p className="font-bold text-lg" style={{color: getPriceColor(calculateFinalActivityPrice(item))}}>{`${calculateFinalActivityPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateFinalActivityPrice(item)).toFixed(2)}`}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {selectedTransportation.length > 0 && (
+                    <div onClick={() => setActiveTab('transportation')} className="cursor-pointer group">
+                      <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
+                      <div className="space-y-4">
+                        {selectedTransportation.map(item => (
+                          <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                            <div className="flex items-center gap-4">
+                              <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
+                              <div>
+                                <p className="font-bold text-gray-800">{item.name}</p>
+                                <p className="text-sm text-gray-600 capitalize">{item.transportType}</p>
+                              </div>
+                            </div>
+                            <p className="font-bold text-lg" style={{color: getPriceColor(item.price)}}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -494,18 +589,26 @@ const ClientView = () => {
                           return (
                             <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => toggleSelection(itinerary.id, property.id)}>
                               <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
-                                <img src={property.images?.[currentImageIndex[property.id] || property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={property.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}/>
+                                <img src={property.images?.[currentImageIndex[property.id] || property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={property.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }} onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }}/>
                                 {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
+                                {property.images && property.images.length > 1 && (
+                                  <>
+                                    <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronLeft size={20} /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronRight size={20} /></button>
+                                  </>
+                                )}
+                                <button onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }} className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100" title="Expand Image"><Maximize2 size={16} /></button>
                               </div>
                               <div className="p-4 space-y-2">
                                 <h3 className="font-semibold text-lg text-gray-900 leading-tight">{property.name}</h3>
+                                <p className="text-gray-600 text-sm mb-3 min-h-[40px]">{property.description}</p>
                                 <div className="flex items-center text-sm text-gray-600 gap-3">
                                   {(property.bedrooms > 0) && <div className="flex items-center"><BedDouble size={16} className="mr-1 text-gray-500" /><span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span></div>}
                                   {property.bathrooms > 0 && <div className="flex items-center"><Bath size={16} className="mr-1 text-gray-500" /><span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span></div>}
                                 </div>
                                 <div className="flex items-center justify-between mt-2">
                                     <span className="text-base text-gray-700 font-medium">{calculateNights(property.checkIn, property.checkOut)} nights</span>
-                                    <div className="text-right"> <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>{`${priceValue < 0 ? '-' : '+'}${getCurrencySymbol(property.currency)}${Math.abs(priceValue).toFixed(2)}`}</span> </div>
+                                    <div className="text-right"> <span className="font-bold text-xl" style={priceColorStyle}>{`${priceValue < 0 ? '-' : '+'}${getCurrencySymbol(property.currency)}${Math.abs(priceValue).toFixed(2)}`}</span> </div>
                                 </div>
                               </div>
                             </div>
@@ -545,7 +648,7 @@ const ClientView = () => {
                                                         <div className="flex items-center"><Users size={16} className="mr-2 text-gray-400" /> <span>{activity.pax} Pax</span></div>
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 text-right"> <span className={`text-2xl font-bold`} style={priceColorStyle}> {`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(finalPrice).toFixed(2)}`} </span> </div>
+                                                <div className="mt-4 text-right"> <span className="text-2xl font-bold" style={priceColorStyle}> {`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(finalPrice).toFixed(2)}`} </span> </div>
                                             </div>
                                         </div>
                                     )
@@ -559,55 +662,138 @@ const ClientView = () => {
 
         {activeTab === 'transportation' && (
             <div className="space-y-10">
-                {Object.entries(groupedTransportation).length === 0 ? ( <PlaceholderContent title="Transportation" /> ) : (
-                    Object.entries(groupedTransportation).map(([location, itemsInLocation]) => (
-                        <div key={location} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-                            <h3 className="text-2xl font-bold text-gray-800 mb-6">{location} Transportation</h3>
-                            <div className="space-y-6">
-                                {itemsInLocation.map(item => {
-                                    const price = parseCurrencyToNumber(item.price);
-                                    const priceColorStyle = { color: getPriceColor(price) };
-                                    return (
-                                        <div key={item.id} className={`relative p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
-                                            {item.selected && (
-                                                <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}>
-                                                    <Check size={18} />
-                                                </div>
-                                            )}
-                                            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full lg:pl-12">
-                                                <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md" />
-                                                <div className="flex-grow">
-                                                    <h4 className="font-bold text-xl text-gray-800">{item.name}</h4>
-                                                    <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
-                                                        <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom}</div>
-                                                        <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
-                                                        <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo}</div>
-                                                        <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>
-                                                        {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>}
-                                                        {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
-                                                        {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
-                                                        {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
-                                                        {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                {Object.keys(groupedTransportation).every(key => groupedTransportation[key].length === 0) ? ( <PlaceholderContent title="Transportation" /> ) : (
+                    Object.entries(groupedTransportation).map(([type, itemsInType]) => {
+                        if (itemsInType.length === 0) return null;
+                        const typeInfo = transportationTypes[type] || { label: type, icon: <Car /> };
+                        return (
+                            <div key={type} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+                                <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">{typeInfo.icon} {typeInfo.label}</h3>
+                                <div className="space-y-6">
+                                    {itemsInType.map(item => {
+                                        const price = parseCurrencyToNumber(item.price);
+                                        const priceColorStyle = { color: getPriceColor(price) };
+                                        return (
+                                            <div key={item.id} className={`relative p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
+                                                {item.selected && (
+                                                    <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}>
+                                                        <Check size={18} />
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full lg:pl-12">
+                                                    <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md" />
+                                                    <div className="flex-grow">
+                                                        <h4 className="font-bold text-xl text-gray-800">{item.name}</h4>
+                                                        <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom || item.pickupFrom} ({item.location})</div>
+                                                            <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
+                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</div>
+                                                            { (item.dropoffDate || item.departingDate) && <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>}
+                                                            {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>}
+                                                            {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
+                                                            {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                                            {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
+                                                            {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto">
+                                                        <span className={`text-3xl font-bold whitespace-nowrap`} style={priceColorStyle}>
+                                                            {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto">
-                                                    <span className={`text-3xl font-bold whitespace-nowrap`} style={priceColorStyle}>
-                                                        {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
-                                                    </span>
-                                                </div>
                                             </div>
-                                        </div>
-                                    )
-                                })}
+                                        )
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        )
+                    })
                 )}
             </div>
         )}
 
-        {activeTab === 'flights' && <PlaceholderContent title="Flights" />}
+        {activeTab === 'flights' && (
+            <div className="space-y-12">
+                {Object.keys(groupedFlights).every(key => groupedFlights[key].length === 0) ? ( <PlaceholderContent title="Flights" /> ) : (
+                    Object.entries(groupedFlights).map(([type, itemsInType]) => {
+                        if (itemsInType.length === 0) return null;
+                        const typeInfo = flightTypes[type] || { label: type, icon: <Plane /> };
+                        return (
+                            <div key={type} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+                                <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">{typeInfo.icon} {typeInfo.label}</h3>
+                                <div className="space-y-4">
+                                    {itemsInType.map(item => {
+                                        const price = parseCurrencyToNumber(item.price);
+                                        const priceColorStyle = { color: getPriceColor(price) };
+                                        const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
+                                        return (
+                                            <div 
+                                                key={item.id} 
+                                                className={`relative p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}
+                                                onClick={() => toggleFlightSelection(item.id)}
+                                            >
+                                                <div className="flex flex-col w-full">
+                                                    <div className="flex justify-between items-center w-full">
+                                                        {item.selected && (
+                                                            <div className="absolute top-1/2 -translate-y-1/2 left-6 rounded-full p-1 shadow-md bg-white z-10">
+                                                                <CheckCircle size={24} className="text-green-500" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-6 flex-1 pl-12">
+                                                            <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-16 w-auto object-contain"/>
+                                                            <div className="text-sm">
+                                                                <p className="font-bold text-gray-800 text-lg">{item.airline}</p>
+                                                                <p className="text-gray-500">{item.flightNumber}</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center justify-center flex-grow-[2] text-center">
+                                                            <div className="text-right">
+                                                                <p className="text-3xl font-bold">{formatTime(item.departureTime)}</p>
+                                                                <p className="text-xl font-semibold text-gray-700">{item.from}</p>
+                                                                <p className="text-xs text-gray-500">{formatDate(item.departureDate)}</p>
+                                                            </div>
+                                                            <div className="mx-8 text-center">
+                                                                <p className="text-sm text-gray-500">{duration}</p>
+                                                                <div className="w-32 h-px bg-gray-300 relative my-1">
+                                                                    <Plane size={16} className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gray-50 px-1 text-gray-500"/>
+                                                                </div>
+                                                                <p className="text-xs text-green-600 font-semibold">Direct</p>
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-3xl font-bold">{formatTime(item.arrivalTime)}</p>
+                                                                <p className="text-xl font-semibold text-gray-700">{item.to}</p>
+                                                                <p className="text-xs text-gray-500">{formatDate(item.arrivalDate)}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-end flex-1 gap-6">
+                                                            <div className="text-right">
+                                                                <span className="text-3xl font-bold whitespace-nowrap" style={priceColorStyle}>
+                                                                    {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="w-full mt-4 pt-4 border-t border-gray-200 flex justify-center items-center gap-8 text-sm text-gray-600">
+                                                        <p className="font-semibold text-gray-500">Baggage Allowance:</p>
+                                                        <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Check-in: {item.baggage.checkInKgs}kg ({item.baggage.checkInPieces} pc)</div>
+                                                        <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Cabin: {item.baggage.cabinKgs}kg ({item.baggage.cabinPieces} pc)</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )
+                    })
+                )}
+            </div>
+        )}
 
         <div className="mt-6 mb-12">
           <button onClick={handleSaveSelection} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" disabled={loading}>{loading ? 'Saving...' : 'Confirm My Selections'}</button>

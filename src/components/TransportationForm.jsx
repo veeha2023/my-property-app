@@ -1,10 +1,10 @@
-// src/components/TransportationForm.jsx - Version 2.3
+// src/components/TransportationForm.jsx - Version 2.6
 import React, { useState, useMemo } from 'react';
-import { Plus, Edit3, Trash2, X, Car, Calendar, Clock, MapPin, ShieldCheck, Users, DollarSign, Image, Link2, Ship, Bus } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Car, Calendar, Clock, MapPin, ShieldCheck, Users, DollarSign, Image, Link2, Ship, Bus, CheckCircle } from 'lucide-react';
 
 const TransportationForm = ({ transportation, setTransportation, itineraryLegs }) => {
   const [editingItem, setEditingItem] = useState(null);
-  const [addingToLocation, setAddingToLocation] = useState(null);
+  const [addingToLocation, setAddingToLocation] = useState(null); // Kept for modal logic, but not for data coupling
   const [newItem, setNewItem] = useState(null);
   const [imageLinks, setImageLinks] = useState('');
   const [showTypeSelection, setShowTypeSelection] = useState(false);
@@ -17,6 +17,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     { type: 'driver', label: 'Car with Driver', icon: <Car/> },
   ];
 
+  // --- UTILITY FUNCTIONS ---
   const getCurrencySymbol = (currencyCode) => {
     const symbols = { NZD: 'NZ$', USD: '$', EUR: '€', INR: '₹' };
     return symbols[currencyCode] || currencyCode || 'NZ$';
@@ -46,18 +47,25 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     return 'text-gray-900';
   };
 
-  const locations = useMemo(() => {
-    const allLocations = (itineraryLegs || []).map(leg => leg.location).filter(Boolean);
-    return [...new Set(allLocations)].sort();
-  }, [itineraryLegs]);
+  // --- DATA DERIVATION ---
+  const groupedTransportation = useMemo(() => {
+    const groups = {};
+    transportationTypes.forEach(t => groups[t.type] = []);
+    (transportation || []).forEach(item => {
+      if (groups[item.transportType]) {
+        groups[item.transportType].push(item);
+      }
+    });
+    return groups;
+  }, [transportation]);
 
-  const handleStartAdding = (location) => {
-    setAddingToLocation(location);
+
+  // --- HANDLER FUNCTIONS ---
+  const handleStartAdding = () => {
     setShowTypeSelection(true);
   };
-
+  
   const handleTypeSelected = (type) => {
-    const leg = itineraryLegs.find(l => l.location === addingToLocation);
     let baseItem = {
       id: `transport-${Date.now()}`,
       transportType: type,
@@ -69,16 +77,16 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
 
     switch (type) {
       case 'car':
-        baseItem = { ...baseItem, name: '', type: 'Sedan', pickupLocation: addingToLocation, pickupDate: leg?.checkIn || '', pickupTime: '10:00', dropoffLocation: addingToLocation, dropoffDate: leg?.checkOut || '', dropoffTime: '10:00', insurance: 'Basic', excessAmount: '', driversIncluded: 1 };
+        baseItem = { ...baseItem, name: '', type: 'Sedan', pickupLocation: '', pickupDate: '', pickupTime: '10:00', dropoffLocation: '', dropoffDate: '', dropoffTime: '10:00', insurance: 'Basic', excessAmount: '', driversIncluded: 1 };
         break;
       case 'ferry':
-        baseItem = { ...baseItem, name: '', boardingFrom: addingToLocation, boardingDate: leg?.checkIn || '', boardingTime: '09:00', departingTo: '', departingDate: leg?.checkIn || '', departingTime: '12:00', duration: '', baggageAllowance: '' };
+        baseItem = { ...baseItem, name: '', boardingFrom: '', boardingDate: '', boardingTime: '09:00', departingTo: '', departingDate: '', departingTime: '12:00', duration: '', baggageAllowance: '' };
         break;
       case 'bus':
-        baseItem = { ...baseItem, name: '', boardingFrom: addingToLocation, boardingDate: leg?.checkIn || '', boardingTime: '08:00', departingTo: '', departingDate: leg?.checkIn || '', departingTime: '17:00', duration: '', baggageAllowance: '' };
+        baseItem = { ...baseItem, name: '', boardingFrom: '', boardingDate: '', boardingTime: '08:00', departingTo: '', departingDate: '', departingTime: '17:00', duration: '', baggageAllowance: '' };
         break;
       case 'driver':
-        baseItem = { ...baseItem, name: '', carType: 'Sedan', location: addingToLocation, pickupFrom: 'Hotel', pickupDate: leg?.checkIn || '', pickupTime: '09:00', duration: '' };
+        baseItem = { ...baseItem, name: '', carType: 'Sedan', location: '', pickupFrom: 'Hotel', dropoffTo: '', pickupDate: '', pickupTime: '09:00', duration: '' };
         break;
       default: break;
     }
@@ -130,6 +138,17 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     setFunc(prev => ({ ...prev, images: updatedImages }));
   };
 
+  const toggleSelection = (id) => {
+    const updatedTransportation = (transportation || []).map(t => {
+      if (t.id === id) {
+        return { ...t, selected: !t.selected };
+      }
+      return t;
+    });
+    setTransportation(updatedTransportation);
+  };
+
+  // --- RENDER FUNCTIONS ---
   const renderCarForm = (data, setData) => (
     <>
       <div><label className="block text-sm font-medium text-gray-700">Car Name</label><input type="text" value={data.name} onChange={(e) => setData({...data, name: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
@@ -166,13 +185,14 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     </>
   );
 
-    const renderDriverForm = (data, setData) => (
+  const renderDriverForm = (data, setData) => (
     <>
       <div><label className="block text-sm font-medium text-gray-700">Service Name</label><input type="text" value={data.name} onChange={(e) => setData({...data, name: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
       <div><label className="block text-sm font-medium text-gray-700">Car Type</label><input type="text" value={data.carType} onChange={(e) => setData({...data, carType: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
-      <div><label className="block text-sm font-medium text-gray-700">Location</label><input type="text" value={data.location} readOnly className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100" /></div>
+      <div><label className="block text-sm font-medium text-gray-700">Location</label><input type="text" value={data.location} onChange={(e) => setData({...data, location: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
       <div className="md:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Pickup Details</div>
       <div><label className="block text-sm font-medium text-gray-700">Pickup From</label><input type="text" value={data.pickupFrom} onChange={(e) => setData({...data, pickupFrom: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., Hotel Lobby"/></div>
+      <div><label className="block text-sm font-medium text-gray-700">Drop-off To</label><input type="text" value={data.dropoffTo} onChange={(e) => setData({...data, dropoffTo: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., Airport"/></div>
       <div><label className="block text-sm font-medium text-gray-700">Date</label><input type="date" value={data.pickupDate} onChange={(e) => setData({...data, pickupDate: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
       <div><label className="block text-sm font-medium text-gray-700">Time</label><input type="time" value={data.pickupTime} onChange={(e) => setData({...data, pickupTime: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
       <div className="md:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Other Details</div>
@@ -217,56 +237,56 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     );
   };
   
-
-  const renderItem = (item) => {
+  const renderItemRow = (item) => {
     const price = parseFloat(item.price) || 0;
     const priceColor = getPriceColor(price);
-    const Icon = transportationTypes.find(t => t.type === item.transportType)?.icon || Car;
 
     return (
-      <div key={item.id} className={`p-4 rounded-lg border-2 transition-all duration-300 flex flex-col md:flex-row items-center gap-4 border-gray-200 hover:border-gray-300`}>
-        <div className="w-full md:w-1/3 flex items-center gap-4">
-            <img src={item.images?.[0] || 'https://placehold.co/120x80/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-24 h-16 object-cover rounded-md shadow-sm" />
-            <div>
-                <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">{Icon} {item.name}</h4>
-                <p className="text-sm text-gray-500">{item.type || item.carType}</p>
-            </div>
+      <div 
+        key={item.id} 
+        className={`relative p-4 rounded-lg border-2 transition-all duration-300 cursor-pointer flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}
+        onClick={() => toggleSelection(item.id)}
+      >
+        {item.selected && (
+          <div className="absolute top-4 left-4 rounded-full p-1 shadow-md bg-white z-10">
+            <CheckCircle size={24} className="text-green-500" />
+          </div>
+        )}
+        <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" />
+        <div className="flex-grow">
+          <h4 className="font-bold text-xl text-gray-800">{item.name}</h4>
+          <p className="text-md text-gray-500 mb-4 capitalize">{item.type || item.carType}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+            {item.transportType === 'car' && <>
+              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate)} at {formatTime(item.dropoffTime)}</div>
+              <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>
+              <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>
+            </>}
+            {(item.transportType === 'ferry' || item.transportType === 'bus') && <>
+              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>From:</strong> &nbsp;{item.boardingFrom}</div>
+              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>To:</strong> &nbsp;{item.departingTo}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.boardingDate)} at {formatTime(item.boardingTime)}</div>
+              <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
+              <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>
+            </>}
+            {item.transportType === 'driver' && <>
+              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupFrom} ({item.location})</div>
+              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffTo}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+              <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
+            </>}
+          </div>
         </div>
-
-        <div className="w-full md:w-1/3 text-sm text-gray-700 space-y-1">
-            {item.transportType === 'car' && (<>
-                <p><strong>Pickup:</strong> {item.pickupLocation} on {formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</p>
-                <p><strong>Drop-off:</strong> {item.dropoffLocation} on {formatDate(item.dropoffDate)} at {formatTime(item.dropoffTime)}</p>
-            </>)}
-             {item.transportType === 'ferry' && (<>
-                <p><strong>Boarding:</strong> {item.boardingFrom} on {formatDate(item.boardingDate)} at {formatTime(item.boardingTime)}</p>
-                <p><strong>Arriving:</strong> {item.departingTo} on {formatDate(item.departingDate)} at {formatTime(item.departingTime)}</p>
-            </>)}
-             {item.transportType === 'bus' && (<>
-                <p><strong>Boarding:</strong> {item.boardingFrom} on {formatDate(item.boardingDate)} at {formatTime(item.boardingTime)}</p>
-                <p><strong>Arriving:</strong> {item.departingTo} on {formatDate(item.departingDate)} at {formatTime(item.departingTime)}</p>
-            </>)}
-             {item.transportType === 'driver' && (<>
-                <p><strong>Pickup:</strong> {item.pickupFrom} on {formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</p>
-                <p><strong>Duration:</strong> {item.duration}</p>
-            </>)}
+        <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
+          <span className={`text-3xl font-bold whitespace-nowrap ${priceColor}`}>
+            {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
+          </span>
         </div>
-        
-        <div className="w-full md:w-1/3 flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-                {item.transportType === 'car' && <p><ShieldCheck size={14} className="inline mr-1" /> {item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</p>}
-                {item.transportType === 'car' && <p><Users size={14} className="inline mr-1" /> {item.driversIncluded} Driver(s)</p>}
-                {(item.transportType === 'ferry' || item.transportType === 'bus') && <p><strong>Baggage:</strong> {item.baggageAllowance}</p>}
-            </div>
-            <div className="text-right">
-                <span className={`text-2xl font-bold ${priceColor}`}>
-                    {price < 0 ? `-` : `+`}{getCurrencySymbol(item.currency)}{Math.abs(price).toFixed(2)}
-                </span>
-            </div>
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto">
-            <button onClick={(e) => { e.stopPropagation(); setEditingItem(item); setAddingToLocation(null); }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
+        <div className="absolute top-4 right-4 flex space-x-2">
+            <button onClick={(e) => { e.stopPropagation(); setEditingItem(item); }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
         </div>
       </div>
@@ -275,6 +295,13 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
 
   return (
     <div>
+      <style>{`
+        .selected-transport-row {
+          border-color: ${accentColor};
+          box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+      `}</style>
+
       {showTypeSelection && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
@@ -292,31 +319,33 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         </div>
       )}
 
-      <div className="space-y-8">
-        {locations.map(location => {
-          const locationItems = (transportation || []).filter(t => t.location === location || t.pickupLocation === location || t.boardingFrom === location);
-          return (
-            <div key={location} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-2xl font-bold text-gray-800">{location}</h3>
-                <button onClick={() => handleStartAdding(location)} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
-                  <Plus size={18} className="mr-2" /> Add Transportation
-                </button>
-              </div>
+      <div className="text-center mb-8">
+        <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105 mx-auto">
+          <Plus size={18} className="mr-2" /> Add New Transportation
+        </button>
+      </div>
 
-              {(addingToLocation === location && newItem) && renderForm(newItem, setNewItem)}
+      {(newItem && !editingItem) && renderForm(newItem, setNewItem)}
+      
+      <div className="space-y-12">
+        {transportationTypes.map(typeInfo => {
+          const items = groupedTransportation[typeInfo.type];
+          if (!items || items.length === 0) {
+            return null; // Don't render section if no items of that type
+          }
+          return (
+            <div key={typeInfo.type} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">{typeInfo.icon} {typeInfo.label}</h3>
+              </div>
               
-              {locationItems.length > 0 ? (
-                <div className="space-y-4">
-                  {locationItems.map(item => (
-                    editingItem?.id === item.id 
-                      ? <div key={item.id}>{renderForm(editingItem, setEditingItem)}</div>
-                      : renderItem(item)
-                  ))}
-                </div>
-              ) : (
-                !addingToLocation && <p className="text-center text-gray-500 py-4">No transportation options added for {location} yet.</p>
-              )}
+              <div className="space-y-4">
+                {items.map(item => (
+                  editingItem?.id === item.id 
+                    ? <div key={item.id}>{renderForm(editingItem, setEditingItem)}</div>
+                    : renderItemRow(item)
+                ))}
+              </div>
             </div>
           )
         })}

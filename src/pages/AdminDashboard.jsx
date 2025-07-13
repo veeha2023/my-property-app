@@ -1,20 +1,158 @@
-// src/pages/AdminDashboard.jsx - Version 7.17 (TransportationForm Integration)
-import React, { useState, useEffect, useCallback } from 'react';
+// src/pages/AdminDashboard.jsx - Version 7.20 (Quote Integration)
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
 import ActivityForm from '../components/ActivityForm.jsx';
-import TransportationForm from '../components/TransportationForm.jsx'; // Import the new TransportationForm component
+import TransportationForm from '../components/TransportationForm.jsx';
+import FlightForm from '../components/FlightForm.jsx';
 import { Link } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 
-const PlaceholderContent = ({ title }) => (
-  <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
-    <h3 className="text-2xl font-bold">{title}</h3>
-    <p className="mt-2">The management interface for this section will be available here.</p>
-  </div>
-);
+const AdminSummaryView = ({ clientData, setActiveTab }) => {
+    const getCurrencySymbol = (currencyCode) => {
+        const symbols = { NZD: 'NZ$', USD: '$', EUR: '€', INR: '₹' };
+        return symbols[currencyCode] || currencyCode || 'NZ$';
+    };
+
+    const getPriceColor = (price) => {
+        if (price < 0) return 'text-green-600';
+        if (price > 0) return 'text-red-600';
+        return 'text-gray-900';
+    };
+
+    const calculateFinalActivityPrice = useCallback((activity) => {
+        const pax = parseInt(activity.pax, 10) || 0;
+        const pricePerPax = parseFloat(activity.price_per_pax) || 0;
+        const adjustment = parseFloat(activity.price_adjustment) || 0;
+        return (pax * pricePerPax) + adjustment;
+    }, []);
+
+    const selectedProperties = useMemo(() => clientData?.properties?.filter(p => p.selected && !p.isPlaceholder) || [], [clientData]);
+    const selectedActivities = useMemo(() => clientData?.activities?.filter(a => a.selected) || [], [clientData]);
+    const selectedTransportation = useMemo(() => clientData?.transportation?.filter(t => t.selected) || [], [clientData]);
+    const selectedFlights = useMemo(() => clientData?.flights?.filter(f => f.selected) || [], [clientData]);
+
+    const hasSelections = selectedProperties.length > 0 || selectedActivities.length > 0 || selectedTransportation.length > 0 || selectedFlights.length > 0;
+
+    const totalChange = useMemo(() => {
+        let total = 0;
+        total += selectedProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
+        total += selectedActivities.reduce((sum, act) => sum + calculateFinalActivityPrice(act), 0);
+        total += selectedTransportation.reduce((sum, item) => sum + (item.price || 0), 0);
+        total += selectedFlights.reduce((sum, item) => sum + (item.price || 0), 0);
+        return total;
+    }, [selectedProperties, selectedActivities, selectedTransportation, selectedFlights, calculateFinalActivityPrice]);
+
+    const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
+    const finalQuote = baseQuote + totalChange;
+
+    return (
+        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-6">
+                <h2 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Client Selection Summary</h2>
+                <div className="grid grid-cols-3 gap-4 w-full md:w-auto">
+                    <div className="text-center p-3 rounded-lg bg-gray-100">
+                        <p className="text-xs text-gray-600">Base Quote</p>
+                        <p className="text-2xl font-bold text-gray-800">{getCurrencySymbol('NZD')}{baseQuote.toFixed(2)}</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-gray-100">
+                        <p className="text-xs text-gray-600">Selections</p>
+                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{getCurrencySymbol('NZD')}{Math.abs(totalChange).toFixed(2)}</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-blue-100 border border-blue-200">
+                        <p className="text-xs text-blue-800">Final Quote</p>
+                        <p className="text-2xl font-bold text-blue-800">{getCurrencySymbol('NZD')}{finalQuote.toFixed(2)}</p>
+                    </div>
+                </div>
+            </div>
+
+            {!hasSelections ? (
+                <p className="text-gray-500 text-center py-10 text-lg">The client has not made any selections yet.</p>
+            ) : (
+                <div className="space-y-8">
+                    {selectedProperties.length > 0 && (
+                        <div onClick={() => setActiveTab('property')} className="cursor-pointer group">
+                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Building /> Properties</h3>
+                            <div className="space-y-4">
+                                {selectedProperties.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
+                                            <div>
+                                                <p className="font-bold text-gray-800">{item.name}</p>
+                                                <p className="text-sm text-gray-600">{item.location}</p>
+                                            </div>
+                                        </div>
+                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {selectedFlights.length > 0 && (
+                        <div onClick={() => setActiveTab('flights')} className="cursor-pointer group">
+                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Plane /> Flights</h3>
+                            <div className="space-y-4">
+                                {selectedFlights.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-10 object-contain"/>
+                                            <div>
+                                                <p className="font-bold text-gray-800">{item.airline} ({item.flightNumber})</p>
+                                                <p className="text-sm text-gray-600">{item.from} to {item.to}</p>
+                                            </div>
+                                        </div>
+                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {selectedActivities.length > 0 && (
+                        <div onClick={() => setActiveTab('activities')} className="cursor-pointer group">
+                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
+                            <div className="space-y-4">
+                                {selectedActivities.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
+                                            <div>
+                                                <p className="font-bold text-gray-800">{item.name}</p>
+                                                <p className="text-sm text-gray-600">{item.location}</p>
+                                            </div>
+                                        </div>
+                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalActivityPrice(item))}`}>{`${calculateFinalActivityPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateFinalActivityPrice(item)).toFixed(2)}`}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {selectedTransportation.length > 0 && (
+                        <div onClick={() => setActiveTab('transportation')} className="cursor-pointer group">
+                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
+                            <div className="space-y-4">
+                                {selectedTransportation.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
+                                            <div>
+                                                <p className="font-bold text-gray-800">{item.name}</p>
+                                                <p className="text-sm text-gray-600 capitalize">{item.transportType}</p>
+                                            </div>
+                                        </div>
+                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+              )}
+        </div>
+    );
+};
 
 const AdminDashboard = ({}) => {
   const [session, setSession] = useState(null);
@@ -29,6 +167,7 @@ const AdminDashboard = ({}) => {
   const [newClientName, setNewClientName] = useState('');
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [editingClientName, setEditingClientName] = useState('');
+  const [editingClientQuote, setEditingClientQuote] = useState(0);
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [globalLogoUrl, setGlobalLogoUrl] = useState(null);
@@ -103,18 +242,31 @@ const AdminDashboard = ({}) => {
     });
   };
 
+  const sortFlightsByDate = (flights) => {
+    if (!flights || !Array.isArray(flights)) return [];
+    return [...flights].sort((a, b) => {
+        const dateA = new Date(a.departureDate);
+        const dateB = new Date(b.departureDate);
+        if (isNaN(dateA.getTime())) return 1;
+        if (isNaN(dateB.getTime())) return -1;
+        return dateA - dateB;
+    });
+  };
+
   const initializeClientData = (clientPropertiesData) => {
     const baseData = {
       properties: [],
       activities: [],
       flights: [],
-      transportation: [], // Changed from cars
+      transportation: [],
+      quote: 0,
     };
 
     const data = typeof clientPropertiesData === 'object' && clientPropertiesData !== null ? clientPropertiesData : {};
     const existingProperties = Array.isArray(data.properties) ? data.properties : [];
     const existingActivities = Array.isArray(data.activities) ? data.activities : [];
     const existingTransportation = Array.isArray(data.transportation) ? data.transportation : [];
+    const existingFlights = Array.isArray(data.flights) ? data.flights : [];
 
     const allLocations = new Set();
     existingProperties.forEach(p => { if (p.location) allLocations.add(p.location.trim()); });
@@ -154,6 +306,8 @@ const AdminDashboard = ({}) => {
       properties: sortPropertiesByDate(finalProperties),
       activities: sortActivitiesByDateTime(existingActivities),
       transportation: sortTransportationByDate(existingTransportation),
+      flights: sortFlightsByDate(existingFlights),
+      quote: data.quote || 0,
     };
   };
 
@@ -175,6 +329,7 @@ const AdminDashboard = ({}) => {
     setClientData(fullClientData);
 
     setEditingClientName(client.client_name);
+    setEditingClientQuote(fullClientData.quote);
     setActiveClientTab('summary');
     setMessage(`Editing details for ${client.client_name}`);
     setError(null);
@@ -194,6 +349,7 @@ const AdminDashboard = ({}) => {
         properties: sortPropertiesByDate(clientData.properties),
         activities: sortActivitiesByDateTime(clientData.activities),
         transportation: sortTransportationByDate(clientData.transportation),
+        flights: sortFlightsByDate(clientData.flights),
     };
     const dataJson = JSON.stringify(dataToSave);
 
@@ -224,6 +380,10 @@ const AdminDashboard = ({}) => {
   
   const handleUpdateTransportation = (updatedTransportation) => {
     setClientData(prevData => ({ ...prevData, transportation: updatedTransportation }));
+  };
+
+  const handleUpdateFlights = (updatedFlights) => {
+    setClientData(prevData => ({ ...prevData, flights: updatedFlights }));
   };
 
   const handleSaveItinerary = async () => {
@@ -374,7 +534,7 @@ const AdminDashboard = ({}) => {
     setError(null);
 
     const newClientId = uuidv4();
-    const initialClientData = { properties: [], activities: [], flights: [], transportation: [] };
+    const initialClientData = { properties: [], activities: [], flights: [], transportation: [], quote: 0 };
 
     const { error: insertError } = await supabase
       .from('clients')
@@ -485,7 +645,12 @@ const AdminDashboard = ({}) => {
   };
 
   const handleOpenEditClientModal = useCallback(() => {
-    if (selectedClient) { setEditingClientName(selectedClient.client_name); setShowEditClientModal(true); }
+    if (selectedClient) { 
+        setEditingClientName(selectedClient.client_name);
+        const currentData = initializeClientData(selectedClient.client_properties);
+        setEditingClientQuote(currentData.quote);
+        setShowEditClientModal(true); 
+    }
   }, [selectedClient]);
 
   const handleUpdateClientDetails = async (e) => {
@@ -495,8 +660,22 @@ const AdminDashboard = ({}) => {
     setMessage('');
     setError(null);
     try {
-        const { error: updateClientError } = await supabase.from('clients').update({ client_name: editingClientName, last_updated: new Date().toISOString() }).eq('id', selectedClient.id);
+        const updatedClientData = {
+            ...clientData,
+            quote: parseFloat(editingClientQuote) || 0
+        };
+        const { error: updateClientError } = await supabase
+            .from('clients')
+            .update({ 
+                client_name: editingClientName, 
+                client_properties: updatedClientData,
+                last_updated: new Date().toISOString() 
+            })
+            .eq('id', selectedClient.id);
+
         if (updateClientError) throw updateClientError;
+        
+        setClientData(updatedClientData);
         setMessage('Client details updated successfully!');
         setShowEditClientModal(false);
         fetchClients();
@@ -676,7 +855,7 @@ const AdminDashboard = ({}) => {
         </div>
       )}
       {showSettingsModal && ( <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"> <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}> <button onClick={() => setShowSettingsModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close settings"> <X size={24} /> </button> <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Global Settings</h2> <div className="space-y-4"> <div> <label htmlFor="companyNameInput" className={`block text-sm font-medium text-[${primaryTextColor}] mb-1`}>Company Name</label> <input type="text" id="companyNameInput" value={companyName || ''} onChange={(e) => setCompanyName(e.target.value)} className={`w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} /> </div> <div> <label htmlFor="globalLogoFileUpload" className={`block text-sm font-medium text-[${primaryTextColor}] mb-1`}>Company Logo (Upload File)</label> <input type="file" id="globalLogoFileUpload" accept="image/*" onChange={(e) => setNewGlobalLogoFile(e.target.files[0])} className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100`} /> {newGlobalLogoFile && <p className={`text-xs text-[${secondaryTextColor}] mt-1`}>Selected new file: {newGlobalLogoFile.name}</p>} {globalLogoUrl && !newGlobalLogoFile && ( <div className={`mt-2 text-sm text-[${secondaryTextColor}] flex items-center`}> <img src={globalLogoUrl} alt="Current Global Logo" className="h-8 w-auto ml-2 rounded-md" /> <button type="button" onClick={() => { setGlobalLogoUrl(null); setNewGlobalLogoFile(null); }} className="ml-2 text-red-600 hover:text-red-700 text-xs"> Clear current </button> </div> )} {!globalLogoUrl && !newGlobalLogoFile && ( <p className={`mt-2 text-sm text-[${secondaryTextColor}]`}>No global logo currently set.</p> )} </div> <button onClick={() => handleUpdateGlobalSettings(companyName, newGlobalLogoFile)} className={`w-full bg-[${buttonPrimary}] hover:bg-yellow-600 text-[${buttonTextPrimary}] font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}> {loading ? 'Saving...' : 'Save Settings'} </button> </div> {error && <p className="text-red-600 text-sm mt-4">{error}</p>} {message && <p className="text-green-600 text-sm mt-4">{message}</p>} </div> </div> )}
-      {showEditClientModal && selectedClient && ( <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"> <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}> <button onClick={() => setShowEditClientModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close modal"> <X size={24} /> </button> <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Edit Client: {selectedClient.client_name}</h2> <form onSubmit={handleUpdateClientDetails} className="space-y-4"> <div> <label htmlFor="editingClientName" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Client Name</label> <input type="text" id="editingClientName" value={editingClientName} onChange={(e) => setEditingClientName(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required /> </div> <button type="submit" className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}> {loading ? 'Updating...' : 'Update Name'} </button> </form> <div className="mt-6 border-t pt-4"> <button onClick={handleGenerateShareLink} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center" disabled={loading}> <Share2 size={16} className="mr-2"/> {loading ? 'Generating...' : 'Generate & Copy Share Link'} </button> </div> {error && <p className="text-red-600 text-sm mt-4">{error}</p>} {message && <p className="text-green-600 text-sm mt-4">{message}</p>} </div> </div> )}
+      {showEditClientModal && selectedClient && ( <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"> <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}> <button onClick={() => setShowEditClientModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close modal"> <X size={24} /> </button> <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Edit Client: {selectedClient.client_name}</h2> <form onSubmit={handleUpdateClientDetails} className="space-y-4"> <div> <label htmlFor="editingClientName" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Client Name</label> <input type="text" id="editingClientName" value={editingClientName} onChange={(e) => setEditingClientName(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required /> </div> <div> <label htmlFor="editingClientQuote" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Base Quote</label> <input type="number" step="0.01" id="editingClientQuote" value={editingClientQuote} onChange={(e) => setEditingClientQuote(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required /> </div> <button type="submit" className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}> {loading ? 'Updating...' : 'Update Details'} </button> </form> <div className="mt-6 border-t pt-4"> <button onClick={handleGenerateShareLink} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center" disabled={loading}> <Share2 size={16} className="mr-2"/> {loading ? 'Generating...' : 'Generate & Copy Share Link'} </button> </div> {error && <p className="text-red-600 text-sm mt-4">{error}</p>} {message && <p className="text-green-600 text-sm mt-4">{message}</p>} </div> </div> )}
 
       <div className={`w-full flex flex-col sm:flex-row justify-between items-center py-4 px-8 mb-8 rounded-xl shadow-lg bg-[${headerBg}] text-white`}>
         <div className="flex items-center mb-4 sm:mb-0">
@@ -746,7 +925,9 @@ const AdminDashboard = ({}) => {
                 </div>
 
                 <div>
-                    {activeClientTab === 'summary' && <PlaceholderContent title="Selection Summary" />}
+                    {activeClientTab === 'summary' && clientData && (
+                        <AdminSummaryView clientData={clientData} setActiveTab={setActiveClientTab} />
+                    )}
                     {activeClientTab === 'property' && clientData && (
                         <PropertyForm
                             properties={clientData.properties}
@@ -769,7 +950,12 @@ const AdminDashboard = ({}) => {
                             itineraryLegs={clientData.properties.filter(p => p.isPlaceholder)}
                         />
                     )}
-                    {activeClientTab === 'flights' && <PlaceholderContent title="Flights" />}
+                    {activeClientTab === 'flights' && clientData && (
+                        <FlightForm
+                            flights={clientData.flights}
+                            setFlights={handleUpdateFlights}
+                        />
+                    )}
                 </div>
 
                 <div className="mt-6 text-center">
