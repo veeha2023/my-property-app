@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 5.16 (Chronological Transportation Sort)
+// src/pages/ClientView.jsx - Version 5.17 (Hide Empty Itinerary Sections)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -607,7 +607,7 @@ const ClientView = () => {
 
         {activeTab === 'property' && (
             <div className="space-y-10">
-              {itineraries.map((itinerary) => (
+              {itineraries.filter(it => it.properties.length > 0).map((itinerary) => (
                 <div key={itinerary.id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                   <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -660,6 +660,7 @@ const ClientView = () => {
                   </div>
                 </div>
               ))}
+              {itineraries.filter(it => it.properties.length > 0).length === 0 && <PlaceholderContent title="Properties" />}
             </div>
         )}
 

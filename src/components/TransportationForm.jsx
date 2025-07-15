@@ -1,4 +1,4 @@
-// src/components/TransportationForm.jsx - Version 2.6 (Chronological Sort)
+// src/components/TransportationForm.jsx - Version 2.7 (Image Link Input Fix)
 import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Car, Calendar, Clock, MapPin, ShieldCheck, Users, DollarSign, Image, Link2, Ship, Bus, CheckCircle, Upload, Download } from 'lucide-react';
 
@@ -9,6 +9,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   const fileInputRef = useRef(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [imageLinks, setImageLinks] = useState(''); // State for image URL input
   const accentColor = '#FFD700';
 
   const transportationTypes = [
@@ -142,6 +143,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     setEditingItem(null);
     setNewItem(null);
     setShowTypeSelection(false);
+    setImageLinks('');
   };
 
   const toggleSelection = (id) => {
@@ -152,6 +154,19 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
       return t;
     });
     setTransportation(updatedTransportation);
+  };
+
+  const handleAddImageLinks = (currentItem, setItem) => {
+    const urls = imageLinks.split('\n').map(url => url.trim()).filter(url => url);
+    if (urls.length > 0) {
+      setItem(prev => ({ ...prev, images: [...(prev.images || []), ...urls] }));
+      setImageLinks('');
+    }
+  };
+
+  const handleRemoveImage = (imageToRemoveUrl, currentItem, setItem) => {
+    const updatedImages = currentItem.images.filter(url => url !== imageToRemoveUrl);
+    setItem(prev => ({ ...prev, images: updatedImages }));
   };
 
   // --- RENDER FUNCTIONS ---
@@ -223,6 +238,19 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
               <div className="lg:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Pricing & Images</div>
               <div><label className="block text-sm font-medium text-gray-700">Price (Differential)</label><input type="number" step="0.01" value={data.price} onChange={(e) => setData({...data, price: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., 150 or -50"/></div>
               <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"><option value="NZD">NZ$</option><option value="USD">$</option><option value="EUR">€</option><option value="INR">₹</option></select></div>
+              <div className="lg:col-span-3">
+                  <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
+                  <textarea rows="3" value={imageLinks} onChange={(e) => setImageLinks(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                  <button onClick={() => handleAddImageLinks(data, setData)} className="mt-2 text-sm bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600 flex items-center"><Link2 size={14} className="mr-1" /> Add from Links</button>
+              </div>
+              <div className="lg:col-span-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {(data.images || []).map((img, index) => (
+                      <div key={index} className="relative group">
+                          <img src={img} alt={`Transport ${index + 1}`} className="w-full h-24 object-cover rounded-md" />
+                          <button onClick={() => handleRemoveImage(img, data, setData)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><X size={12} /></button>
+                      </div>
+                  ))}
+              </div>
           </div>
           <div className="flex items-center justify-end space-x-3 mt-6">
               <button onClick={resetForm} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
