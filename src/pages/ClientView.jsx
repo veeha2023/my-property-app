@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 5.17 (Hide Empty Itinerary Sections)
+// src/pages/ClientView.jsx - Version 5.18 (Collapsible & Sorted Properties)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -6,7 +6,8 @@ import { supabase } from '../supabaseClient.js';
 import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight, Maximize2,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
-  Clock, Users, DollarSign, ChevronsRight, ShieldCheck, CheckCircle, Ship, Bus, Briefcase
+  Clock, Users, DollarSign, ChevronsRight, ShieldCheck, CheckCircle, Ship, Bus, Briefcase,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
@@ -31,6 +32,10 @@ const ClientView = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState({});
   const [expandedImage, setExpandedImage] = useState(null);
   const [expandedImagePropertyId, setExpandedImagePropertyId] = useState(null);
+  
+  // --- VERSION 5.18 START: State for collapsible sections ---
+  const [collapsedSections, setCollapsedSections] = useState({});
+  // --- VERSION 5.18 END ---
   
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
@@ -213,7 +218,7 @@ const ClientView = () => {
 
   const groupedProperties = useMemo(() => {
     if (!clientData?.properties) return {};
-    return clientData.properties.reduce((acc, prop) => {
+    const acc = clientData.properties.reduce((acc, prop) => {
         if (!prop.location) return acc;
         if (!acc[prop.location]) {
             acc[prop.location] = { id: prop.location, location: prop.location, checkIn: prop.checkIn, checkOut: prop.checkOut, properties: [] };
@@ -221,6 +226,14 @@ const ClientView = () => {
         if (!prop.isPlaceholder) { acc[prop.location].properties.push({ ...prop, price: parseCurrencyToNumber(prop.price) }); }
         return acc;
     }, {});
+    
+    // --- VERSION 5.18 START: Sort properties within each group by price ---
+    Object.values(acc).forEach(group => {
+        group.properties.sort((a, b) => a.price - b.price);
+    });
+    // --- VERSION 5.18 END ---
+
+    return acc;
   }, [clientData, parseCurrencyToNumber]);
 
   const itineraries = useMemo(() => sortItinerariesByDate(Object.values(groupedProperties)), [groupedProperties]);
@@ -344,6 +357,12 @@ const ClientView = () => {
       return { ...prevData, flights: newFlights };
     });
   }, []);
+
+  // --- VERSION 5.18 START: Function to toggle collapsible sections ---
+  const toggleSection = (location) => {
+    setCollapsedSections(prev => ({ ...prev, [location]: !prev[location] }));
+  };
+  // --- VERSION 5.18 END ---
 
   const totalChangeValue = useMemo(() => {
     let total = 0;
@@ -607,59 +626,78 @@ const ClientView = () => {
 
         {activeTab === 'property' && (
             <div className="space-y-10">
-              {itineraries.filter(it => it.properties.length > 0).map((itinerary) => (
-                <div key={itinerary.id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                  <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                      <div className="mb-2 md:mb-0">
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 text-left">{itinerary.location}</h2>
-                        <p className="text-sm text-gray-600"> <Calendar size={14} className="inline mr-1 text-gray-500" /> {itinerary.checkIn && itinerary.checkOut ? `${formatDate(itinerary.checkIn)} - ${formatDate(itinerary.checkOut)} · ${calculateNights(itinerary.checkIn, itinerary.checkOut)} nights` : 'Dates N/A'} </p>
-                      </div>
-                      <div className="text-left md:text-right mt-2 md:mt-0">
-                        <p className="text-sm text-gray-600">Selected Property:</p>
-                        <p className="font-semibold text-gray-900 text-base">{getSelectedProperty(itinerary.id)?.name || 'None'}</p>
+              {itineraries.filter(it => it.properties.length > 0).map((itinerary) => {
+                // --- VERSION 5.18 START: Check if section is collapsed ---
+                const isCollapsed = collapsedSections[itinerary.id];
+                // --- VERSION 5.18 END ---
+                return (
+                  <div key={itinerary.id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                    {/* --- VERSION 5.18 START: Add onClick to toggle section --- */}
+                    <div 
+                      className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100 cursor-pointer"
+                      onClick={() => toggleSection(itinerary.id)}
+                    >
+                    {/* --- VERSION 5.18 END --- */}
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                        <div className="mb-2 md:mb-0">
+                          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 text-left flex items-center">
+                            {itinerary.location}
+                            {/* --- VERSION 5.18 START: Add chevron icon --- */}
+                            {isCollapsed ? <ChevronDown className="ml-2" size={20} /> : <ChevronUp className="ml-2" size={20} />}
+                            {/* --- VERSION 5.18 END --- */}
+                          </h2>
+                          <p className="text-sm text-gray-600"> <Calendar size={14} className="inline mr-1 text-gray-500" /> {itinerary.checkIn && itinerary.checkOut ? `${formatDate(itinerary.checkIn)} - ${formatDate(itinerary.checkOut)} · ${calculateNights(itinerary.checkIn, itinerary.checkOut)} nights` : 'Dates N/A'} </p>
+                        </div>
+                        <div className="text-left md:text-right mt-2 md:mt-0">
+                          <p className="text-sm text-gray-600">Selected Property:</p>
+                          <p className="font-semibold text-gray-900 text-base">{getSelectedProperty(itinerary.id)?.name || 'None'}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="p-4 sm:p-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(itinerary.properties || []).length === 0 ? ( <div className="col-span-full text-center py-8 text-gray-500"><p>No properties for this itinerary.</p></div> ) : (
-                        itinerary.properties.map((property) => {
-                          const priceValue = parseCurrencyToNumber(property.price);
-                          const priceColorStyle = { color: getPriceColor(priceValue) };
-                          return (
-                            <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => toggleSelection(itinerary.id, property.id)}>
-                              <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl" onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }}>
-                                <img src={property.images?.[currentImageIndex[property.id] || property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={property.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}/>
-                                {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
-                                {property.images && property.images.length > 1 && (
-                                  <>
-                                    <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronLeft size={20} /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronRight size={20} /></button>
-                                  </>
-                                )}
-                                <button onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }} className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100" title="Expand Image"><Maximize2 size={16} /></button>
-                              </div>
-                              <div className="p-4 space-y-2">
-                                <h3 className="font-semibold text-lg text-gray-900 leading-tight">{property.name}</h3>
-                                <p className="text-gray-600 text-sm mb-3 min-h-[40px]">{property.description}</p>
-                                <div className="flex items-center text-sm text-gray-600 gap-3">
-                                  {(property.bedrooms > 0) && <div className="flex items-center"><BedDouble size={16} className="mr-1 text-gray-500" /><span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span></div>}
-                                  {property.bathrooms > 0 && <div className="flex items-center"><Bath size={16} className="mr-1 text-gray-500" /><span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span></div>}
+                    {/* --- VERSION 5.18 START: Conditionally render property list --- */}
+                    {!isCollapsed && (
+                      <div className="p-4 sm:p-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {(itinerary.properties || []).length === 0 ? ( <div className="col-span-full text-center py-8 text-gray-500"><p>No properties for this itinerary.</p></div> ) : (
+                            itinerary.properties.map((property) => {
+                              const priceValue = parseCurrencyToNumber(property.price);
+                              const priceColorStyle = { color: getPriceColor(priceValue) };
+                              return (
+                                <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => toggleSelection(itinerary.id, property.id)}>
+                                  <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl" onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }}>
+                                    <img src={property.images?.[currentImageIndex[property.id] || property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={property.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}/>
+                                    {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
+                                    {property.images && property.images.length > 1 && (
+                                      <>
+                                        <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronLeft size={20} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronRight size={20} /></button>
+                                      </>
+                                    )}
+                                    <button onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }} className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100" title="Expand Image"><Maximize2 size={16} /></button>
+                                  </div>
+                                  <div className="p-4 space-y-2">
+                                    <h3 className="font-semibold text-lg text-gray-900 leading-tight">{property.name}</h3>
+                                    <p className="text-gray-600 text-sm mb-3 min-h-[40px]">{property.description}</p>
+                                    <div className="flex items-center text-sm text-gray-600 gap-3">
+                                      {(property.bedrooms > 0) && <div className="flex items-center"><BedDouble size={16} className="mr-1 text-gray-500" /><span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span></div>}
+                                      {property.bathrooms > 0 && <div className="flex items-center"><Bath size={16} className="mr-1 text-gray-500" /><span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span></div>}
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <span className="text-base text-gray-700 font-medium">{calculateNights(property.checkIn, property.checkOut)} nights</span>
+                                        <div className="text-right"> <span className="font-bold text-xl" style={priceColorStyle}>{`${priceValue < 0 ? '-' : '+'}${getCurrencySymbol(property.currency)}${Math.abs(priceValue).toFixed(2)}`}</span> </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex items-center justify-between mt-2">
-                                    <span className="text-base text-gray-700 font-medium">{calculateNights(property.checkIn, property.checkOut)} nights</span>
-                                    <div className="text-right"> <span className="font-bold text-xl" style={priceColorStyle}>{`${priceValue < 0 ? '-' : '+'}${getCurrencySymbol(property.currency)}${Math.abs(priceValue).toFixed(2)}`}</span> </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {/* --- VERSION 5.18 END --- */}
                   </div>
-                </div>
-              ))}
+                )
+              })}
               {itineraries.filter(it => it.properties.length > 0).length === 0 && <PlaceholderContent title="Properties" />}
             </div>
         )}

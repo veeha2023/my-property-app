@@ -1,4 +1,4 @@
-// src/components/PropertyForm.jsx - Version 6.5 (Image URL Input)
+// src/components/PropertyForm.jsx - Version 6.7 (Collapsible & Sorted Properties)
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import {
@@ -16,6 +16,8 @@ import {
   Image,
   Plus,
   Link2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 const PropertyForm = ({
@@ -45,6 +47,10 @@ const PropertyForm = ({
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [imageLinks, setImageLinks] = useState(''); // State for image URL input
+  
+  // --- VERSION 6.7 START: State for collapsible sections ---
+  const [collapsedSections, setCollapsedSections] = useState({});
+  // --- VERSION 6.7 END ---
 
   const initialNewPropertyState = {
     name: '', location: '', checkIn: '', checkOut: '', currency: 'NZD',
@@ -360,6 +366,12 @@ const PropertyForm = ({
     }
   };
 
+  // --- VERSION 6.7 START: Function to toggle collapsible sections ---
+  const toggleSection = (location) => {
+    setCollapsedSections(prev => ({ ...prev, [location]: !prev[location] }));
+  };
+  // --- VERSION 6.7 END ---
+
   const groupPropertiesByLocation = () => {
     const grouped = {};
     (properties || []).forEach(property => {
@@ -370,6 +382,13 @@ const PropertyForm = ({
         grouped[property.location].push(property);
       }
     });
+
+    // --- VERSION 6.7 START: Sort properties within each group by price ---
+    for (const location in grouped) {
+      grouped[location].sort((a, b) => parseCurrencyToNumber(a.price) - parseCurrencyToNumber(b.price));
+    }
+    // --- VERSION 6.7 END ---
+
     return grouped;
   };
 
@@ -725,14 +744,25 @@ const PropertyForm = ({
         {Object.entries(groupedProperties).map(([location, locationProperties]) => {
           const actualProperties = locationProperties.filter(p => !p.isPlaceholder);
           const itineraryDetails = locationProperties[0];
+          // --- VERSION 6.7 START: Check if section is collapsed ---
+          const isCollapsed = collapsedSections[location];
+          // --- VERSION 6.7 END ---
 
           return (
             <div key={location} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-              <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100">
+              {/* --- VERSION 6.7 START: Add onClick to toggle section --- */}
+              <div 
+                className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100 cursor-pointer"
+                onClick={() => toggleSection(location)}
+              >
+              {/* --- VERSION 6.7 END --- */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                   <div className="mb-2 md:mb-0">
-                    <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left">
+                    <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left flex items-center">
                       {location}
+                      {/* --- VERSION 6.7 START: Add chevron icon --- */}
+                      {isCollapsed ? <ChevronDown className="ml-2" size={20} /> : <ChevronUp className="ml-2" size={20} />}
+                      {/* --- VERSION 6.7 END --- */}
                     </h2>
                     <p className="text-sm text-gray-600">
                       <Calendar size={14} className="inline mr-1 text-gray-500" />
@@ -750,11 +780,14 @@ const PropertyForm = ({
                     </div>
                     {adminMode && (
                         <button
-                            onClick={() => handleAddNewPropertyClick({
-                                location: itineraryDetails.location,
-                                checkIn: itineraryDetails.checkIn,
-                                checkOut: itineraryDetails.checkOut
-                            })}
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent toggling when clicking the button
+                                handleAddNewPropertyClick({
+                                    location: itineraryDetails.location,
+                                    checkIn: itineraryDetails.checkIn,
+                                    checkOut: itineraryDetails.checkOut
+                                });
+                            }}
                             className="px-4 py-2 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center text-sm"
                         >
                             <Plus size={16} className="inline mr-1" /> Add Property
@@ -764,165 +797,169 @@ const PropertyForm = ({
                 </div>
               </div>
 
-              <div className="p-5">
-                {actualProperties.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500">
-                        <p>No properties added for this itinerary yet.</p>
-                        <p>Click "Add Property" to get started.</p>
-                    </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                    {actualProperties.map((property) => {
-                      const priceValue = parseCurrencyToNumber(property.price);
-                      const priceColorStyle = getPriceColorStyle(priceValue);
+              {/* --- VERSION 6.7 START: Conditionally render property list --- */}
+              {!isCollapsed && (
+                <div className="p-5">
+                  {actualProperties.length === 0 ? (
+                      <div className="text-center py-10 text-gray-500">
+                          <p>No properties added for this itinerary yet.</p>
+                          <p>Click "Add Property" to get started.</p>
+                      </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                      {actualProperties.map((property) => {
+                        const priceValue = parseCurrencyToNumber(property.price);
+                        const priceColorStyle = getPriceColorStyle(priceValue);
 
-                      return (
-                        <div
-                          key={property.id}
-                          className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
-                            ${property.selected ? 'selected-border' : ''}`}
-                          onClick={() => toggleSelection(property.location, property.id)}
-                        >
-                          {adminMode && (
-                            <div className="absolute top-3 left-3 z-10">
-                              <input
-                                type="checkbox"
-                                checked={property.selected}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  toggleSelection(property.location, property.id);
-                                }}
-                                className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                              />
-                            </div>
-                          )}
-
-                          {adminMode && (
-                            <div className="absolute top-3 right-3 z-10 flex space-x-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditPropertyClick(property);
-                                }}
-                                className="p-2 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 transition-colors"
-                                title="Edit Property"
-                              >
-                                <Edit3 size={16} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteProperty(property.id);
-                                }}
-                                className="p-2 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
-                                title="Delete Property"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          )}
-
-                          <div className="aspect-w-16 aspect-h-9 overflow-hidden">
-                            {property.images && property.images.length > 0 ? (
-                              <div className="relative w-full h-48 sm:h-56">
-                                <img
-                                  src={property.images[currentImageIndex[property.id] || property.homeImageIndex || 0]}
-                                  alt={property.name}
-                                  className="w-full h-full object-cover"
-                                  onClick={(e) => {
+                        return (
+                          <div
+                            key={property.id}
+                            className={`relative group bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer
+                              ${property.selected ? 'selected-border' : ''}`}
+                            onClick={() => toggleSelection(property.location, property.id)}
+                          >
+                            {adminMode && (
+                              <div className="absolute top-3 left-3 z-10">
+                                <input
+                                  type="checkbox"
+                                  checked={property.selected}
+                                  onChange={(e) => {
                                     e.stopPropagation();
-                                    openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0);
+                                    toggleSelection(property.location, property.id);
                                   }}
+                                  className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
                                 />
-                                {property.images.length > 1 && (
-                                  <>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); prevImage(property.id); }}
-                                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
-                                    >
-                                      <ChevronLeft size={20} />
-                                    </button>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); nextImage(property.id); }}
-                                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
-                                    >
-                                      <ChevronRight size={20} />
-                                    </button>
-                                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                                      {property.images.map((img, idx) => (
-                                        <div
-                                          key={idx}
-                                          className={`w-2 h-2 rounded-full ${
-                                            idx === (currentImageIndex[property.id] || property.homeImageIndex || 0) ? 'bg-white' : 'bg-gray-400'
-                                          }`}
-                                        />
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
+                              </div>
+                            )}
+
+                            {adminMode && (
+                              <div className="absolute top-3 right-3 z-10 flex space-x-2">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0);
+                                    handleEditPropertyClick(property);
                                   }}
-                                  className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
-                                  title="Expand Image"
+                                  className="p-2 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 transition-colors"
+                                  title="Edit Property"
                                 >
-                                  <Maximize2 size={16} />
+                                  <Edit3 size={16} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteProperty(property.id);
+                                  }}
+                                  className="p-2 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
+                                  title="Delete Property"
+                                >
+                                  <Trash2 size={16} />
                                 </button>
                               </div>
-                            ) : (
-                              <div className="w-full h-48 sm:h-56 bg-gray-200 flex items-center justify-center text-gray-500">
-                                <Image size={48} />
-                              </div>
                             )}
-                          </div>
 
-                          <div className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="text-xl font-bold text-gray-900 leading-tight">
-                                {property.name}
-                              </h3>
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getCategoryColor(property.category)}`}>
-                                {property.category}
-                              </span>
+                            <div className="aspect-w-16 aspect-h-9 overflow-hidden">
+                              {property.images && property.images.length > 0 ? (
+                                <div className="relative w-full h-48 sm:h-56">
+                                  <img
+                                    src={property.images[currentImageIndex[property.id] || property.homeImageIndex || 0]}
+                                    alt={property.name}
+                                    className="w-full h-full object-cover"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0);
+                                    }}
+                                  />
+                                  {property.images.length > 1 && (
+                                    <>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); prevImage(property.id); }}
+                                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
+                                      >
+                                        <ChevronLeft size={20} />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); nextImage(property.id); }}
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
+                                      >
+                                        <ChevronRight size={20} />
+                                      </button>
+                                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                                        {property.images.map((img, idx) => (
+                                          <div
+                                            key={idx}
+                                            className={`w-2 h-2 rounded-full ${
+                                              idx === (currentImageIndex[property.id] || property.homeImageIndex || 0) ? 'bg-white' : 'bg-gray-400'
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                    </>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0);
+                                    }}
+                                    className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"
+                                    title="Expand Image"
+                                  >
+                                    <Maximize2 size={16} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="w-full h-48 sm:h-56 bg-gray-200 flex items-center justify-center text-gray-500">
+                                  <Image size={48} />
+                                </div>
+                              )}
                             </div>
-                            <p className="text-gray-600 text-sm mb-3 flex items-center">
-                              <MapPin size={14} className="inline mr-1 text-gray-500" />
-                              {property.location}
-                            </p>
-                            <p className="text-gray-600 text-sm mb-3">
-                              {property.description}
-                            </p>
 
-                            <div className="flex justify-between items-end mt-4">
-                              <div className="flex items-center text-gray-700 text-sm space-x-3">
-                                {(property.bedrooms !== undefined && property.bedrooms !== null && property.bedrooms !== '') && (property.bedrooms > 0) && (
-                                  <div className="flex items-center">
-                                    <BedDouble size={12} className="mr-0.5" />
-                                    <span>{property.bedrooms}</span>
-                                  </div>
-                                )}
-                                {(property.bathrooms !== undefined && property.bathrooms !== null && property.bathrooms !== '') && (property.bathrooms > 0) && (
-                                  <div className="flex items-center">
-                                    <Bath size={12} className="mr-0.5" />
-                                    <span>{property.bathrooms}</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="text-right w-full sm:w-auto">
-                                <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>
-                                  {getCurrencySymbol(property.currency)}{priceValue >= 0 ? '+' : ''}{priceValue.toFixed(2)}
+                            <div className="p-4">
+                              <div className="flex justify-between items-start mb-2">
+                                <h3 className="text-xl font-bold text-gray-900 leading-tight">
+                                  {property.name}
+                                </h3>
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getCategoryColor(property.category)}`}>
+                                  {property.category}
                                 </span>
                               </div>
+                              <p className="text-gray-600 text-sm mb-3 flex items-center">
+                                <MapPin size={14} className="inline mr-1 text-gray-500" />
+                                {property.location}
+                              </p>
+                              <p className="text-gray-600 text-sm mb-3">
+                                {property.description}
+                              </p>
+
+                              <div className="flex justify-between items-end mt-4">
+                                <div className="flex items-center text-gray-700 text-sm space-x-3">
+                                  {(property.bedrooms !== undefined && property.bedrooms !== null && property.bedrooms !== '') && (property.bedrooms > 0) && (
+                                    <div className="flex items-center">
+                                      <BedDouble size={12} className="mr-0.5" />
+                                      <span>{property.bedrooms}</span>
+                                    </div>
+                                  )}
+                                  {(property.bathrooms !== undefined && property.bathrooms !== null && property.bathrooms !== '') && (property.bathrooms > 0) && (
+                                    <div className="flex items-center">
+                                      <Bath size={12} className="mr-0.5" />
+                                      <span>{property.bathrooms}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="text-right w-full sm:w-auto">
+                                  <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>
+                                    {getCurrencySymbol(property.currency)}{priceValue >= 0 ? '+' : ''}{priceValue.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* --- VERSION 6.7 END --- */}
             </div>
           )
         })}

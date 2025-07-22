@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Version 7.26 (Self-Contained Auth & Session Handling)
+// src/pages/AdminDashboard.jsx - Version 7.27 (Collapsible & Sorted Properties)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
