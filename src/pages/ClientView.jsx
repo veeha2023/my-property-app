@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 5.21 (Dynamic Currency)
+// src/pages/ClientView.jsx - Version 5.25 (Fixed Hooks Rule)
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -39,10 +39,8 @@ const ClientView = () => {
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
 
-  // State for touch swipe
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
-  const [swipeTranslate, setSwipeTranslate] = useState({});
+  const [swipeState, setSwipeState] = useState({});
+  const SWIPE_THRESHOLD = 50; // Min distance for a swipe action
 
   const flightTypes = {
     domestic: { label: 'Domestic Flight', icon: <Plane /> },
@@ -189,6 +187,16 @@ const ClientView = () => {
         setClientData(fullClientData);
         setClientName(responseData.clientName || 'Client Selection');
         setGlobalLogoUrl(responseData.globalLogoUrl);
+
+        const initialIndexes = {};
+        const initialSwipeState = {};
+        (fullClientData.properties || []).forEach(p => {
+            initialIndexes[p.id] = p.homeImageIndex || 0;
+            initialSwipeState[p.id] = { startX: 0, moveX: 0, isSwiping: false };
+        });
+        initialSwipeState.expanded = { startX: 0, moveX: 0, isSwiping: false };
+        setCurrentImageIndex(initialIndexes);
+        setSwipeState(initialSwipeState);
 
     } catch (err) {
         console.error("Error during data fetch:", err);
@@ -405,7 +413,8 @@ const ClientView = () => {
     });
   };
 
-  const openExpandedImage = (propertyId, imageIndex) => {
+  const openExpandedImage = (e, propertyId, imageIndex) => {
+    e.stopPropagation(); // Prevents card selection
     const propertyToExpand = clientData?.properties?.find(p => p.id === propertyId);
     if (propertyToExpand?.images?.[imageIndex]) {
       setExpandedImage(propertyToExpand.images[imageIndex]);
@@ -441,41 +450,80 @@ const ClientView = () => {
     });
   }, [expandedImagePropertyId, clientData]);
 
-  // Swipe handlers for image carousels
-  const handleTouchStart = (e) => {
-    touchEndX.current = 0; // Reset end position
-    touchStartX.current = e.touches[0].clientX;
+  const handleTouchStart = (e, propertyId) => {
+    setSwipeState(prev => ({
+      ...prev,
+      [propertyId]: {
+        startX: e.touches[0].clientX,
+        moveX: 0,
+        isSwiping: true,
+      }
+    }));
   };
 
   const handleTouchMove = (e, propertyId) => {
-    touchEndX.current = e.touches[0].clientX;
-    const diff = touchStartX.current - touchEndX.current;
-    // Limit translation to a fraction of the swipe distance for a subtle effect
-    setSwipeTranslate(prev => ({ ...prev, [propertyId]: -diff / 4 }));
+      if (!swipeState[propertyId]?.isSwiping) return;
+      const moveX = e.touches[0].clientX - swipeState[propertyId].startX;
+      setSwipeState(prev => ({
+          ...prev,
+          [propertyId]: { ...prev[propertyId], moveX }
+      }));
   };
 
   const handleTouchEnd = (propertyId) => {
-    const diff = touchStartX.current - touchEndX.current;
-    if (Math.abs(diff) > 50) { // Threshold for a swipe
-      if (diff > 0) {
-        // Swiped left
+    if (!swipeState[propertyId]?.isSwiping) return;
+
+    const { moveX } = swipeState[propertyId];
+
+    if (Math.abs(moveX) > SWIPE_THRESHOLD) {
+      if (moveX < 0) { // Swiped left
         nextImage(propertyId);
-      } else {
-        // Swiped right
+      } else { // Swiped right
         prevImage(propertyId);
       }
     }
-    // Reset translation smoothly
-    setSwipeTranslate(prev => ({ ...prev, [propertyId]: 0 }));
+
+    setSwipeState(prev => ({
+      ...prev,
+      [propertyId]: { startX: 0, moveX: 0, isSwiping: false }
+    }));
+  };
+
+  const handleExpandedTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setSwipeState(prev => ({
+        ...prev,
+        expanded: {
+          ...prev.expanded,
+          startX: e.touches[0].clientX,
+          isSwiping: true,
+        }
+      }));
+    }
+  };
+
+  const handleExpandedTouchMove = (e) => {
+    if (!swipeState.expanded?.isSwiping) return;
+    const moveX = e.touches[0].clientX - swipeState.expanded.startX;
+    setSwipeState(prev => ({
+      ...prev,
+      expanded: { ...prev.expanded, moveX }
+    }));
   };
 
   const handleExpandedTouchEnd = () => {
-    if (touchStartX.current - touchEndX.current > 50) {
-      nextExpandedImage();
+    if (!swipeState.expanded?.isSwiping) return;
+    const { moveX } = swipeState.expanded;
+
+    if (Math.abs(moveX) > SWIPE_THRESHOLD) {
+      if (moveX < 0) nextExpandedImage();
+      else prevExpandedImage();
     }
-    if (touchStartX.current - touchEndX.current < -50) {
-      prevExpandedImage();
-    }
+
+    setSwipeState(prev => ({
+      ...prev,
+      expanded: { startX: 0, moveX: 0, isSwiping: false }
+    }));
   };
 
   useEffect(() => {
@@ -489,6 +537,12 @@ const ClientView = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [expandedImage, nextExpandedImage, prevExpandedImage, closeExpandedImage]);
+
+  // --- Version 4: Moved hooks to top level to fix ESLint errors ---
+  const expandedProperty = useMemo(() => findPropertyForExpandedView(expandedImagePropertyId), [expandedImagePropertyId, clientData]);
+  const expandedImages = useMemo(() => expandedProperty?.images || [], [expandedProperty]);
+  const expandedImageCurrentIndex = useMemo(() => currentImageIndex[expandedImagePropertyId] || 0, [currentImageIndex, expandedImagePropertyId]);
+  const expandedSwipeState = useMemo(() => swipeState.expanded || { moveX: 0, isSwiping: false }, [swipeState.expanded]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-sans text-xl">Loading client selection...</div>;
   if (error) return <div className="min-h-screen flex items-center justify-center font-sans text-xl text-red-600 p-8 text-center">{error}</div>;
@@ -520,14 +574,34 @@ const ClientView = () => {
       `}</style>
 
       {expandedImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleExpandedTouchEnd}>
-          <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[calc(100vh-80px)] bg-black flex items-center justify-center rounded-xl shadow-lg">
-            <button onClick={closeExpandedImage} className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-10" aria-label="Close"><X size={24} /></button>
-            <img src={expandedImage} alt="Expanded view" className="max-w-full max-h-full object-contain rounded-xl"/>
-            {expandedImagePropertyId && findPropertyForExpandedView(expandedImagePropertyId)?.images?.length > 1 && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center overflow-hidden" onClick={closeExpandedImage}>
+          <div 
+            className="relative w-full h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleExpandedTouchStart}
+            onTouchMove={handleExpandedTouchMove}
+            onTouchEnd={handleExpandedTouchEnd}
+          >
+            <button onClick={closeExpandedImage} className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-20" aria-label="Close"><X size={24} /></button>
+            
+            <div
+              className="flex h-full w-full items-center"
+              style={{
+                transform: `translateX(calc(-${expandedImageCurrentIndex * 100}% + ${expandedSwipeState.moveX}px))`,
+                transition: expandedSwipeState.isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
+              {expandedImages.map((url, index) => (
+                <div key={index} className="w-full h-full flex-shrink-0 flex items-center justify-center p-4">
+                  <img src={url} alt={`Expanded view ${index + 1}`} className="max-w-full max-h-full object-contain rounded-xl pointer-events-none"/>
+                </div>
+              ))}
+            </div>
+
+            {expandedImages.length > 1 && (
               <>
-                <button onClick={prevExpandedImage} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg" aria-label="Previous"><ChevronLeft size={24} /></button>
-                <button onClick={nextExpandedImage} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg" aria-label="Next"><ChevronRight size={24} /></button>
+                <button onClick={(e) => {e.stopPropagation(); prevExpandedImage();}} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Previous"><ChevronLeft size={24} /></button>
+                <button onClick={(e) => {e.stopPropagation(); nextExpandedImage();}} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Next"><ChevronRight size={24} /></button>
               </>
             )}
           </div>
@@ -691,23 +765,60 @@ const ClientView = () => {
                             itinerary.properties.map((property) => {
                               const priceValue = parseCurrencyToNumber(property.price);
                               const priceColorStyle = { color: getPriceColor(priceValue) };
-                              const imageStyle = {
-                                transform: `translateX(${swipeTranslate[property.id] || 0}px)`,
-                                transition: swipeTranslate[property.id] === 0 ? 'transform 0.3s ease-out' : 'none',
-                              };
+                              const currentIdx = currentImageIndex[property.id] || 0;
+                              const currentSwipeState = swipeState[property.id] || { moveX: 0, isSwiping: false };
+                              const hasMultipleImages = property.images && property.images.length > 1;
+
                               return (
-                                <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => toggleSelection(itinerary.id, property.id)}>
-                                  <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl" onTouchStart={handleTouchStart} onTouchMove={(e) => handleTouchMove(e, property.id)} onTouchEnd={() => handleTouchEnd(property.id)}>
-                                    <img src={property.images?.[currentImageIndex[property.id] || property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={property.name} className="w-full h-full object-cover group-hover:scale-105" style={imageStyle} onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}/>
+                                <div 
+                                    key={property.id} 
+                                    className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer ${property.selected ? 'selected-border' : 'border-gray-200'}`} 
+                                    onClick={() => toggleSelection(itinerary.id, property.id)}
+                                >
+                                  <div 
+                                    className="relative aspect-[4/3] overflow-hidden rounded-t-xl bg-gray-200"
+                                    onTouchStart={(e) => handleTouchStart(e, property.id)}
+                                    onTouchMove={(e) => handleTouchMove(e, property.id)}
+                                    onTouchEnd={() => handleTouchEnd(property.id)}
+                                    onClick={(e) => openExpandedImage(e, property.id, currentIdx)}
+                                  >
+                                    <div
+                                        className="flex h-full"
+                                        style={{
+                                            transform: `translateX(calc(-${currentIdx * 100}% + ${currentSwipeState.moveX}px))`,
+                                            transition: currentSwipeState.isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        }}
+                                    >
+                                        {property.images && property.images.length > 0 ? (
+                                            property.images.map((url, index) => (
+                                                <img
+                                                    key={index}
+                                                    src={url || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"}
+                                                    alt={`${property.name} ${index + 1}`}
+                                                    className="w-full h-full object-cover flex-shrink-0 pointer-events-none"
+                                                    onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}
+                                                />
+                                            ))
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-500">No Image Available</div>
+                                        )}
+                                    </div>
+
                                     {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
-                                    {property.images && property.images.length > 1 && (
+                                    
+                                    {hasMultipleImages && (
                                       <>
-                                        <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronLeft size={20} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100"><ChevronRight size={20} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronLeft size={20} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronRight size={20} /></button>
+                                        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+                                            {property.images.map((_, index) => (
+                                                <span key={index} className={`block w-2 h-2 rounded-full transition-colors ${currentIdx === index ? 'bg-white' : 'bg-gray-400'}`}></span>
+                                            ))}
+                                        </div>
                                       </>
                                     )}
-                                    <button onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }} className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100" title="Expand Image"><Maximize2 size={16} /></button>
                                   </div>
+                                  
                                   <div className="p-4 space-y-2">
                                     <h3 className="font-semibold text-lg text-gray-900 leading-tight">{property.name}</h3>
                                     <p className="text-gray-600 text-sm mb-3 min-h-[40px]">{property.description}</p>
