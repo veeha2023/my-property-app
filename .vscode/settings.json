@@ -1,0 +1,7 @@
+// .vscode/settings.json
+// Version 2.1: Simplified to resolve schema conflicts.
+{
+  "deno.enablePaths": [
+    "supabase/functions"
+  ]
+}

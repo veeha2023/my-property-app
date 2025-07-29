@@ -1,0 +1,17 @@
+# supabase/config.toml
+# Version 1.1: Corrected the import_map path.
+
+# This is the main configuration file for your Supabase project.
+# It helps the Supabase CLI understand your project structure and settings.
+
+[functions.scrape-images]
+enabled = true
+verify_jwt = true
+# CORRECTED PATH: Points to the deno.jsonc file in the supabase directory.
+import_map = "./deno.jsonc"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/scrape-images/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/scrape-images/*.html" ]

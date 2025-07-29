@@ -1,0 +1,24 @@
+// supabase/deno.jsonc
+// Version 1.1: Updated to use import_map.json
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "importMap": "./import_map.json",
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-env --watch functions/scrape-images/index.ts",
+    "cache": "deno cache --reload functions/scrape-images/index.ts"
+  },
+  "fmt": {
+    "files": {
+      "include": ["functions/"]
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["functions/"]
+    }
+  }
+}

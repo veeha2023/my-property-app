@@ -1,5 +1,5 @@
-// src/components/PropertyForm.jsx - Version 6.7 (Collapsible & Sorted Properties)
-import React, { useState, useEffect, useCallback } from 'react';
+// src/components/PropertyForm.jsx - Version 6.12 (Robust CSV Import & Error Handling)
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import {
   Calendar,
@@ -18,6 +18,7 @@ import {
   Link2,
   ChevronDown,
   ChevronUp,
+  Download,
 } from 'lucide-react';
 
 const PropertyForm = ({
@@ -46,11 +47,11 @@ const PropertyForm = ({
   const [uploadingImages, setUploadingImages] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
-  const [imageLinks, setImageLinks] = useState(''); // State for image URL input
-  
-  // --- VERSION 6.7 START: State for collapsible sections ---
+  const [imageLinks, setImageLinks] = useState('');
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState(null);
   const [collapsedSections, setCollapsedSections] = useState({});
-  // --- VERSION 6.7 END ---
+  const fileInputRef = useRef(null);
 
   const initialNewPropertyState = {
     name: '', location: '', checkIn: '', checkOut: '', currency: 'NZD',
@@ -62,16 +63,11 @@ const PropertyForm = ({
 
   const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode) {
-      case 'NZD':
-        return 'NZ$';
-      case 'USD':
-        return '$';
-      case 'EUR':
-        return '€';
-      case 'INR':
-        return '₹';
-      default:
-        return currencyCode;
+      case 'NZD': return 'NZ$';
+      case 'USD': return '$';
+      case 'EUR': return '€';
+      case 'INR': return '₹';
+      default: return currencyCode;
     }
   };
 
@@ -84,6 +80,183 @@ const PropertyForm = ({
     });
     setCurrentImageIndex(initialImageIndices);
   }, [properties]);
+
+  const parseDateString = (dateString) => {
+    if (!dateString) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (parts) {
+      const day = parts[1].padStart(2, '0');
+      const month = parts[2].padStart(2, '0');
+      const year = parts[3];
+      return `${year}-${month}-${day}`;
+    }
+    return dateString;
+  };
+  
+  const parseCSV = (text) => {
+    const rows = [];
+    let currentLine = '';
+    let inQuotes = false;
+  
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      currentLine += char;
+  
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      }
+  
+      if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (currentLine.trim()) {
+          rows.push(currentLine.trim());
+        }
+        currentLine = '';
+        if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+          i++; // Skip the \n in a \r\n sequence
+        }
+      }
+    }
+  
+    if (currentLine.trim()) {
+      rows.push(currentLine.trim());
+    }
+  
+    const parseLine = (line) => {
+      const values = [];
+      let currentVal = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            currentVal += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          values.push(currentVal);
+          currentVal = '';
+        } else {
+          currentVal += char;
+        }
+      }
+      values.push(currentVal);
+      return values.map(v => v.trim());
+    };
+  
+    return rows.map(parseLine);
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setError(null);
+      setMessage('');
+      try {
+        const text = e.target.result;
+        const parsedData = parseCSV(text);
+
+        const lines = parsedData.filter(row => row.some(cell => cell.trim() !== '') && !row[0].trim().startsWith('#'));
+
+        if (lines.length < 2) {
+          setError("CSV file must contain a header row and at least one data row.");
+          return;
+        }
+        
+        const headers = lines[0].map(h => h.trim());
+        const requiredHeaders = [
+          'name', 'location', 'checkIn', 'checkOut', 'currency', 'price',
+          'price_type', 'bedrooms', 'bathrooms', 'images', 'homeImageIndex',
+          'selected', 'description', 'category'
+        ];
+        
+        if (!requiredHeaders.every(h => headers.includes(h))) {
+          setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
+          return;
+        }
+
+        const newPropertiesFromCSV = [];
+        const errors = [];
+
+        lines.slice(1).forEach((data, index) => {
+          if (data.length !== headers.length) {
+            errors.push(`Line ${index + 2}: Incorrect number of columns. Expected ${headers.length}, but found ${data.length}.`);
+            return;
+          }
+
+          const propertyData = {};
+          headers.forEach((header, i) => {
+              propertyData[header] = data[i] || '';
+          });
+
+          newPropertiesFromCSV.push({
+              id: `prop-csv-${Date.now()}-${index}`,
+              name: propertyData.name,
+              location: propertyData.location,
+              checkIn: parseDateString(propertyData.checkIn),
+              checkOut: parseDateString(propertyData.checkOut),
+              currency: propertyData.currency || 'NZD',
+              price: parseFloat(propertyData.price) || 0,
+              price_type: propertyData.price_type || 'Per Night',
+              bedrooms: parseInt(propertyData.bedrooms, 10) || 0,
+              bathrooms: parseFloat(propertyData.bathrooms) || 0,
+              images: propertyData.images ? propertyData.images.split(/[;\r\n]+/).map(url => url.trim()).filter(Boolean) : [],
+              homeImageIndex: parseInt(propertyData.homeImageIndex, 10) || 0,
+              selected: propertyData.selected ? propertyData.selected.toUpperCase() === 'TRUE' : false,
+              description: propertyData.description,
+              category: propertyData.category || 'Luxury',
+              isPlaceholder: false,
+          });
+        });
+
+        if (errors.length > 0) {
+          setError(`Found errors in ${errors.length} line(s). Please check the file format.`);
+          console.error("CSV Parsing Errors:", errors);
+        }
+
+        if (newPropertiesFromCSV.length > 0) {
+          const updatedProperties = [...properties, ...newPropertiesFromCSV];
+          setProperties(updatedProperties);
+          if (onSave) {
+            onSave(updatedProperties);
+          }
+          setMessage(`${newPropertiesFromCSV.length} properties imported successfully! Remember to save all client changes.`);
+        } else if (errors.length === 0) {
+          setError("No new properties were imported. The file might be empty or all rows had errors.");
+        }
+
+      } catch (err) {
+        setError(`Failed to process CSV file: ${err.message}`);
+        console.error(err);
+      } finally {
+        if (event.target) {
+          event.target.value = null;
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const downloadTemplate = () => {
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category";
+    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","A stunning villa with lake views, perfect for a getaway.","Luxury"`;
+    const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;) or newlines. If using newlines, the entire cell must be enclosed in double quotes (\").";
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "property_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleAddNewPropertyClick = (itineraryDetails = {}) => {
       setNewProperty({
@@ -166,19 +339,26 @@ const PropertyForm = ({
     setError(null);
     setIsAddingNew(false);
     setShowPropertyFormModal(false);
-    setImageLinks(''); // Clear the image links textarea
+    setImageLinks('');
   };
 
-  const handleDeleteProperty = (idToDelete) => {
-    if (window.confirm("Are you sure you want to delete this property? This action cannot be undone.")) {
-      const updatedProperties = properties.filter(prop => prop.id !== idToDelete);
-      setProperties(updatedProperties);
-      if (onSave) {
-        onSave(updatedProperties);
-      }
-      setMessage('Property deleted successfully!');
-      setError(null);
+  const confirmDeleteProperty = (property) => {
+    setPropertyToDelete(property);
+    setShowConfirmDeleteModal(true);
+  };
+
+  const handleDeleteProperty = () => {
+    if (!propertyToDelete) return;
+    const idToDelete = propertyToDelete.id;
+    const updatedProperties = properties.filter(prop => prop.id !== idToDelete);
+    setProperties(updatedProperties);
+    if (onSave) {
+      onSave(updatedProperties);
     }
+    setMessage('Property deleted successfully!');
+    setError(null);
+    setShowConfirmDeleteModal(false);
+    setPropertyToDelete(null);
   };
 
   const toggleSelection = useCallback((locationId, propertyId) => {
@@ -330,7 +510,6 @@ const PropertyForm = ({
     return diffDays;
   };
   
-  // New function to handle adding images from URLs
   const handleAddImageLinks = (currentProperty, setProperty) => {
     const urls = imageLinks.split('\n').map(url => url.trim()).filter(url => url);
     if (urls.length > 0) {
@@ -338,7 +517,7 @@ const PropertyForm = ({
         ...prev,
         images: [...prev.images, ...urls]
       }));
-      setImageLinks(''); // Clear textarea after adding
+      setImageLinks('');
       setMessage(`${urls.length} image(s) added from links.`);
     }
   };
@@ -366,11 +545,9 @@ const PropertyForm = ({
     }
   };
 
-  // --- VERSION 6.7 START: Function to toggle collapsible sections ---
   const toggleSection = (location) => {
     setCollapsedSections(prev => ({ ...prev, [location]: !prev[location] }));
   };
-  // --- VERSION 6.7 END ---
 
   const groupPropertiesByLocation = () => {
     const grouped = {};
@@ -383,11 +560,9 @@ const PropertyForm = ({
       }
     });
 
-    // --- VERSION 6.7 START: Sort properties within each group by price ---
     for (const location in grouped) {
       grouped[location].sort((a, b) => parseCurrencyToNumber(a.price) - parseCurrencyToNumber(b.price));
     }
-    // --- VERSION 6.7 END ---
 
     return grouped;
   };
@@ -575,8 +750,6 @@ const PropertyForm = ({
             </button>
           </div>
           
-          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {currentProperty.images.map((image, index) => (
               <div key={index} className="relative group rounded-lg overflow-hidden shadow-sm aspect-video">
@@ -592,11 +765,7 @@ const PropertyForm = ({
                   <button
                     onClick={() => setProperty(prev => ({ ...prev, homeImageIndex: index }))}
                     className={`absolute bottom-1 left-1 rounded-full p-1 shadow-md transition-all duration-200
-                      ${currentProperty.homeImageIndex === index ? `bg-${accentColor.replace('#', '')}/90 text-gray-900` : 'bg-gray-700 bg-opacity-70 text-white hover:bg-opacity-90'}`}
-                    style={{
-                      backgroundColor: currentProperty.homeImageIndex === index ? accentColor : undefined,
-                      color: currentProperty.homeImageIndex === index ? '#333' : 'white'
-                    }}
+                      ${currentProperty.homeImageIndex === index ? `bg-accent/90 text-gray-900` : 'bg-gray-700 bg-opacity-70 text-white hover:bg-opacity-90'}`}
                     title="Set as Home Image"
                   >
                     <Image size={16} />
@@ -628,11 +797,8 @@ const PropertyForm = ({
   }, 0);
 
   return (
-    <div className="admin-property-form-container font-['Century_Gothic']">
+    <div className="admin-property-form-container font-sans">
       <style>{`
-        .font-century-gothic {
-          font-family: 'Century Gothic', sans-serif;
-        }
         .selected-border {
             border-color: ${accentColor};
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
@@ -640,15 +806,65 @@ const PropertyForm = ({
             border-radius: 1rem;
         }
       `}</style>
-      {message && <p className="mb-4 text-center text-sm text-blue-600">{message}</p>}
+      
+      {adminMode && (
+        <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
+          <div className="flex justify-between items-center">
+            <h3 className="text-2xl font-bold text-gray-800">Manage Properties</h3>
+            <div className="flex items-center gap-4">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".csv"
+                onChange={handleFileUpload}
+              />
+              <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
+                  <Upload size={18} className="mr-2" /> Import from CSV
+              </button>
+              <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                <Download size={16} />
+                <span>Download Template</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {message && <p className="mb-4 text-center text-sm text-green-600 bg-green-100 p-3 rounded-lg">{message}</p>}
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm text-center">
           {error}
         </div>
       )}
 
-      {adminMode && !isAddingNew && !editingProperty && (
-        <div className="mb-6 text-center">
+      {showConfirmDeleteModal && propertyToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800 text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Confirm Deletion</h2>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete the property "
+              <span className="font-semibold">{propertyToDelete.name}</span>"? This
+              action cannot be undone.
+            </p>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => {
+                  setShowConfirmDeleteModal(false);
+                  setPropertyToDelete(null);
+                }}
+                className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProperty}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -744,25 +960,18 @@ const PropertyForm = ({
         {Object.entries(groupedProperties).map(([location, locationProperties]) => {
           const actualProperties = locationProperties.filter(p => !p.isPlaceholder);
           const itineraryDetails = locationProperties[0];
-          // --- VERSION 6.7 START: Check if section is collapsed ---
           const isCollapsed = collapsedSections[location];
-          // --- VERSION 6.7 END ---
-
           return (
             <div key={location} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-              {/* --- VERSION 6.7 START: Add onClick to toggle section --- */}
               <div 
                 className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100 cursor-pointer"
                 onClick={() => toggleSection(location)}
               >
-              {/* --- VERSION 6.7 END --- */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                   <div className="mb-2 md:mb-0">
-                    <h2 className="text-2xl font-bold text-gray-900 font-century-gothic text-left flex items-center">
+                    <h2 className="text-2xl font-bold text-gray-900 font-sans text-left flex items-center">
                       {location}
-                      {/* --- VERSION 6.7 START: Add chevron icon --- */}
                       {isCollapsed ? <ChevronDown className="ml-2" size={20} /> : <ChevronUp className="ml-2" size={20} />}
-                      {/* --- VERSION 6.7 END --- */}
                     </h2>
                     <p className="text-sm text-gray-600">
                       <Calendar size={14} className="inline mr-1 text-gray-500" />
@@ -781,7 +990,7 @@ const PropertyForm = ({
                     {adminMode && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation(); // Prevent toggling when clicking the button
+                                e.stopPropagation();
                                 handleAddNewPropertyClick({
                                     location: itineraryDetails.location,
                                     checkIn: itineraryDetails.checkIn,
@@ -797,7 +1006,6 @@ const PropertyForm = ({
                 </div>
               </div>
 
-              {/* --- VERSION 6.7 START: Conditionally render property list --- */}
               {!isCollapsed && (
                 <div className="p-5">
                   {actualProperties.length === 0 ? (
@@ -847,7 +1055,7 @@ const PropertyForm = ({
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteProperty(property.id);
+                                    confirmDeleteProperty(property);
                                   }}
                                   className="p-2 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
                                   title="Delete Property"
@@ -959,7 +1167,6 @@ const PropertyForm = ({
                   )}
                 </div>
               )}
-              {/* --- VERSION 6.7 END --- */}
             </div>
           )
         })}

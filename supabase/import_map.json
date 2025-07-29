@@ -1,0 +1,6 @@
+{
+    "imports": {
+      "std/": "https://deno.land/std@0.208.0/",
+      "deno_dom": "https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts"
+    }
+  }

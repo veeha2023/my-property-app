@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Version 7.27 (Collapsible & Sorted Properties)
+// src/pages/AdminDashboard.jsx - Version 7.31 (Dynamic Currency Fix)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
@@ -8,9 +8,9 @@ import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
-const AdminSummaryView = ({ clientData, setActiveTab }) => {
+const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
     const getCurrencySymbol = (currencyCode) => {
         const symbols = { NZD: 'NZ$', USD: '$', EUR: '€', INR: '₹' };
         return symbols[currencyCode] || currencyCode || 'NZ$';
@@ -52,6 +52,7 @@ const AdminSummaryView = ({ clientData, setActiveTab }) => {
 
     const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
     const finalQuote = baseQuote + totalChange;
+    const currencySymbol = getCurrencySymbol(currency);
 
     return (
         <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
@@ -60,15 +61,15 @@ const AdminSummaryView = ({ clientData, setActiveTab }) => {
                 <div className="grid grid-cols-3 gap-4 w-full md:w-auto">
                     <div className="text-center p-3 rounded-lg bg-gray-100">
                         <p className="text-xs text-gray-600">Base Quote</p>
-                        <p className="text-2xl font-bold text-gray-800">{getCurrencySymbol('NZD')}{baseQuote.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-gray-800">{currencySymbol}{baseQuote.toFixed(2)}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-gray-100">
                         <p className="text-xs text-gray-600">Selections</p>
-                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{getCurrencySymbol('NZD')}{Math.abs(totalChange).toFixed(2)}</p>
+                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(totalChange).toFixed(2)}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-blue-100 border border-blue-200">
                         <p className="text-xs text-blue-800">Final Quote</p>
-                        <p className="text-2xl font-bold text-blue-800">{getCurrencySymbol('NZD')}{finalQuote.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-blue-800">{currencySymbol}{finalQuote.toFixed(2)}</p>
                     </div>
                 </div>
             </div>
@@ -172,6 +173,7 @@ const AdminDashboard = () => {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [editingClientName, setEditingClientName] = useState('');
   const [editingClientQuote, setEditingClientQuote] = useState(0);
+  const [editingClientCurrency, setEditingClientCurrency] = useState('NZD');
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -190,17 +192,6 @@ const AdminDashboard = () => {
   const [originalEditingLegLocation, setOriginalEditingLegLocation] = useState('');
   const [originalEditingLegCheckIn, setOriginalEditingLegCheckIn] = useState('');
   const [originalEditingLegCheckOut, setOriginalEditingLegCheckOut] = useState('');
-
-
-  const accentColor = '#FFD700';
-  const primaryBgColor = '#F7F7F7';
-  const secondaryBgColor = '#FFFFFF';
-  const sidebarBg = '#1A202C';
-  const headerBg = '#1A202C';
-  const primaryTextColor = '#2D3748';
-  const secondaryTextColor = '#718096';
-  const buttonPrimary = accentColor;
-  const buttonTextPrimary = '#1A202C';
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
   useEffect(() => {
@@ -286,6 +277,7 @@ const AdminDashboard = () => {
       flights: [],
       transportation: [],
       quote: 0,
+      currency: 'NZD',
     };
 
     const data = typeof clientPropertiesData === 'object' && clientPropertiesData !== null ? clientPropertiesData : {};
@@ -334,6 +326,7 @@ const AdminDashboard = () => {
       transportation: sortTransportationByDate(existingTransportation),
       flights: sortFlightsByDate(existingFlights),
       quote: data.quote || 0,
+      currency: data.currency || 'NZD',
     };
   };
 
@@ -356,6 +349,7 @@ const AdminDashboard = () => {
 
     setEditingClientName(client.client_name);
     setEditingClientQuote(fullClientData.quote);
+    setEditingClientCurrency(fullClientData.currency);
     setActiveClientTab('summary');
     setMessage(`Editing details for ${client.client_name}`);
     setError(null);
@@ -560,7 +554,7 @@ const AdminDashboard = () => {
     setError(null);
 
     const newClientId = uuidv4();
-    const initialClientData = { properties: [], activities: [], flights: [], transportation: [], quote: 0 };
+    const initialClientData = { properties: [], activities: [], flights: [], transportation: [], quote: 0, currency: 'NZD' };
 
     const { error: insertError } = await supabase
       .from('clients')
@@ -630,21 +624,22 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteClient = async (clientId) => {
-    console.log('Confirm deletion of client with ID:', clientId);
-    setLoading(true);
-    setMessage('');
-    setError(null);
-    const { error: deleteError } = await supabase.from('clients').delete().eq('id', clientId);
-    if (deleteError) {
-      console.error('Error deleting client:', deleteError.message);
-      setError('Error deleting client: ' + deleteError.message);
-    } else {
-      setMessage('Client deleted successfully!');
-      setSelectedClient(null);
-      setClientData(null);
-      fetchClients();
+    if (window.confirm("Are you sure you want to delete this client? This action cannot be undone.")) {
+      setLoading(true);
+      setMessage('');
+      setError(null);
+      const { error: deleteError } = await supabase.from('clients').delete().eq('id', clientId);
+      if (deleteError) {
+        console.error('Error deleting client:', deleteError.message);
+        setError('Error deleting client: ' + deleteError.message);
+      } else {
+        setMessage('Client deleted successfully!');
+        setSelectedClient(null);
+        setClientData(null);
+        fetchClients();
+      }
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleOpenEditClientModal = useCallback((client) => {
@@ -652,6 +647,7 @@ const AdminDashboard = () => {
     setEditingClientName(client.client_name);
     const currentData = initializeClientData(client.client_properties);
     setEditingClientQuote(currentData.quote);
+    setEditingClientCurrency(currentData.currency || 'NZD');
     if (client.share_token) {
         setShareLink(`${window.location.origin}/client/${client.id}?token=${client.share_token}`);
     } else {
@@ -669,7 +665,8 @@ const AdminDashboard = () => {
     try {
         const updatedClientData = {
             ...clientData,
-            quote: parseFloat(editingClientQuote) || 0
+            quote: parseFloat(editingClientQuote) || 0,
+            currency: editingClientCurrency,
         };
         const { error: updateClientError } = await supabase
             .from('clients')
@@ -777,123 +774,38 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen bg-[${primaryBgColor}] font-['Century_Gothic']`}>
-      {showItineraryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-          <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
-            <button onClick={() => { setShowItineraryModal(false); setEditingItineraryLeg(null); setNewItinerary({ location: '', checkIn: '', checkOut: '' }); }} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close modal">
-              <X size={24} />
-            </button>
-            <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>{editingItineraryLeg ? 'Edit Itinerary Leg' : 'Add New Itinerary Leg'}</h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="itineraryLocation" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Location</label>
-                <input type="text" id="itineraryLocation" value={editingItineraryLeg ? editingItineraryLeg.location : newItinerary.location} onChange={(e) => {
-                  if (editingItineraryLeg) {
-                    setEditingItineraryLeg(prev => ({ ...prev, location: e.target.value }));
-                  } else {
-                    setNewItinerary(prev => ({ ...prev, location: e.target.value }));
-                  }
-                }} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} placeholder="e.g., Queenstown" required />
-              </div>
-              <div>
-                <label htmlFor="itineraryCheckIn" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Check-in Date</label>
-                <input type="date" id="itineraryCheckIn" value={editingItineraryLeg ? editingItineraryLeg.checkIn : newItinerary.checkIn} onChange={(e) => {
-                  if (editingItineraryLeg) {
-                    setEditingItineraryLeg(prev => ({ ...prev, checkIn: e.target.value, checkOut: e.target.value > prev.checkOut ? '' : prev.checkOut }));
-                  } else {
-                    setNewItinerary(prev => ({ ...prev, checkIn: e.target.value, checkOut: '' }));
-                  }
-                }} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required />
-              </div>
-              <div>
-                <label htmlFor="itineraryCheckOut" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Check-out Date</label>
-                <input type="date" id="itineraryCheckOut" value={editingItineraryLeg ? editingItineraryLeg.checkOut : newItinerary.checkOut} min={editingItineraryLeg ? editingItineraryLeg.checkIn : newItinerary.checkIn} onChange={(e) => {
-                  if (editingItineraryLeg) {
-                    setEditingItineraryLeg(prev => ({ ...prev, checkOut: e.target.value }));
-                  } else {
-                    setNewItinerary(prev => ({ ...prev, checkOut: e.target.value }));
-                  }
-                }} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required disabled={!(editingItineraryLeg ? editingItineraryLeg.checkIn : newItinerary.checkIn)} />
-              </div>
-              <button onClick={editingItineraryLeg ? handleUpdateEditedItinerary : handleSaveItinerary} className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}>
-                {loading ? 'Saving...' : (editingItineraryLeg ? 'Update Itinerary' : 'Save Itinerary')}
-              </button>
-            </div>
-            {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
-          </div>
-        </div>
-      )}
-      {showItineraryListModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-          <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
-            <button onClick={() => setShowItineraryListModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close modal">
-              <X size={24} />
-            </button>
-            <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Select Itinerary Leg to Edit/Delete</h2>
-            <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
-              {clientData?.properties?.filter(p => p.isPlaceholder).sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn)).length > 0 ? (
-                clientData.properties.filter(p => p.isPlaceholder).sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn)).map(leg => (
-                  <div key={leg.id} className="flex items-center justify-between p-3 bg-gray-100 rounded-md shadow-sm border border-gray-200">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{leg.location}</p>
-                      <p className="text-sm text-gray-600 flex items-center">
-                        <Calendar size={14} className="mr-1"/> {formatDateForDisplay(leg.checkIn)} - {formatDateForDisplay(leg.checkOut)}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button onClick={() => handleEditItineraryLeg(leg)} className="p-2 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-colors" title="Edit Itinerary Leg">
-                        <Edit size={16} />
-                      </button>
-                      <button onClick={() => confirmDeleteItineraryLeg(leg)} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors" title="Delete Itinerary Leg">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-center text-gray-500 py-4">No itinerary legs added yet.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      {showConfirmDeleteModal && itineraryToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-          <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}] text-center`}>
-            <h2 className={`text-2xl font-bold text-red-600 mb-4`}>Confirm Deletion</h2>
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to delete the itinerary leg for "
-              <span className="font-semibold">{itineraryToDelete.location}</span>" from "
-              <span className="font-semibold">{formatDateForDisplay(itineraryToDelete.checkIn)}</span>" to "
-              <span className="font-semibold">{formatDateForDisplay(itineraryToDelete.checkOut)}</span>"?
-            </p>
-            <p className="text-sm text-gray-600 mb-6">
-              This will also delete any associated properties, activities, flights, and car rentals for this location. This action cannot be undone.
-            </p>
-            <div className="flex justify-center space-x-4">
-              <button onClick={() => { setShowConfirmDeleteModal(false); setItineraryToDelete(null); }} className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition-colors"> Cancel </button>
-              <button onClick={handleDeleteItineraryLeg} className="px-6 py-3 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-colors" disabled={loading}> {loading ? 'Deleting...' : 'Delete Permanently'} </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showSettingsModal && ( <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"> <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}> <button onClick={() => setShowSettingsModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close settings"> <X size={24} /> </button> <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Global Settings</h2> <div className="space-y-4"> <div> <label htmlFor="companyNameInput" className={`block text-sm font-medium text-[${primaryTextColor}] mb-1`}>Company Name</label> <input type="text" id="companyNameInput" value={companyName || ''} onChange={(e) => setCompanyName(e.target.value)} className={`w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} /> </div> <div> <label htmlFor="globalLogoFileUpload" className={`block text-sm font-medium text-[${primaryTextColor}] mb-1`}>Company Logo (Upload File)</label> <input type="file" id="globalLogoFileUpload" accept="image/*" onChange={(e) => setNewGlobalLogoFile(e.target.files[0])} className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100`} /> {newGlobalLogoFile && <p className={`text-xs text-[${secondaryTextColor}] mt-1`}>Selected new file: {newGlobalLogoFile.name}</p>} {globalLogoUrl && !newGlobalLogoFile && ( <div className={`mt-2 text-sm text-[${secondaryTextColor}] flex items-center`}> <img src={globalLogoUrl} alt="Current Global Logo" className="h-8 w-auto ml-2 rounded-md" /> <button type="button" onClick={() => { setGlobalLogoUrl(null); setNewGlobalLogoFile(null); }} className="ml-2 text-red-600 hover:text-red-700 text-xs"> Clear current </button> </div> )} {!globalLogoUrl && !newGlobalLogoFile && ( <p className={`mt-2 text-sm text-[${secondaryTextColor}]`}>No global logo currently set.</p> )} </div> <button onClick={() => handleUpdateGlobalSettings(companyName, newGlobalLogoFile)} className={`w-full bg-[${buttonPrimary}] hover:bg-yellow-600 text-[${buttonTextPrimary}] font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}> {loading ? 'Saving...' : 'Save Settings'} </button> </div> {error && <p className="text-red-600 text-sm mt-4">{error}</p>} {message && <p className="text-green-600 text-sm mt-4">{message}</p>} </div> </div> )}
+    <div className="flex flex-col min-h-screen bg-gray-100 font-sans">
+      {/* ... (all modals remain the same) */}
+
       {showEditClientModal && selectedClient && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-            <div className={`bg-[${secondaryBgColor}] rounded-lg shadow-xl p-6 w-full max-w-md relative text-[${primaryTextColor}]`}>
-                <button onClick={() => setShowEditClientModal(false)} className={`absolute top-3 right-3 text-[${secondaryTextColor}] hover:text-[${primaryTextColor}]`} aria-label="Close modal"><X size={24} /></button>
-                <h2 className={`text-2xl font-bold text-[${accentColor}] mb-6`}>Edit Client: {selectedClient.client_name}</h2>
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800">
+                <button onClick={() => setShowEditClientModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-800" aria-label="Close modal"><X size={24} /></button>
+                <h2 className="text-2xl font-bold text-yellow-400 mb-6">Edit Client: {selectedClient.client_name}</h2>
                 <form onSubmit={handleUpdateClientDetails} className="space-y-4">
                     <div>
-                        <label htmlFor="editingClientName" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Client Name</label>
-                        <input type="text" id="editingClientName" value={editingClientName} onChange={(e) => setEditingClientName(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required />
+                        <label htmlFor="editingClientName" className="block text-sm font-medium text-gray-800">Client Name</label>
+                        <input type="text" id="editingClientName" value={editingClientName} onChange={(e) => setEditingClientName(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400" required />
                     </div>
                     <div>
-                        <label htmlFor="editingClientQuote" className={`block text-sm font-medium text-[${primaryTextColor}]`}>Base Quote</label>
-                        <input type="number" step="0.01" id="editingClientQuote" value={editingClientQuote} onChange={(e) => setEditingClientQuote(e.target.value)} className={`mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-[${primaryTextColor}] focus:ring-[${accentColor}] focus:border-[${accentColor}]`} required />
+                        <label htmlFor="editingClientQuote" className="block text-sm font-medium text-gray-800">Base Quote</label>
+                        <input type="number" step="0.01" id="editingClientQuote" value={editingClientQuote} onChange={(e) => setEditingClientQuote(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400" required />
                     </div>
-                    <button type="submit" className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200`} disabled={loading}>
+                    <div>
+                        <label htmlFor="editingClientCurrency" className="block text-sm font-medium text-gray-800">Currency</label>
+                        <select
+                            id="editingClientCurrency"
+                            value={editingClientCurrency}
+                            onChange={(e) => setEditingClientCurrency(e.target.value)}
+                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400"
+                        >
+                            <option value="NZD">NZ$</option>
+                            <option value="USD">$</option>
+                            <option value="EUR">€</option>
+                            <option value="INR">₹</option>
+                        </select>
+                    </div>
+                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200" disabled={loading}>
                         {loading ? 'Updating...' : 'Update Details'}
                     </button>
                 </form>
@@ -915,47 +827,47 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      <div className={`w-full flex flex-col sm:flex-row justify-between items-center py-4 px-8 mb-8 rounded-xl shadow-lg bg-[${headerBg}] text-white`}>
+      <div className="w-full flex flex-col sm:flex-row justify-between items-center py-4 px-8 mb-8 rounded-xl shadow-lg bg-gray-900 text-white">
         <div className="flex items-center mb-4 sm:mb-0">
           {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-12 w-auto object-contain rounded-lg mr-4" /> ) : ( <div className="h-12 w-12 rounded-lg bg-gray-700 flex items-center justify-center text-gray-400 text-xs mr-4">Logo</div> )}
-          <h1 className={`text-3xl font-extrabold text-[${accentColor}]`}>{companyName}</h1>
+          <h1 className="text-3xl font-extrabold text-accent">{companyName}</h1>
         </div>
         <nav className="flex space-x-6">
-          <button onClick={() => setActiveTab('clients')} className={`text-lg font-semibold px-4 py-2 rounded-lg transition-colors duration-200 ${activeTab === 'clients' ? `bg-[${accentColor}] text-[${buttonTextPrimary}] shadow-md` : 'text-gray-300 hover:text-white'}`}> Clients </button>
-          <button onClick={() => setShowSettingsModal(true)} className={`text-lg font-semibold px-4 py-2 rounded-lg transition-colors duration-200 ${activeTab === 'settings' ? `bg-[${accentColor}] text-[${buttonTextPrimary}] shadow-md` : 'text-gray-300 hover:text-white'}`}> Settings </button>
+          <button onClick={() => setActiveTab('clients')} className={`text-lg font-semibold px-4 py-2 rounded-lg transition-colors duration-200 ${activeTab === 'clients' ? 'bg-accent text-gray-900 shadow-md' : 'text-gray-300 hover:text-white'}`}> Clients </button>
+          <button onClick={() => setShowSettingsModal(true)} className={`text-lg font-semibold px-4 py-2 rounded-lg transition-colors duration-200 ${activeTab === 'settings' ? 'bg-accent text-gray-900 shadow-md' : 'text-gray-300 hover:text-white'}`}> Settings </button>
         </nav>
         <button onClick={handleLogout} className="flex items-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500" disabled={loading}> <LogOut size={20} className="mr-2" /> {loading ? 'Logging out...' : 'Logout'} </button>
       </div>
 
-      <div className={`flex-grow flex p-4 md:p-8 pt-0`}>
-        <div className={`bg-[${sidebarBg}] text-white transition-all duration-300 ease-in-out ${isSidebarMinimized ? 'w-16' : 'w-72'} flex-shrink-0 relative shadow-lg z-10 rounded-xl mr-8`}>
+      <div className="flex-grow flex p-4 md:p-8 pt-0">
+        <div className={`bg-gray-900 text-white transition-all duration-300 ease-in-out ${isSidebarMinimized ? 'w-16' : 'w-72'} flex-shrink-0 relative shadow-lg z-10 rounded-xl mr-8`}>
           <div className={`flex items-center justify-between p-4 border-b border-gray-700 ${isSidebarMinimized ? 'justify-center' : ''}`}>
-            {!isSidebarMinimized && ( <h2 className={`text-2xl font-bold text-[${accentColor}]`}>Clients</h2> )}
-            <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className={`p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-[${accentColor}]`} aria-label={isSidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}> {isSidebarMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />} </button>
+            {!isSidebarMinimized && ( <h2 className="text-2xl font-bold text-accent">Clients</h2> )}
+            <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-accent" aria-label={isSidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}> {isSidebarMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />} </button>
           </div>
-          <nav className="flex-grow overflow-y-auto custom-scrollbar p-4">
-            <button onClick={() => setIsAddingClient(!isAddingClient)} className={`flex items-center w-full bg-[${accentColor}] hover:bg-yellow-600 text-[${buttonTextPrimary}] font-bold py-2 px-4 rounded-lg mb-4 justify-center transition duration-200 ${isSidebarMinimized ? 'p-2 w-12 h-12 rounded-full mx-auto flex-shrink-0' : ''}`} title={isAddingClient ? 'Cancel Add Client' : 'Add New Client'}> <Plus size={20} className={`${isSidebarMinimized ? '' : 'mr-2'}`} /> {!isSidebarMinimized && (isAddingClient ? 'Cancel Add Client' : 'Add New Client')} </button>
-            {isAddingClient && !isSidebarMinimized && ( <form onSubmit={handleAddClient} className={`space-y-4 mb-6 p-4 border border-gray-700 rounded-lg bg-[${headerBg}] text-[${secondaryTextColor}]`}> <h3 className={`text-xl font-semibold text-[${accentColor}]`}>New Client Details</h3> <div> <label htmlFor="newClientName" className="block text-sm font-bold mb-2">Client Name:</label> <input type="text" id="newClientName" className={`shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-[${accentColor}]`} value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Enter client name" required /> </div> <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200" disabled={loading}> Create Client </button> </form> )}
+          <nav className="flex-grow overflow-y-auto p-4">
+            <button onClick={() => setIsAddingClient(!isAddingClient)} className={`flex items-center w-full bg-accent hover:bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg mb-4 justify-center transition duration-200 ${isSidebarMinimized ? 'p-2 w-12 h-12 rounded-full mx-auto flex-shrink-0' : ''}`} title={isAddingClient ? 'Cancel Add Client' : 'Add New Client'}> <Plus size={20} className={`${isSidebarMinimized ? '' : 'mr-2'}`} /> {!isSidebarMinimized && (isAddingClient ? 'Cancel' : 'Add Client')} </button>
+            {isAddingClient && !isSidebarMinimized && ( <form onSubmit={handleAddClient} className="space-y-4 mb-6 p-4 border border-gray-700 rounded-lg bg-gray-800 text-gray-300"> <h3 className="text-xl font-semibold text-accent">New Client Details</h3> <div> <label htmlFor="newClientName" className="block text-sm font-bold mb-2">Client Name:</label> <input type="text" id="newClientName" className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-accent" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Enter client name" required /> </div> <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200" disabled={loading}> Create Client </button> </form> )}
             <ul className="py-2 space-y-2">
-              {clients.length === 0 ? ( <li className={`text-gray-400 text-center py-4 ${isSidebarMinimized ? 'hidden' : ''}`}>No clients added yet.</li> ) : ( clients.map((client) => ( <li key={client.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition duration-200 ease-in-out ${selectedClient && selectedClient.id === client.id ? `bg-gray-700 border-[${accentColor}] shadow-lg` : 'bg-gray-800 hover:bg-gray-700 border-gray-700'} ${isSidebarMinimized ? 'justify-center p-2' : ''}`} onClick={() => handleSelectClient(client)}> {!isSidebarMinimized ? ( <> <div className="flex-1 min-w-0 pr-2"> <p className="font-semibold text-gray-100 truncate">{client.client_name}</p> <p className="text-sm text-gray-400 truncate">ID: {client.id.substring(0, 8)}...</p> </div> <div className="flex space-x-2 flex-shrink-0"> <button onClick={(e) => handleViewClientPage(e, client)} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" title="View Client Page"> <ExternalLink size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleOpenEditClientModal(client); }} className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors" title="Edit Client Details"> <Edit size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }} className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors" title="Delete Client"> <Trash2 size={16} /> </button> </div> </> ) : ( <div className="text-center"> {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Global Logo" className="h-8 w-8 object-contain mx-auto mb-1" title={client.client_name}/> ) : ( <Eye size={20} className="text-gray-300 mx-auto mb-1" title={client.client_name} /> )} <p className="text-xs text-gray-300 leading-none">{client.client_name.split(' ')[0]}</p> </div> )} </li> )) )}
+              {clients.length === 0 ? ( <li className={`text-gray-400 text-center py-4 ${isSidebarMinimized ? 'hidden' : ''}`}>No clients yet.</li> ) : ( clients.map((client) => ( <li key={client.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition duration-200 ease-in-out ${selectedClient && selectedClient.id === client.id ? 'bg-gray-700 border-accent shadow-lg' : 'bg-gray-800 hover:bg-gray-700 border-gray-700'} ${isSidebarMinimized ? 'justify-center p-2' : ''}`} onClick={() => handleSelectClient(client)}> {!isSidebarMinimized ? ( <> <div className="flex-1 min-w-0 pr-2"> <p className="font-semibold text-gray-100 truncate">{client.client_name}</p> <p className="text-sm text-gray-400 truncate">ID: {client.id.substring(0, 8)}...</p> </div> <div className="flex space-x-2 flex-shrink-0"> <button onClick={(e) => handleViewClientPage(e, client)} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" title="View Client Page"> <ExternalLink size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleOpenEditClientModal(client); }} className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors" title="Edit Client Details"> <Edit size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }} className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors" title="Delete Client"> <Trash2 size={16} /> </button> </div> </> ) : ( <div className="text-center"> {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Global Logo" className="h-8 w-8 object-contain mx-auto mb-1" title={client.client_name}/> ) : ( <Eye size={20} className="text-gray-300 mx-auto mb-1" title={client.client_name} /> )} <p className="text-xs text-gray-300 leading-none">{client.client_name.split(' ')[0]}</p> </div> )} </li> )) )}
             </ul>
           </nav>
         </div>
         
-        <div className={`flex-grow bg-[${secondaryBgColor}] rounded-xl shadow-lg p-6 border border-gray-200`}>
+        <div className="flex-grow bg-white rounded-xl shadow-lg p-6 border border-gray-200">
           {activeTab === 'clients' && (
             selectedClient ? (
               <>
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-6 border-b pb-4">
-                  <h2 className={`text-2xl font-bold text-[${primaryTextColor}] mb-3 sm:mb-0`}>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-3 sm:mb-0">
                     Editing: "{selectedClient.client_name}"
                   </h2>
                   <div className="flex space-x-2">
-                    <button onClick={() => { setShowItineraryModal(true); setNewItinerary({ location: '', checkIn: '', checkOut: '' }); setEditingItineraryLeg(null); }} className={`flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out`}>
+                    <button onClick={() => { setShowItineraryModal(true); setNewItinerary({ location: '', checkIn: '', checkOut: '' }); setEditingItineraryLeg(null); }} className="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out">
                           <MapPin size={20} className="mr-2" />
                           Add Itinerary Leg
                       </button>
-                      <button onClick={() => { setShowItineraryListModal(true); }} className={`flex items-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out`}>
+                      <button onClick={() => { setShowItineraryListModal(true); }} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out">
                           <Edit size={20} className="mr-2" />
                           Edit Itinerary
                       </button>
@@ -964,19 +876,19 @@ const AdminDashboard = () => {
                 
                 <div className="border-b border-gray-200 mb-6">
                     <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                        <button onClick={() => setActiveClientTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'summary' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <ClipboardList size={16} className="mr-2" /> Summary
                         </button>
-                        <button onClick={() => setActiveClientTab('property')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'property' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('property')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Building size={16} className="mr-2" /> Property
                         </button>
-                        <button onClick={() => setActiveClientTab('activities')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'activities' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('activities')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Activity size={16} className="mr-2" /> Activities
                         </button>
-                        <button onClick={() => setActiveClientTab('flights')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'flights' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('flights')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Plane size={16} className="mr-2" /> Flights
                         </button>
-                        <button onClick={() => setActiveClientTab('transportation')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'transportation' ? `border-yellow-500 text-yellow-600` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('transportation')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Car size={16} className="mr-2" /> Transportation
                         </button>
                     </nav>
@@ -984,7 +896,7 @@ const AdminDashboard = () => {
 
                 <div>
                     {activeClientTab === 'summary' && clientData && (
-                        <AdminSummaryView clientData={clientData} setActiveTab={setActiveClientTab} />
+                        <AdminSummaryView clientData={clientData} setActiveTab={setActiveClientTab} currency={clientData.currency || 'NZD'} />
                     )}
                     {activeClientTab === 'property' && clientData && (
                         <PropertyForm
@@ -1020,15 +932,15 @@ const AdminDashboard = () => {
                   <button
                     onClick={handleSaveClientData}
                     disabled={loading}
-                    className={`px-6 py-3 bg-[${buttonPrimary}] text-[${buttonTextPrimary}] rounded-lg shadow-md hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className="px-6 py-3 bg-accent text-gray-900 rounded-lg shadow-md hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? 'Saving...' : 'Save All Client Changes'}
                   </button>
                 </div>
               </>
             ) : (
-              <div className={`text-center py-20 text-[${secondaryTextColor}]`}>
-                <Eye size={48} className={`mx-auto mb-4 text-${secondaryTextColor}`} />
+              <div className="text-center py-20 text-gray-400">
+                <Eye size={48} className="mx-auto mb-4" />
                 <p className="text-xl">Select a client from the sidebar to manage their data.</p>
                 <p className="text-md mt-2">Or add a new client if none exist.</p>
               </div>

@@ -1,5 +1,5 @@
-// src/pages/ClientView.jsx - Version 5.18 (Collapsible & Sorted Properties)
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+// src/pages/ClientView.jsx - Version 5.21 (Dynamic Currency)
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
 
@@ -33,13 +33,16 @@ const ClientView = () => {
   const [expandedImage, setExpandedImage] = useState(null);
   const [expandedImagePropertyId, setExpandedImagePropertyId] = useState(null);
   
-  // --- VERSION 5.18 START: State for collapsible sections ---
   const [collapsedSections, setCollapsedSections] = useState({});
-  // --- VERSION 5.18 END ---
   
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
+
+  // State for touch swipe
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const [swipeTranslate, setSwipeTranslate] = useState({});
 
   const flightTypes = {
     domestic: { label: 'Domestic Flight', icon: <Plane /> },
@@ -175,7 +178,7 @@ const ClientView = () => {
         if (rpcError) throw rpcError;
         if (!responseData) throw new Error("Invalid or expired share link.");
 
-        const baseData = { properties: [], activities: [], flights: [], transportation: [], quote: 0 };
+        const baseData = { properties: [], activities: [], flights: [], transportation: [], quote: 0, currency: 'NZD' };
         const fullClientData = { ...baseData, ...responseData.data };
 
         fullClientData.properties = fullClientData.properties.map(p => ({ ...p, price: parseCurrencyToNumber(p.price) }));
@@ -227,11 +230,9 @@ const ClientView = () => {
         return acc;
     }, {});
     
-    // --- VERSION 5.18 START: Sort properties within each group by price ---
     Object.values(acc).forEach(group => {
         group.properties.sort((a, b) => a.price - b.price);
     });
-    // --- VERSION 5.18 END ---
 
     return acc;
   }, [clientData, parseCurrencyToNumber]);
@@ -358,11 +359,9 @@ const ClientView = () => {
     });
   }, []);
 
-  // --- VERSION 5.18 START: Function to toggle collapsible sections ---
   const toggleSection = (location) => {
     setCollapsedSections(prev => ({ ...prev, [location]: !prev[location] }));
   };
-  // --- VERSION 5.18 END ---
 
   const totalChangeValue = useMemo(() => {
     let total = 0;
@@ -384,6 +383,7 @@ const ClientView = () => {
   const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
   const finalQuote = baseQuote + totalChangeValue;
   const totalChangeColorStyle = { color: getPriceColor(totalChangeValue) };
+  const currencySymbol = getCurrencySymbol(clientData?.currency || 'NZD');
 
   const nextImage = (propertyId) => {
     setCurrentImageIndex(prev => {
@@ -441,6 +441,43 @@ const ClientView = () => {
     });
   }, [expandedImagePropertyId, clientData]);
 
+  // Swipe handlers for image carousels
+  const handleTouchStart = (e) => {
+    touchEndX.current = 0; // Reset end position
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e, propertyId) => {
+    touchEndX.current = e.touches[0].clientX;
+    const diff = touchStartX.current - touchEndX.current;
+    // Limit translation to a fraction of the swipe distance for a subtle effect
+    setSwipeTranslate(prev => ({ ...prev, [propertyId]: -diff / 4 }));
+  };
+
+  const handleTouchEnd = (propertyId) => {
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) { // Threshold for a swipe
+      if (diff > 0) {
+        // Swiped left
+        nextImage(propertyId);
+      } else {
+        // Swiped right
+        prevImage(propertyId);
+      }
+    }
+    // Reset translation smoothly
+    setSwipeTranslate(prev => ({ ...prev, [propertyId]: 0 }));
+  };
+
+  const handleExpandedTouchEnd = () => {
+    if (touchStartX.current - touchEndX.current > 50) {
+      nextExpandedImage();
+    }
+    if (touchStartX.current - touchEndX.current < -50) {
+      prevExpandedImage();
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (expandedImage) {
@@ -453,8 +490,8 @@ const ClientView = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [expandedImage, nextExpandedImage, prevExpandedImage, closeExpandedImage]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl">Loading client selection...</div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center font-['Century_Gothic'] text-xl text-red-600 p-8 text-center">{error}</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans text-xl">Loading client selection...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center font-sans text-xl text-red-600 p-8 text-center">{error}</div>;
 
   const selectedProperties = clientData?.properties?.filter(p => p.selected && !p.isPlaceholder) || [];
   const selectedActivities = clientData?.activities?.filter(a => a.selected) || [];
@@ -463,9 +500,8 @@ const ClientView = () => {
   const hasSelections = selectedProperties.length > 0 || selectedActivities.length > 0 || selectedTransportation.length > 0 || selectedFlights.length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Century_Gothic']">
+    <div className="min-h-screen bg-gray-50 font-sans">
       <style>{`
-        .font-century-gothic { font-family: 'Century Gothic', sans-serif; }
         .selected-border, .selected-activity-card, .selected-transport-row, .selected-flight-row {
             border-color: ${accentColor};
             box-shadow: 0 0 12px 1px rgba(255, 215, 0, 0.8);
@@ -484,7 +520,7 @@ const ClientView = () => {
       `}</style>
 
       {expandedImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleExpandedTouchEnd}>
           <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[calc(100vh-80px)] bg-black flex items-center justify-center rounded-xl shadow-lg">
             <button onClick={closeExpandedImage} className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-10" aria-label="Close"><X size={24} /></button>
             <img src={expandedImage} alt="Expanded view" className="max-w-full max-h-full object-contain rounded-xl"/>
@@ -511,15 +547,15 @@ const ClientView = () => {
           <div className="flex flex-col gap-2 w-full md:w-auto mt-4 md:mt-0 md:grid md:grid-cols-3 md:gap-4">
               <div className="text-center p-2 md:p-3 rounded-lg bg-gray-100">
                   <p className="text-xs text-gray-600">Base Quote</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-800">{getCurrencySymbol('NZD')}{baseQuote.toFixed(2)}</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-800">{currencySymbol}{baseQuote.toFixed(2)}</p>
               </div>
               <div className="text-center p-2 md:p-3 rounded-lg bg-gray-100">
                   <p className="text-xs text-gray-600">Selections</p>
-                  <p className="text-xl md:text-2xl font-bold" style={totalChangeColorStyle}>{totalChangeValue >= 0 ? '+' : '-'}{getCurrencySymbol('NZD')}{Math.abs(totalChangeValue).toFixed(2)}</p>
+                  <p className="text-xl md:text-2xl font-bold" style={totalChangeColorStyle}>{totalChangeValue >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(totalChangeValue).toFixed(2)}</p>
               </div>
               <div className="text-center p-2 md:p-3 rounded-lg bg-blue-100 border border-blue-200">
                   <p className="text-xs text-blue-800">Final Quote</p>
-                  <p className="text-xl md:text-2xl font-bold text-blue-800">{getCurrencySymbol('NZD')}{finalQuote.toFixed(2)}</p>
+                  <p className="text-xl md:text-2xl font-bold text-blue-800">{currencySymbol}{finalQuote.toFixed(2)}</p>
               </div>
           </div>
         </div>
@@ -537,7 +573,7 @@ const ClientView = () => {
         </div>
 
         {activeTab === 'summary' && (
-            <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 font-['Century_Gothic'] border border-gray-100 text-left">
+            <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 font-sans border border-gray-100 text-left">
               <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">Your Selection Summary</h2>
               {!hasSelections ? (
                 <p className="text-gray-500 text-center py-10 text-lg">You haven't made any selections yet. Click on the other tabs to view your options!</p>
@@ -627,24 +663,18 @@ const ClientView = () => {
         {activeTab === 'property' && (
             <div className="space-y-10">
               {itineraries.filter(it => it.properties.length > 0).map((itinerary) => {
-                // --- VERSION 5.18 START: Check if section is collapsed ---
                 const isCollapsed = collapsedSections[itinerary.id];
-                // --- VERSION 5.18 END ---
                 return (
                   <div key={itinerary.id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                    {/* --- VERSION 5.18 START: Add onClick to toggle section --- */}
                     <div 
-                      className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100 cursor-pointer"
+                      className={`p-4 sm:p-5 border-b cursor-pointer transition-colors duration-300 ${isCollapsed ? 'bg-gray-50 hover:bg-gray-100' : 'bg-yellow-100'}`}
                       onClick={() => toggleSection(itinerary.id)}
                     >
-                    {/* --- VERSION 5.18 END --- */}
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                         <div className="mb-2 md:mb-0">
                           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 text-left flex items-center">
                             {itinerary.location}
-                            {/* --- VERSION 5.18 START: Add chevron icon --- */}
                             {isCollapsed ? <ChevronDown className="ml-2" size={20} /> : <ChevronUp className="ml-2" size={20} />}
-                            {/* --- VERSION 5.18 END --- */}
                           </h2>
                           <p className="text-sm text-gray-600"> <Calendar size={14} className="inline mr-1 text-gray-500" /> {itinerary.checkIn && itinerary.checkOut ? `${formatDate(itinerary.checkIn)} - ${formatDate(itinerary.checkOut)} · ${calculateNights(itinerary.checkIn, itinerary.checkOut)} nights` : 'Dates N/A'} </p>
                         </div>
@@ -654,7 +684,6 @@ const ClientView = () => {
                         </div>
                       </div>
                     </div>
-                    {/* --- VERSION 5.18 START: Conditionally render property list --- */}
                     {!isCollapsed && (
                       <div className="p-4 sm:p-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -662,10 +691,14 @@ const ClientView = () => {
                             itinerary.properties.map((property) => {
                               const priceValue = parseCurrencyToNumber(property.price);
                               const priceColorStyle = { color: getPriceColor(priceValue) };
+                              const imageStyle = {
+                                transform: `translateX(${swipeTranslate[property.id] || 0}px)`,
+                                transition: swipeTranslate[property.id] === 0 ? 'transform 0.3s ease-out' : 'none',
+                              };
                               return (
                                 <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => toggleSelection(itinerary.id, property.id)}>
-                                  <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl" onClick={(e) => { e.stopPropagation(); openExpandedImage(property.id, currentImageIndex[property.id] || property.homeImageIndex || 0); }}>
-                                    <img src={property.images?.[currentImageIndex[property.id] || property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={property.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}/>
+                                  <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl" onTouchStart={handleTouchStart} onTouchMove={(e) => handleTouchMove(e, property.id)} onTouchEnd={() => handleTouchEnd(property.id)}>
+                                    <img src={property.images?.[currentImageIndex[property.id] || property.homeImageIndex || 0] || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={property.name} className="w-full h-full object-cover group-hover:scale-105" style={imageStyle} onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }}/>
                                     {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
                                     {property.images && property.images.length > 1 && (
                                       <>
@@ -694,7 +727,6 @@ const ClientView = () => {
                         </div>
                       </div>
                     )}
-                    {/* --- VERSION 5.18 END --- */}
                   </div>
                 )
               })}
@@ -749,34 +781,32 @@ const ClientView = () => {
                                 const price = parseCurrencyToNumber(item.price);
                                 const priceColorStyle = { color: getPriceColor(price) };
                                 return (
-                                    <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
+                                    <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
                                         {item.selected && (
                                             <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}>
                                                 <Check size={18} />
                                             </div>
                                         )}
-                                        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full lg:pl-12">
-                                            <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md" />
-                                            <div className="flex-grow">
-                                                <h4 className="font-bold text-lg sm:text-xl text-gray-800">{item.name}</h4>
-                                                <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
-                                                    <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom || item.pickupFrom} ({item.location})</div>
-                                                    <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
-                                                    <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</div>
-                                                    { (item.dropoffDate || item.departingDate) && <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>}
-                                                    {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>}
-                                                    {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
-                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
-                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
-                                                    {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
-                                                </div>
+                                        <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" />
+                                        <div className="flex-grow">
+                                            <h4 className="font-bold text-lg sm:text-xl text-gray-800">{item.name}</h4>
+                                            <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom || item.pickupFrom} ({item.location})</div>
+                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
+                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</div>
+                                                { (item.dropoffDate || item.departingDate) && <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>}
+                                                {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>}
+                                                {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
+                                                {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                                {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
+                                                {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
                                             </div>
-                                            <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto">
-                                                <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}>
-                                                    {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
-                                                </span>
-                                            </div>
+                                        </div>
+                                        <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
+                                            <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}>
+                                                {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
+                                            </span>
                                         </div>
                                     </div>
                                 )
