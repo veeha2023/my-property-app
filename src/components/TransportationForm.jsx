@@ -169,6 +169,269 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     setItem(prev => ({ ...prev, images: updatedImages }));
   };
 
+  // --- CSV FUNCTIONS ---
+  const parseCSV = (text) => {
+    const rows = [];
+    let currentLine = '';
+    let inQuotes = false;
+  
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      currentLine += char;
+  
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      }
+  
+      if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (currentLine.trim()) {
+          rows.push(currentLine.trim());
+        }
+        currentLine = '';
+        if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+          i++; // Skip the \n in a \r\n sequence
+        }
+      }
+    }
+  
+    if (currentLine.trim()) {
+      rows.push(currentLine.trim());
+    }
+  
+    const parseLine = (line) => {
+      const values = [];
+      let currentVal = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            currentVal += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          values.push(currentVal);
+          currentVal = '';
+        } else {
+          currentVal += char;
+        }
+      }
+      values.push(currentVal);
+      return values.map(v => v.trim());
+    };
+  
+    return rows.map(parseLine);
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setError('');
+      setMessage('');
+      try {
+        const text = e.target.result;
+        const parsedData = parseCSV(text);
+
+        const lines = parsedData.filter(row => row.some(cell => cell.trim() !== '') && !row[0].trim().startsWith('#'));
+
+        if (lines.length < 2) {
+          setError("CSV file must contain a header row and at least one data row.");
+          return;
+        }
+        
+        const headers = lines[0].map(h => h.trim());
+        const requiredHeaders = [
+          'transportType', 'name', 'price', 'currency', 'images', 'selected'
+        ];
+        
+        if (!requiredHeaders.every(h => headers.includes(h))) {
+          setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
+          return;
+        }
+
+        const newTransportationFromCSV = [];
+        const errors = [];
+
+        lines.slice(1).forEach((data, index) => {
+          if (data.length !== headers.length) {
+            errors.push(`Line ${index + 2}: Incorrect number of columns. Expected ${headers.length}, but found ${data.length}.`);
+            return;
+          }
+
+          const transportData = {};
+          headers.forEach((header, i) => {
+              transportData[header] = data[i] || '';
+          });
+
+          // Create base item based on transport type
+          let baseItem = {
+            id: `transport-csv-${Date.now()}-${index}`,
+            transportType: transportData.transportType || 'car',
+            name: transportData.name || '',
+            price: parseFloat(transportData.price) || 0,
+            currency: transportData.currency || 'NZD',
+            images: transportData.images ? transportData.images.split(/[;\r\n]+/).map(url => url.trim()).filter(Boolean) : [],
+            selected: transportData.selected ? transportData.selected.toUpperCase() === 'TRUE' : false,
+          };
+
+          // Add type-specific fields
+          switch (transportData.transportType) {
+            case 'car':
+              baseItem = { 
+                ...baseItem, 
+                type: transportData.type || 'Sedan',
+                pickupLocation: transportData.pickupLocation || '',
+                pickupDate: parseDateString(transportData.pickupDate || ''),
+                pickupTime: transportData.pickupTime || '10:00',
+                dropoffLocation: transportData.dropoffLocation || '',
+                dropoffDate: parseDateString(transportData.dropoffDate || ''),
+                dropoffTime: transportData.dropoffTime || '10:00',
+                insurance: transportData.insurance || 'Basic',
+                excessAmount: parseFloat(transportData.excessAmount) || 0,
+                driversIncluded: parseInt(transportData.driversIncluded, 10) || 1
+              };
+              break;
+            case 'ferry':
+              baseItem = { 
+                ...baseItem, 
+                boardingFrom: transportData.boardingFrom || '',
+                boardingDate: parseDateString(transportData.boardingDate || ''),
+                boardingTime: transportData.boardingTime || '09:00',
+                departingTo: transportData.departingTo || '',
+                departingDate: parseDateString(transportData.departingDate || ''),
+                departingTime: transportData.departingTime || '12:00',
+                duration: transportData.duration || '',
+                baggageAllowance: transportData.baggageAllowance || ''
+              };
+              break;
+            case 'bus':
+              baseItem = { 
+                ...baseItem, 
+                boardingFrom: transportData.boardingFrom || '',
+                boardingDate: parseDateString(transportData.boardingDate || ''),
+                boardingTime: transportData.boardingTime || '08:00',
+                departingTo: transportData.departingTo || '',
+                departingDate: parseDateString(transportData.departingDate || ''),
+                departingTime: transportData.departingTime || '17:00',
+                duration: transportData.duration || '',
+                baggageAllowance: transportData.baggageAllowance || ''
+              };
+              break;
+            case 'driver':
+              baseItem = { 
+                ...baseItem, 
+                carType: transportData.carType || 'Sedan',
+                location: transportData.location || '',
+                pickupFrom: transportData.pickupFrom || 'Hotel',
+                dropoffTo: transportData.dropoffTo || '',
+                pickupDate: parseDateString(transportData.pickupDate || ''),
+                pickupTime: transportData.pickupTime || '09:00',
+                duration: transportData.duration || ''
+              };
+              break;
+            default: break;
+          }
+
+          newTransportationFromCSV.push(baseItem);
+        });
+
+        if (errors.length > 0) {
+          setError(`Found errors in ${errors.length} line(s). Please check the file format.`);
+          console.error("CSV Parsing Errors:", errors);
+        }
+
+        if (newTransportationFromCSV.length > 0) {
+          const updatedTransportation = [...(transportation || []), ...newTransportationFromCSV];
+          setTransportation(updatedTransportation);
+          setMessage(`${newTransportationFromCSV.length} transportation items imported successfully!`);
+        } else if (errors.length === 0) {
+          setError("No new transportation items were imported. The file might be empty or all rows had errors.");
+        }
+
+      } catch (err) {
+        setError(`Failed to process CSV file: ${err.message}`);
+        console.error(err);
+      } finally {
+        if (event.target) {
+          event.target.value = null;
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const downloadTemplate = () => {
+    const headers = "transportType,name,price,currency,images,selected,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
+    const example = `"car","Luxury Sedan","150","NZD","https://example.com/car1.jpg;https://example.com/car2.jpg","TRUE","Sedan","Auckland Airport","2025-10-20","10:00","Queenstown Airport","2025-10-25","14:00","Full","500","1","","","","","","","","","","","","",""`;
+    const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;). transportType can be 'car', 'ferry', 'bus', or 'driver'. Use YYYY-MM-DD format for dates.";
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "transportation_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToCSV = () => {
+    if (!transportation || transportation.length === 0) {
+      setError("No transportation data to export.");
+      return;
+    }
+
+    const headers = "transportType,name,price,currency,images,selected,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
+    
+    const csvRows = transportation.map(item => {
+      const row = [
+        item.transportType || '',
+        item.name || '',
+        item.price || 0,
+        item.currency || 'NZD',
+        (item.images || []).join(';'),
+        item.selected ? 'TRUE' : 'FALSE',
+        item.type || item.carType || '',
+        item.pickupLocation || '',
+        item.pickupDate || '',
+        item.pickupTime || '',
+        item.dropoffLocation || '',
+        item.dropoffDate || '',
+        item.dropoffTime || '',
+        item.insurance || '',
+        item.excessAmount || 0,
+        item.driversIncluded || 1,
+        item.boardingFrom || '',
+        item.boardingDate || '',
+        item.boardingTime || '',
+        item.departingTo || '',
+        item.departingDate || '',
+        item.departingTime || '',
+        item.duration || '',
+        item.baggageAllowance || '',
+        item.carType || '',
+        item.location || '',
+        item.pickupFrom || '',
+        item.dropoffTo || ''
+      ];
+      return row.map(field => `"${field}"`).join(',');
+    });
+
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${csvRows.join('\n')}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `transportation_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setMessage("Transportation data exported successfully!");
+  };
+
   // --- RENDER FUNCTIONS ---
   const renderCarForm = (data, setData) => (
     <>
@@ -344,10 +607,33 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         </div>
       )}
 
-      <div className="text-center mb-8">
-        <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105 mx-auto">
-          <Plus size={18} className="mr-2" /> Add New Transportation
-        </button>
+      <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-bold text-gray-800">Manage Transportation</h3>
+            <div className="flex items-center gap-2">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                />
+                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
+                    <Upload size={18} className="mr-2" /> Import from CSV
+                </button>
+                <button onClick={exportToCSV} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
+                    <Download size={18} className="mr-2" /> Export to CSV
+                </button>
+                <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
+                    <Plus size={18} className="mr-2" /> Add New Transportation
+                </button>
+            </div>
+        </div>
+        <div className="text-right mb-4">
+            <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</a>
+        </div>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
       </div>
 
       {(newItem && !editingItem) && renderForm(newItem, setNewItem)}

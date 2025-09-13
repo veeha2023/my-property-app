@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Version 7.31 (Dynamic Currency Fix)
+// src/pages/AdminDashboard.jsx - Version 8.0 (Feature Update)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
@@ -6,7 +6,7 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 
@@ -190,8 +190,9 @@ const AdminDashboard = () => {
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
   const [itineraryToDelete, setItineraryToDelete] = useState(null);
   const [originalEditingLegLocation, setOriginalEditingLegLocation] = useState('');
-  const [originalEditingLegCheckIn, setOriginalEditingLegCheckIn] = useState('');
-  const [originalEditingLegCheckOut, setOriginalEditingLegCheckOut] = useState('');
+  // V1 FIX: Removed unused state variables for original check-in/out
+  // const [originalEditingLegCheckIn, setOriginalEditingLegCheckIn] = useState('');
+  // const [originalEditingLegCheckOut, setOriginalEditingLegCheckOut] = useState('');
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
   useEffect(() => {
@@ -355,8 +356,8 @@ const AdminDashboard = () => {
     setError(null);
   };
 
-  const handleSaveClientData = async () => {
-    if (!selectedClient || !clientData) {
+  const handleSaveClientData = async (updatedData = clientData) => {
+    if (!selectedClient || !updatedData) {
       setMessage('No client selected to save data.');
       return;
     }
@@ -365,15 +366,13 @@ const AdminDashboard = () => {
     setError(null);
 
     const dataToSave = {
-        ...clientData,
-        properties: sortPropertiesByDate(clientData.properties),
-        activities: sortActivitiesByDateTime(clientData.activities),
-        transportation: sortTransportationByDate(clientData.transportation),
-        flights: sortFlightsByDate(clientData.flights),
+        ...updatedData,
+        properties: sortPropertiesByDate(updatedData.properties),
+        activities: sortActivitiesByDateTime(updatedData.activities),
+        transportation: sortTransportationByDate(updatedData.transportation),
+        flights: sortFlightsByDate(updatedData.flights),
     };
     const dataJson = JSON.stringify(dataToSave);
-
-    console.log("Saving client data:", dataToSave);
 
     const { error: updateError } = await supabase
       .from('clients')
@@ -406,14 +405,15 @@ const AdminDashboard = () => {
     setClientData(prevData => ({ ...prevData, flights: updatedFlights }));
   };
 
+  // V1 FIX: Reworked Add Itinerary Leg logic
   const handleSaveItinerary = async () => {
       if (!selectedClient || !newItinerary.location || !newItinerary.checkIn || !newItinerary.checkOut) {
           setError("Please fill in all itinerary fields.");
           return;
       }
-
+  
       const placeholderProperty = {
-          id: `itinerary-placeholder-${Date.now()}`,
+          id: `itinerary-placeholder-${uuidv4()}`,
           name: 'Itinerary Placeholder',
           location: newItinerary.location.trim(),
           checkIn: newItinerary.checkIn,
@@ -421,25 +421,28 @@ const AdminDashboard = () => {
           price: 0, currency: 'NZD', images: [], bedrooms: 0, bathrooms: 0, selected: false, isPlaceholder: true,
       };
       
-      const updatedProperties = [...(clientData?.properties || []), placeholderProperty];
-      setClientData(prevData => ({ ...prevData, properties: updatedProperties }));
+      const updatedData = {
+        ...clientData,
+        properties: [...(clientData?.properties || []), placeholderProperty]
+      };
+      
+      setClientData(updatedData);
+      await handleSaveClientData(updatedData);
 
       setShowItineraryModal(false);
       setNewItinerary({ location: '', checkIn: '', checkOut: '' });
-      setMessage('Itinerary added. Remember to click "Save All Client Changes" to persist.');
+      setMessage('Itinerary leg added successfully.');
       setError(null);
-      await handleSaveClientData();
   };
 
   const handleEditItineraryLeg = (leg) => {
     setEditingItineraryLeg({ ...leg });
     setOriginalEditingLegLocation(leg.location.trim());
-    setOriginalEditingLegCheckIn(leg.checkIn);
-    setOriginalEditingLegCheckOut(leg.checkOut);
     setShowItineraryListModal(false);
     setShowItineraryModal(true);
   };
 
+  // V1 FIX: Reworked Edit Itinerary Leg logic
   const handleUpdateEditedItinerary = async () => {
     if (!selectedClient || !editingItineraryLeg) return;
     if (!editingItineraryLeg.location || !editingItineraryLeg.checkIn || !editingItineraryLeg.checkOut) {
@@ -451,56 +454,56 @@ const AdminDashboard = () => {
     setMessage('');
     setError(null);
 
-    try {
-        const newLocation = editingItineraryLeg.location.trim();
-        const newCheckIn = editingItineraryLeg.checkIn;
-        const newCheckOut = editingItineraryLeg.checkOut;
+    const newLocation = editingItineraryLeg.location.trim();
+    const newCheckIn = editingItineraryLeg.checkIn;
+    const newCheckOut = editingItineraryLeg.checkOut;
 
-        const updatedPropertiesIncludingPlaceholder = clientData.properties.map(prop =>
-            prop.id === editingItineraryLeg.id ? { ...editingItineraryLeg, location: newLocation, isPlaceholder: true } : prop
-        );
+    const updatedProperties = clientData.properties.map(prop => {
+        if (prop.id === editingItineraryLeg.id) {
+            return { ...editingItineraryLeg, location: newLocation, isPlaceholder: true };
+        }
+        if (!prop.isPlaceholder && prop.location?.trim() === originalEditingLegLocation) {
+            return { ...prop, location: newLocation, checkIn: newCheckIn, checkOut: newCheckOut };
+        }
+        return prop;
+    });
 
-        const updatedAssociatedProperties = updatedPropertiesIncludingPlaceholder.map(prop => {
-            if (!prop.isPlaceholder && prop.location?.trim() === originalEditingLegLocation) {
-                return { ...prop, location: newLocation, checkIn: newCheckIn, checkOut: newCheckOut };
-            }
-            return prop;
-        });
+    const updatedActivities = clientData.activities.map(act => {
+        if (act.location?.trim() === originalEditingLegLocation) {
+            return { ...act, location: newLocation, date: newCheckIn };
+        }
+        return act;
+    });
 
-        const updatedActivities = clientData.activities.map(act => {
-            if (act.location?.trim() === originalEditingLegLocation) {
-                return { ...act, location: newLocation, date: newCheckIn };
-            }
-            return act;
-        });
+    const updatedTransportation = clientData.transportation.map(t => {
+        if (t.pickupLocation?.trim() === originalEditingLegLocation) {
+            t.pickupLocation = newLocation;
+            t.pickupDate = newCheckIn;
+            t.dropoffDate = newCheckOut;
+        }
+         if (t.boardingFrom?.trim() === originalEditingLegLocation) {
+            t.boardingFrom = newLocation;
+            t.boardingDate = newCheckIn;
+            t.departingDate = newCheckOut;
+        }
+        return t;
+    });
 
-        const updatedTransportation = clientData.transportation.map(t => {
-            if (t.pickupLocation?.trim() === originalEditingLegLocation || t.boardingFrom?.trim() === originalEditingLegLocation) {
-                return { ...t, pickupLocation: newLocation, boardingFrom: newLocation, pickupDate: newCheckIn, boardingDate: newCheckIn, dropoffDate: newCheckOut, departingDate: newCheckOut };
-            }
-            return t;
-        });
+    const updatedData = {
+        ...clientData,
+        properties: updatedProperties,
+        activities: updatedActivities,
+        transportation: updatedTransportation,
+    };
 
-        setClientData(prevData => ({
-            ...prevData,
-            properties: updatedAssociatedProperties,
-            activities: updatedActivities,
-            transportation: updatedTransportation,
-        }));
+    setClientData(updatedData);
+    await handleSaveClientData(updatedData);
 
-        setEditingItineraryLeg(null);
-        setOriginalEditingLegLocation('');
-        setOriginalEditingLegCheckIn('');
-        setOriginalEditingLegCheckOut('');
-        setShowItineraryModal(false);
-        setMessage('Itinerary updated. Remember to click "Save All Client Changes" to persist.');
-        await handleSaveClientData();
-    } catch (err) {
-        console.error("Error updating itinerary leg:", err);
-        setError("Error updating itinerary leg: " + err.message);
-    } finally {
-        setLoading(false);
-    }
+    setEditingItineraryLeg(null);
+    setOriginalEditingLegLocation('');
+    setShowItineraryModal(false);
+    setMessage('Itinerary leg updated successfully.');
+    setLoading(false);
   };
 
   const confirmDeleteItineraryLeg = (leg) => {
@@ -515,35 +518,27 @@ const AdminDashboard = () => {
     setMessage('');
     setError(null);
 
-    try {
-        const legIdToDelete = itineraryToDelete.id;
-        const legLocationToDelete = itineraryToDelete.location.trim();
+    const legLocationToDelete = itineraryToDelete.location.trim();
 
-        const updatedProperties = clientData.properties.filter(prop => prop.id !== legIdToDelete);
-        const finalProperties = updatedProperties.filter(prop => prop.location?.trim() !== legLocationToDelete);
-        const finalActivities = clientData.activities.filter(act => act.location?.trim() !== legLocationToDelete);
-        const finalTransportation = clientData.transportation.filter(t => t.pickupLocation?.trim() !== legLocationToDelete && t.boardingFrom?.trim() !== legLocationToDelete);
+    const updatedData = {
+        ...clientData,
+        properties: clientData.properties.filter(prop => prop.location?.trim() !== legLocationToDelete),
+        activities: clientData.activities.filter(act => act.location?.trim() !== legLocationToDelete),
+        transportation: clientData.transportation.filter(t => 
+            t.pickupLocation?.trim() !== legLocationToDelete && 
+            t.boardingFrom?.trim() !== legLocationToDelete
+        ),
+    };
 
-        setClientData(prevData => ({
-            ...prevData,
-            properties: finalProperties,
-            activities: finalActivities,
-            transportation: finalTransportation,
-        }));
+    setClientData(updatedData);
+    await handleSaveClientData(updatedData);
 
-        setShowConfirmDeleteModal(false);
-        setShowItineraryListModal(false);
-        setItineraryToDelete(null);
-        setMessage('Itinerary leg and associated data deleted successfully! Remember to click "Save All Client Changes" to persist.');
-        await handleSaveClientData();
-    } catch (err) {
-        console.error("Error deleting itinerary leg:", err);
-        setError("Error deleting itinerary leg: " + err.message);
-    } finally {
-        setLoading(false);
-    }
+    setShowConfirmDeleteModal(false);
+    setShowItineraryListModal(false);
+    setItineraryToDelete(null);
+    setMessage('Itinerary leg and associated items deleted successfully.');
+    setLoading(false);
   };
-
 
   const handleAddClient = async (e) => {
     e.preventDefault();
@@ -569,6 +564,65 @@ const AdminDashboard = () => {
       setNewClientName('');
       setIsAddingClient(false);
       fetchClients();
+    }
+    setLoading(false);
+  };
+
+  // V2 FEATURE: Duplicate Itinerary
+  const handleDuplicateClient = async (clientToDuplicate) => {
+    if (!session) { setError("You must be logged in."); return; }
+    if (!window.confirm(`Are you sure you want to duplicate the itinerary for "${clientToDuplicate.client_name}"?`)) return;
+
+    setLoading(true);
+    setMessage('');
+    setError(null);
+
+    const newName = `${clientToDuplicate.client_name} (Copy)`;
+    const newId = uuidv4();
+    
+    // Deep copy of client_properties
+    const duplicatedProperties = JSON.parse(JSON.stringify(clientToDuplicate.client_properties));
+
+    const { error: insertError } = await supabase
+      .from('clients')
+      .insert([{ 
+          id: newId, 
+          client_name: newName, 
+          client_properties: duplicatedProperties, 
+          user_id: session.user.id, 
+          last_updated: new Date().toISOString(),
+          share_link_disabled: true // Disable link on new copies by default
+      }]);
+
+    if (insertError) {
+      console.error('Error duplicating client:', insertError.message);
+      setError('Error duplicating client: ' + insertError.message);
+    } else {
+      setMessage('Client duplicated successfully!');
+      fetchClients();
+    }
+    setLoading(false);
+  };
+  
+  // V2 FEATURE: Disable/Enable Share Link
+  const handleToggleShareLink = async () => {
+    if (!selectedClient) return;
+    setLoading(true);
+    const newStatus = !selectedClient.share_link_disabled;
+    const { data, error: updateError } = await supabase
+        .from('clients')
+        .update({ share_link_disabled: newStatus })
+        .eq('id', selectedClient.id)
+        .select()
+        .single();
+    
+    if (updateError) {
+        setError('Failed to update link status: ' + updateError.message);
+    } else {
+        setSelectedClient(data); // Update selected client with new status
+        // Update the main clients list as well
+        setClients(clients.map(c => c.id === data.id ? data : c));
+        setMessage(`Share link has been ${newStatus ? 'disabled' : 'enabled'}.`);
     }
     setLoading(false);
   };
@@ -775,7 +829,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 font-sans">
-      {/* ... (all modals remain the same) */}
+      {/* ... (all modals remain the same, with one addition below) */}
 
       {showEditClientModal && selectedClient && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
@@ -809,13 +863,22 @@ const AdminDashboard = () => {
                         {loading ? 'Updating...' : 'Update Details'}
                     </button>
                 </form>
-                <div className="mt-6 border-t pt-4">
+                <div className="mt-6 border-t pt-4 space-y-3">
                     <button onClick={handleModalGenerateLink} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center" disabled={loading}>
                         <Share2 size={16} className="mr-2"/>
                         {loading ? 'Generating...' : (shareLink ? 'Show Share Link' : 'Generate Share Link')}
                     </button>
+                    {/* V2 FEATURE: Disable Share Link Button */}
+                    <button 
+                        onClick={handleToggleShareLink} 
+                        className={`w-full font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center ${selectedClient.share_link_disabled ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+                        disabled={loading}
+                    >
+                        {selectedClient.share_link_disabled ? <LinkIcon size={16} className="mr-2"/> : <Link2Off size={16} className="mr-2"/>}
+                        {loading ? 'Updating...' : (selectedClient.share_link_disabled ? 'Enable Share Link' : 'Disable Share Link')}
+                    </button>
                     {shareLink && (
-                        <div className="mt-4 flex items-center space-x-2">
+                        <div className="flex items-center space-x-2">
                             <input type="text" value={shareLink} readOnly className="flex-grow p-2 border border-gray-300 rounded-md bg-gray-100 text-sm" />
                             <button onClick={copyShareLink} className="p-2 bg-gray-200 rounded-md hover:bg-gray-300" title="Copy Link"><Copy size={16} /></button>
                         </div>
@@ -824,6 +887,162 @@ const AdminDashboard = () => {
                 {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
                 {message && <p className="text-green-600 text-sm mt-4">{message}</p>}
             </div>
+        </div>
+      )}
+
+      {/* Add/Edit Itinerary Modal */}
+      {showItineraryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800">
+            <button onClick={() => setShowItineraryModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-800" aria-label="Close modal"><X size={24} /></button>
+            <h2 className="text-2xl font-bold text-yellow-400 mb-6">
+              {editingItineraryLeg ? 'Edit Itinerary Leg' : 'Add New Itinerary Leg'}
+            </h2>
+            <form onSubmit={(e) => { e.preventDefault(); editingItineraryLeg ? handleUpdateEditedItinerary() : handleSaveItinerary(); }} className="space-y-4">
+              <div>
+                <label htmlFor="location" className="block text-sm font-medium text-gray-800">Location</label>
+                <input 
+                  type="text" 
+                  id="location" 
+                  value={editingItineraryLeg ? editingItineraryLeg.location : newItinerary.location} 
+                  onChange={(e) => {
+                    if (editingItineraryLeg) {
+                      setEditingItineraryLeg({...editingItineraryLeg, location: e.target.value});
+                    } else {
+                      setNewItinerary({...newItinerary, location: e.target.value});
+                    }
+                  }} 
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400" 
+                  required 
+                />
+              </div>
+              <div>
+                <label htmlFor="checkIn" className="block text-sm font-medium text-gray-800">Check-in Date</label>
+                <input 
+                  type="date" 
+                  id="checkIn" 
+                  value={editingItineraryLeg ? editingItineraryLeg.checkIn : newItinerary.checkIn} 
+                  onChange={(e) => {
+                    if (editingItineraryLeg) {
+                      setEditingItineraryLeg({...editingItineraryLeg, checkIn: e.target.value});
+                    } else {
+                      setNewItinerary({...newItinerary, checkIn: e.target.value});
+                    }
+                  }} 
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400" 
+                  required 
+                />
+              </div>
+              <div>
+                <label htmlFor="checkOut" className="block text-sm font-medium text-gray-800">Check-out Date</label>
+                <input 
+                  type="date" 
+                  id="checkOut" 
+                  value={editingItineraryLeg ? editingItineraryLeg.checkOut : newItinerary.checkOut} 
+                  onChange={(e) => {
+                    if (editingItineraryLeg) {
+                      setEditingItineraryLeg({...editingItineraryLeg, checkOut: e.target.value});
+                    } else {
+                      setNewItinerary({...newItinerary, checkOut: e.target.value});
+                    }
+                  }} 
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400" 
+                  required 
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200" disabled={loading}>
+                  {loading ? 'Saving...' : (editingItineraryLeg ? 'Update Itinerary' : 'Add Itinerary')}
+                </button>
+                <button type="button" onClick={() => setShowItineraryModal(false)} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-200">
+                  Cancel
+                </button>
+              </div>
+            </form>
+            {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
+            {message && <p className="text-green-600 text-sm mt-4">{message}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Itinerary List Modal */}
+      {showItineraryListModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl relative text-gray-800 max-h-[80vh] overflow-y-auto">
+            <button onClick={() => setShowItineraryListModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-800" aria-label="Close modal"><X size={24} /></button>
+            <h2 className="text-2xl font-bold text-yellow-400 mb-6">Edit Itinerary Legs</h2>
+            
+            {clientData && clientData.properties && clientData.properties.filter(p => p.isPlaceholder).length > 0 ? (
+              <div className="space-y-4">
+                {clientData.properties.filter(p => p.isPlaceholder).map((leg, index) => (
+                  <div key={leg.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg text-gray-800">{leg.location}</h3>
+                        <p className="text-sm text-gray-600">
+                          {formatDateForDisplay(leg.checkIn)} - {formatDateForDisplay(leg.checkOut)}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleEditItineraryLeg(leg)} 
+                          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                          title="Edit Itinerary Leg"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button 
+                          onClick={() => confirmDeleteItineraryLeg(leg)} 
+                          className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          title="Delete Itinerary Leg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">No itinerary legs found. Add some using the "Add Itinerary Leg" button.</p>
+            )}
+            
+            <div className="mt-6 flex justify-end">
+              <button onClick={() => setShowItineraryListModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-200">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {showConfirmDeleteModal && itineraryToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800 text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Confirm Deletion</h2>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete the itinerary leg for "
+              <span className="font-semibold">{itineraryToDelete.location}</span>"? This will also delete all associated properties, activities, and transportation for this location. This action cannot be undone.
+            </p>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => {
+                  setShowConfirmDeleteModal(false);
+                  setItineraryToDelete(null);
+                }}
+                className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteItineraryLeg}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -849,7 +1068,7 @@ const AdminDashboard = () => {
             <button onClick={() => setIsAddingClient(!isAddingClient)} className={`flex items-center w-full bg-accent hover:bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg mb-4 justify-center transition duration-200 ${isSidebarMinimized ? 'p-2 w-12 h-12 rounded-full mx-auto flex-shrink-0' : ''}`} title={isAddingClient ? 'Cancel Add Client' : 'Add New Client'}> <Plus size={20} className={`${isSidebarMinimized ? '' : 'mr-2'}`} /> {!isSidebarMinimized && (isAddingClient ? 'Cancel' : 'Add Client')} </button>
             {isAddingClient && !isSidebarMinimized && ( <form onSubmit={handleAddClient} className="space-y-4 mb-6 p-4 border border-gray-700 rounded-lg bg-gray-800 text-gray-300"> <h3 className="text-xl font-semibold text-accent">New Client Details</h3> <div> <label htmlFor="newClientName" className="block text-sm font-bold mb-2">Client Name:</label> <input type="text" id="newClientName" className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-accent" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Enter client name" required /> </div> <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200" disabled={loading}> Create Client </button> </form> )}
             <ul className="py-2 space-y-2">
-              {clients.length === 0 ? ( <li className={`text-gray-400 text-center py-4 ${isSidebarMinimized ? 'hidden' : ''}`}>No clients yet.</li> ) : ( clients.map((client) => ( <li key={client.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition duration-200 ease-in-out ${selectedClient && selectedClient.id === client.id ? 'bg-gray-700 border-accent shadow-lg' : 'bg-gray-800 hover:bg-gray-700 border-gray-700'} ${isSidebarMinimized ? 'justify-center p-2' : ''}`} onClick={() => handleSelectClient(client)}> {!isSidebarMinimized ? ( <> <div className="flex-1 min-w-0 pr-2"> <p className="font-semibold text-gray-100 truncate">{client.client_name}</p> <p className="text-sm text-gray-400 truncate">ID: {client.id.substring(0, 8)}...</p> </div> <div className="flex space-x-2 flex-shrink-0"> <button onClick={(e) => handleViewClientPage(e, client)} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" title="View Client Page"> <ExternalLink size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleOpenEditClientModal(client); }} className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors" title="Edit Client Details"> <Edit size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }} className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors" title="Delete Client"> <Trash2 size={16} /> </button> </div> </> ) : ( <div className="text-center"> {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Global Logo" className="h-8 w-8 object-contain mx-auto mb-1" title={client.client_name}/> ) : ( <Eye size={20} className="text-gray-300 mx-auto mb-1" title={client.client_name} /> )} <p className="text-xs text-gray-300 leading-none">{client.client_name.split(' ')[0]}</p> </div> )} </li> )) )}
+              {clients.length === 0 ? ( <li className={`text-gray-400 text-center py-4 ${isSidebarMinimized ? 'hidden' : ''}`}>No clients yet.</li> ) : ( clients.map((client) => ( <li key={client.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition duration-200 ease-in-out ${selectedClient && selectedClient.id === client.id ? 'bg-gray-700 border-accent shadow-lg' : 'bg-gray-800 hover:bg-gray-700 border-gray-700'} ${isSidebarMinimized ? 'justify-center p-2' : ''}`} onClick={() => handleSelectClient(client)}> {!isSidebarMinimized ? ( <> <div className="flex-1 min-w-0 pr-2"> <p className="font-semibold text-gray-100 truncate">{client.client_name}</p> <p className="text-sm text-gray-400 truncate">ID: {client.id.substring(0, 8)}...</p> </div> <div className="flex space-x-2 flex-shrink-0"> <button onClick={(e) => { e.stopPropagation(); handleDuplicateClient(client); }} className="p-2 bg-teal-600 text-white rounded-full hover:bg-teal-700 transition-colors" title="Duplicate Client"><Copy size={16} /></button> <button onClick={(e) => handleViewClientPage(e, client)} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" title="View Client Page"> <ExternalLink size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleOpenEditClientModal(client); }} className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors" title="Edit Client Details"> <Edit size={16} /> </button> <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }} className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors" title="Delete Client"> <Trash2 size={16} /> </button> </div> </> ) : ( <div className="text-center"> {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Global Logo" className="h-8 w-8 object-contain mx-auto mb-1" title={client.client_name}/> ) : ( <Eye size={20} className="text-gray-300 mx-auto mb-1" title={client.client_name} /> )} <p className="text-xs text-gray-300 leading-none">{client.client_name.split(' ')[0]}</p> </div> )} </li> )) )}
             </ul>
           </nav>
         </div>
@@ -902,7 +1121,7 @@ const AdminDashboard = () => {
                         <PropertyForm
                             properties={clientData.properties}
                             setProperties={handleUpdateProperties}
-                            onSave={handleSaveClientData}
+                            onSave={() => handleSaveClientData()}
                             adminMode={true}
                         />
                     )}
@@ -930,7 +1149,7 @@ const AdminDashboard = () => {
 
                 <div className="mt-6 text-center">
                   <button
-                    onClick={handleSaveClientData}
+                    onClick={() => handleSaveClientData()}
                     disabled={loading}
                     className="px-6 py-3 bg-accent text-gray-900 rounded-lg shadow-md hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
