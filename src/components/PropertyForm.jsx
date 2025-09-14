@@ -258,6 +258,45 @@ const PropertyForm = ({
     document.body.removeChild(link);
   };
 
+  const exportToCSV = () => {
+    if (!properties || properties.length === 0) {
+      setError("No property data to export.");
+      return;
+    }
+
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category";
+    
+    const csvRows = properties.map(property => {
+      const row = [
+        property.name || '',
+        property.location || '',
+        property.checkIn || '',
+        property.checkOut || '',
+        property.currency || 'NZD',
+        property.price || 0,
+        property.price_type || 'Per Night',
+        property.bedrooms || 0,
+        property.bathrooms || 0,
+        (property.images || []).join(';'),
+        property.homeImageIndex || 0,
+        property.selected ? 'TRUE' : 'FALSE',
+        property.description || '',
+        property.category || 'Luxury'
+      ];
+      return row.map(field => `"${field}"`).join(',');
+    });
+
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${csvRows.join('\n')}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `properties_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setMessage("Property data exported successfully!");
+  };
+
   const handleAddNewPropertyClick = (itineraryDetails = {}) => {
       setNewProperty({
           ...initialNewPropertyState,
@@ -822,6 +861,9 @@ const PropertyForm = ({
               <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
                   <Upload size={18} className="mr-2" /> Import from CSV
               </button>
+              <button onClick={exportToCSV} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
+                  <Download size={18} className="mr-2" /> Export to CSV
+              </button>
               <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 <Download size={16} />
                 <span>Download Template</span>
@@ -1226,3 +1268,4 @@ const PropertyForm = ({
 };
 
 export default PropertyForm;
+
