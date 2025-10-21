@@ -20,6 +20,7 @@ import {
   ChevronUp,
   Download,
 } from 'lucide-react';
+import { getCurrencySymbol, getCurrencyName, getCurrencyOptions } from '../utils/currencyUtils';
 
 const PropertyForm = ({
   properties,
@@ -698,10 +699,11 @@ const PropertyForm = ({
             onChange={(e) => setProperty(prev => ({ ...prev, currency: e.target.value }))}
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="NZD">NZ$ (New Zealand Dollar)</option>
-            <option value="USD">$ (United States Dollar)</option>
-            <option value="EUR">€ (Euro)</option>
-            <option value="INR">₹ (Indian Rupee)</option>
+            {getCurrencyOptions().map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
         <div>

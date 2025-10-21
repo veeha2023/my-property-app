@@ -9,12 +9,9 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
+import { getCurrencySymbol, getCurrencyName, getCurrencyOptions, convertItemsCurrency } from '../utils/currencyUtils.js';
 
 const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
-    const getCurrencySymbol = (currencyCode) => {
-        const symbols = { NZD: 'NZ$', USD: '$', EUR: '€', INR: '₹' };
-        return symbols[currencyCode] || currencyCode || 'NZ$';
-    };
 
     const getPriceColor = (price) => {
         if (price < 0) return 'text-green-600';
@@ -717,10 +714,32 @@ const AdminDashboard = () => {
     setMessage('');
     setError(null);
     try {
+        const newCurrency = editingClientCurrency;
+        const currentCurrency = clientData?.currency || 'NZD';
+
+        // Convert all items to new currency if currency changed
+        let updatedProperties = clientData?.properties || [];
+        let updatedActivities = clientData?.activities || [];
+        let updatedTransportation = clientData?.transportation || [];
+        let updatedFlights = clientData?.flights || [];
+
+        if (currentCurrency !== newCurrency) {
+            setMessage('Converting currencies... This may take a moment.');
+            
+            updatedProperties = await convertItemsCurrency(updatedProperties, currentCurrency, newCurrency);
+            updatedActivities = await convertItemsCurrency(updatedActivities, currentCurrency, newCurrency);
+            updatedTransportation = await convertItemsCurrency(updatedTransportation, currentCurrency, newCurrency);
+            updatedFlights = await convertItemsCurrency(updatedFlights, currentCurrency, newCurrency);
+        }
+
         const updatedClientData = {
             ...clientData,
             quote: parseFloat(editingClientQuote) || 0,
-            currency: editingClientCurrency,
+            currency: newCurrency,
+            properties: updatedProperties,
+            activities: updatedActivities,
+            transportation: updatedTransportation,
+            flights: updatedFlights,
         };
         const { error: updateClientError } = await supabase
             .from('clients')
@@ -846,17 +865,18 @@ const AdminDashboard = () => {
                         <input type="number" step="0.01" id="editingClientQuote" value={editingClientQuote} onChange={(e) => setEditingClientQuote(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400" required />
                     </div>
                     <div>
-                        <label htmlFor="editingClientCurrency" className="block text-sm font-medium text-gray-800">Currency</label>
+                        <label htmlFor="editingClientCurrency" className="block text-sm font-medium text-gray-800">Base Currency</label>
                         <select
                             id="editingClientCurrency"
                             value={editingClientCurrency}
                             onChange={(e) => setEditingClientCurrency(e.target.value)}
                             className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400"
                         >
-                            <option value="NZD">NZ$</option>
-                            <option value="USD">$</option>
-                            <option value="EUR">€</option>
-                            <option value="INR">₹</option>
+                            {getCurrencyOptions().map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200" disabled={loading}>

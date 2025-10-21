@@ -1,6 +1,7 @@
 // src/components/TransportationForm.jsx - Version 2.7 (Image Link Input Fix)
 import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Car, Calendar, Clock, MapPin, ShieldCheck, Users, DollarSign, Image, Link2, Ship, Bus, CheckCircle, Upload, Download } from 'lucide-react';
+import { getCurrencySymbol, getCurrencyName, getCurrencyOptions } from '../utils/currencyUtils';
 
 const TransportationForm = ({ transportation, setTransportation, itineraryLegs }) => {
   const [editingItem, setEditingItem] = useState(null);
@@ -500,7 +501,13 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
               {fields}
               <div className="lg:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Pricing & Images</div>
               <div><label className="block text-sm font-medium text-gray-700">Price (Differential)</label><input type="number" step="0.01" value={data.price} onChange={(e) => setData({...data, price: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., 150 or -50"/></div>
-              <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"><option value="NZD">NZ$</option><option value="USD">$</option><option value="EUR">€</option><option value="INR">₹</option></select></div>
+              <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                {getCurrencyOptions().map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select></div>
               <div className="lg:col-span-3">
                   <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
                   <textarea rows="3" value={imageLinks} onChange={(e) => setImageLinks(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>

@@ -1,6 +1,7 @@
 // src/components/FlightForm.jsx - Version 1.5 (Enhanced Pricing Model)
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Plane, Calendar, Clock, MapPin, Briefcase, DollarSign, CheckCircle, Upload, Download } from 'lucide-react';
+import { getCurrencySymbol, getCurrencyName, getCurrencyOptions } from '../utils/currencyUtils';
 
 const FlightForm = ({ flights, setFlights }) => {
   const [editingFlight, setEditingFlight] = useState(null);
@@ -284,7 +285,13 @@ const FlightForm = ({ flights, setFlights }) => {
         <div className="md:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Pricing</div>
         <div><label className="block text-sm font-medium text-gray-700">Price if Selected</label><input type="number" step="0.01" value={data.price_if_selected} onChange={(e) => setData({...data, price_if_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-gray-700">Price if Not Selected</label><input type="number" step="0.01" value={data.price_if_not_selected} onChange={(e) => setData({...data, price_if_not_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
-        <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md"><option value="NZD">NZ$</option><option value="USD">$</option><option value="EUR">€</option><option value="INR">₹</option></select></div>
+        <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+          {getCurrencyOptions().map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select></div>
         <div className="lg:col-span-3 flex items-center">
             <input
                 type="checkbox"
