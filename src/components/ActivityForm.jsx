@@ -1,4 +1,4 @@
-// src/components/ActivityForm.jsx - Version 3.9 (Corrected Logic and UI)
+// src/components/ActivityForm.jsx - Version 4.2 (Display Logic Fix)
 import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, MapPin, Users, DollarSign, ChevronsRight, CheckCircle, Upload } from 'lucide-react';
 
@@ -9,6 +9,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [imageLinks, setImageLinks] = useState('');
   const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
+  const [showDateTime, setShowDateTime] = useState(false); // State for the toggle
   const fileInputRef = useRef(null);
   const accentColor = '#FFD700';
 
@@ -43,7 +44,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'N/A'; // This will now only be called if dateString exists
     try {
       // Use the robust parser before creating a Date object
       const parsedDateStr = parseDateString(dateString);
@@ -54,7 +55,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   };
 
   const formatTime = (timeString) => {
-    if (!timeString) return 'N/A';
+    if (!timeString) return 'N/A'; // This will now only be called if timeString exists
     try {
       const [hours, minutes] = timeString.split(':');
       const date = new Date();
@@ -130,6 +131,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       images: [],
       selected: true,
     });
+    setShowDateTime(false); // Default to false for new activities
   };
 
   const handleSave = () => {
@@ -139,6 +141,14 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     activityToSave.pax = parseInt(activityToSave.pax, 10) || 1;
     activityToSave.price_if_selected = parseFloat(activityToSave.price_if_selected) || 0;
     activityToSave.price_if_not_selected = parseFloat(activityToSave.price_if_not_selected) || 0;
+
+    // --- BUG FIX ---
+    // If the date/time toggle is off, clear the date and time fields before saving
+    if (!showDateTime) {
+      activityToSave.date = '';
+      activityToSave.time = '';
+    }
+    // --- END BUG FIX ---
 
     if (editingActivity) {
       updatedActivities = activities.map(act => act.id === activityToSave.id ? activityToSave : act);
@@ -160,6 +170,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     setEditingActivity(null);
     setNewActivity(null);
     setImageLinks('');
+    setShowDateTime(false); // Reset toggle on form close
   };
   
   const toggleSelection = (id) => {
@@ -193,33 +204,48 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     reader.onload = (e) => {
         try {
             const text = e.target.result;
-            const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+            const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '' && !line.startsWith('#'));
             if (lines.length < 2) {
                 setError("CSV file must contain a header row and at least one data row.");
                 return;
             }
             const headers = lines[0].split(',').map(h => h.trim());
-            const requiredHeaders = ['name', 'date', 'time', 'location', 'duration', 'pax', 'price_if_selected', 'price_if_not_selected', 'currency', 'images'];
             
-            if (!requiredHeaders.every(h => headers.includes(h))) {
-                setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
+            // --- CSV HEADER UPDATE ---
+            const coreHeaders = ['name', 'location', 'duration', 'pax', 'price_if_selected', 'price_if_not_selected', 'currency', 'images'];
+            const missingHeaders = coreHeaders.filter(h => !headers.includes(h));
+            
+            if (missingHeaders.length > 0) {
+                setError(`CSV is missing required headers: ${missingHeaders.join(', ')}`);
                 return;
             }
+            // --- END CSV HEADER UPDATE ---
 
             const newActivitiesFromCSV = lines.slice(1).map((line, index) => {
                 const data = line.split(',');
-                if (data.length < headers.length) return null;
+                if (data.length < headers.length) {
+                    // Handle case where trailing commas might be omitted for empty optional fields
+                    while (data.length < headers.length) {
+                        data.push('');
+                    }
+                }
 
                 const activity = {};
                 headers.forEach((header, i) => {
-                    activity[header] = data[i].trim();
+                    activity[header] = data[i] ? data[i].trim() : '';
                 });
+
+                // Ensure core fields are present
+                if (!activity.name || !activity.location) {
+                    return null;
+                }
 
                 return {
                     id: `act-csv-${Date.now()}-${index}`,
                     name: activity.name,
-                    date: parseDateString(activity.date),
-                    time: activity.time,
+                    // Conditionally assign date/time only if columns exist and have data
+                    date: activity.date ? parseDateString(activity.date) : '',
+                    time: activity.time || '',
                     location: activity.location,
                     duration: parseFloat(activity.duration) || 0,
                     pax: parseInt(activity.pax, 10) || 1,
@@ -243,10 +269,21 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   };
 
   const downloadTemplate = () => {
-    const headers = "name,date,time,location,duration,pax,price_if_selected,price_if_not_selected,currency,images";
-    const example = "Skydiving,2025-08-15,10:00,Queenstown,3,2,0,-280,NZD,https://example.com/image1.jpg;https://example.com/image2.jpg";
-    const note = "\n# NOTE: Please use YYYY-MM-DD format for dates for best compatibility. Separate multiple image URLs with a semicolon (;).";
-    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
+    // --- CSV TEMPLATE UPDATE ---
+    const headers = "name,location,duration,pax,price_if_selected,price_if_not_selected,currency,images,date,time";
+    const exampleWithDate = "Skydiving,Queenstown,3,2,0,-280,NZD,https://example.com/image1.jpg,2025-08-15,10:00";
+    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,50,0,NZD,https://example.com/hike.jpg,,";
+    
+    const note = [
+        "\n# NOTE: Required headers are: name, location, duration, pax, price_if_selected, price_if_not_selected, currency, images.",
+        "# 'date' and 'time' headers are OPTIONAL. You can leave them blank or omit them entirely.",
+        "# Please use YYYY-MM-DD format for dates for best compatibility.",
+        "# Separate multiple image URLs with a semicolon (;) in the 'images' column."
+    ].join('\n');
+    
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${exampleWithDate}\n${exampleWithoutDate}${note}`;
+    // --- END CSV TEMPLATE UPDATE ---
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -259,7 +296,19 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   // --- RENDER FUNCTIONS ---
   const renderForm = (activityData, setActivityData) => (
     <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-6 mt-4">
-      <h3 className="text-xl font-bold mb-4 text-gray-800">{editingActivity ? 'Edit Activity' : `Add New Activity for ${addingToLocation}`}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-bold text-gray-800">{editingActivity ? 'Edit Activity' : `Add New Activity for ${addingToLocation}`}</h3>
+        <div className="flex items-center">
+            <label htmlFor="showDateTimeToggle" className="text-sm font-medium text-gray-700 mr-2">Show Date/Time</label>
+            <input
+                type="checkbox"
+                id="showDateTimeToggle"
+                checked={showDateTime}
+                onChange={(e) => setShowDateTime(e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700">Activity Name</label>
@@ -269,14 +318,21 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             <label className="block text-sm font-medium text-gray-700">Location</label>
             <input type="text" value={activityData.location} readOnly className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" />
         </div>
-        <div>
-            <label className="block text-sm font-medium text-gray-700">Date</label>
-            <input type="date" value={activityData.date} onChange={(e) => setActivityData({...activityData, date: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
-        </div>
-        <div>
-            <label className="block text-sm font-medium text-gray-700">Time</label>
-            <input type="time" value={activityData.time} onChange={(e) => setActivityData({...activityData, time: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
-        </div>
+        
+        {/* Conditionally render Date and Time fields */}
+        {showDateTime && (
+          <>
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input type="date" value={activityData.date} onChange={(e) => setActivityData({...activityData, date: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Time</label>
+                <input type="time" value={activityData.time} onChange={(e) => setActivityData({...activityData, time: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            </div>
+          </>
+        )}
+        
         <div>
             <label className="block text-sm font-medium text-gray-700">Duration (in hours)</label>
             <input type="number" placeholder="e.g., 3" value={activityData.duration} onChange={(e) => setActivityData({...activityData, duration: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
@@ -410,7 +466,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                             </div>
                           )}
                           <div className="absolute top-3 right-3 flex space-x-2">
-                            <button onClick={(e) => { e.stopPropagation(); setEditingActivity(activity); setAddingToLocation(null); }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
+                            <button onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setEditingActivity(activity); 
+                                setShowDateTime(!!(activity.date || activity.time)); // Show if date or time exists
+                                setAddingToLocation(null); 
+                            }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
                             <button onClick={(e) => { e.stopPropagation(); handleDelete(activity.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
                           </div>
                         </div>
@@ -418,8 +479,18 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                           <div>
                             <h4 className="font-bold text-lg text-gray-800 truncate">{activity.name}</h4>
                             <div className="mt-2 space-y-2 text-sm text-gray-600">
-                              <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> <span>{formatDate(activity.date)}</span></div>
-                              <div className="flex items-center"><Clock size={16} className="mr-2 text-gray-400" /> <span>{formatTime(activity.time)}</span></div>
+                              
+                              {/* --- DISPLAY LOGIC FIX --- */}
+                              {/* Only show date if activity.date is not an empty string */}
+                              {activity.date && (
+                                <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> <span>{formatDate(activity.date)}</span></div>
+                              )}
+                              {/* Only show time if activity.time is not an empty string */}
+                              {activity.time && (
+                                <div className="flex items-center"><Clock size={16} className="mr-2 text-gray-400" /> <span>{formatTime(activity.time)}</span></div>
+                              )}
+                              {/* --- END DISPLAY LOGIC FIX --- */}
+
                               <div className="flex items-center"><ChevronsRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
                             </div>
                           </div>

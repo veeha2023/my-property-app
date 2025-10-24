@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 6.0 (Production Ready)
+// src/pages/ClientView.jsx - Version 6.1 (Conditional Date/Time Display)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -679,8 +679,16 @@ const ClientView = () => {
                                             <div>
                                                 <h4 className="font-bold text-lg text-gray-800 truncate mb-2">{activity.name}</h4>
                                                 <div className="space-y-1 text-sm text-gray-600">
-                                                    <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> <span>{formatDate(activity.date)}</span></div>
-                                                    <div className="flex items-center"><Clock size={16} className="mr-2 text-gray-400" /> <span>{formatTime(activity.time)}</span></div>
+                                                    
+                                                    {/* --- DISPLAY LOGIC FIX --- */}
+                                                    {activity.date && (
+                                                        <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> <span>{formatDate(activity.date)}</span></div>
+                                                    )}
+                                                    {activity.time && (
+                                                        <div className="flex items-center"><Clock size={16} className="mr-2 text-gray-400" /> <span>{formatTime(activity.time)}</span></div>
+                                                    )}
+                                                    {/* --- END DISPLAY LOGIC FIX --- */}
+                                                    
                                                     <div className="flex items-center"><ChevronRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
                                                     <div className="flex items-center"><Users size={16} className="mr-2 text-gray-400" /> <span>{activity.pax} Pax</span></div>
                                                 </div>
