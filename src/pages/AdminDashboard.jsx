@@ -9,15 +9,10 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
-import { getCurrencySymbol, getCurrencyName, getCurrencyOptions, convertItemsCurrency } from '../utils/currencyUtils.js';
+import { getCurrencySymbol, getCurrencyName, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
 import { useVisibility, useAutoSave } from '../hooks/useVisibility.js';
 
 const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
-
-    // Helper function to format number with thousand separators
-    const formatNumberWithCommas = (number) => {
-        return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
 
     const getPriceColor = (price) => {
         if (price < 0) return 'text-green-600';
@@ -126,15 +121,15 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                 <div className="grid grid-cols-3 gap-4 w-full md:w-auto">
                     <div className="text-center p-3 rounded-lg bg-gray-100">
                         <p className="text-xs text-gray-600">Base Quote</p>
-                        <p className="text-2xl font-bold text-gray-800">{currencySymbol}{formatNumberWithCommas(baseQuote)}</p>
+                        <p className="text-2xl font-bold text-gray-800">{currencySymbol}{formatNumberWithCommas(baseQuote, currency)}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-gray-100">
                         <p className="text-xs text-gray-600">Selections</p>
-                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{currencySymbol}{formatNumberWithCommas(Math.abs(totalChange))}</p>
+                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{currencySymbol}{formatNumberWithCommas(Math.abs(totalChange), currency)}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-blue-100 border border-blue-200">
                         <p className="text-xs text-blue-800">Final Quote</p>
-                        <p className="text-2xl font-bold text-blue-800">{currencySymbol}{formatNumberWithCommas(finalQuote)}</p>
+                        <p className="text-2xl font-bold text-blue-800">{currencySymbol}{formatNumberWithCommas(finalQuote, currency)}</p>
                     </div>
                 </div>
             </div>
@@ -156,7 +151,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                 <p className="text-sm text-gray-600">{item.location}</p>
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price))}`}</p>
+                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
                                     </div>
                                 ))}
                             </div>
@@ -175,7 +170,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                 <p className="text-sm text-gray-600">{item.from} to {item.to}</p>
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalFlightPrice(item))}`}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(calculateFinalFlightPrice(item)))}`}</p>
+                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalFlightPrice(item))}`}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(calculateFinalFlightPrice(item)), item.currency)}`}</p>
                                     </div>
                                 ))}
                             </div>
@@ -195,10 +190,10 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                 <div>
                                                     <p className="font-bold text-gray-800">{item.name}</p>
                                                     <p className="text-sm text-gray-600">{item.location}</p>
-                                                    {costPerPax > 0 && <p className="text-xs text-gray-500">{item.pax} pax × {getCurrencySymbol(item.currency)}{formatNumberWithCommas(costPerPax)}</p>}
+                                                    {costPerPax > 0 && <p className="text-xs text-gray-500">{item.pax} pax × {getCurrencySymbol(item.currency)}{formatNumberWithCommas(costPerPax, item.currency)}</p>}
                                                 </div>
                                             </div>
-                                            <p className={`font-bold text-lg ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(deltaPrice))}`}</p>
+                                            <p className={`font-bold text-lg ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(deltaPrice), item.currency)}`}</p>
                                         </div>
                                     );
                                 })}
@@ -227,7 +222,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                                 <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
                                                                 <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation}</div>
                                                                 <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate)} at {formatTime(item.dropoffTime)}</div>
-                                                                <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{formatNumberWithCommas(item.excessAmount || 0)})</div>
+                                                                <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{formatNumberWithCommas(item.excessAmount || 0, item.currency)})</div>
                                                                 <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>
                                                             </>
                                                         );
@@ -264,7 +259,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                             </div>
                                         </div>
                                         <div className="w-full lg:w-auto text-right lg:ml-auto flex-shrink-0">
-                                            <p className={`text-2xl font-bold whitespace-nowrap ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price))}`}</p>
+                                            <p className={`text-2xl font-bold whitespace-nowrap ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
                                         </div>
                                     </div>
                                 ))}

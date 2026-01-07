@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronUp, Minus, Plus, DollarSign
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice } from '../utils/currencyUtils.js';
+import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -268,21 +268,17 @@ const ClientView = () => {
     localStorage.setItem(`client_${clientId}_currency`, newCurrency);
   }, [clientId]);
 
-  // Helper function to format number with thousand separators
-  const formatNumberWithCommas = (number) => {
-    return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-
   // Helper function to convert and display price
   const displayPrice = useCallback((amount, itemCurrency = null) => {
     const fromCurrency = itemCurrency || baseCurrency;
+    const displayCurrency = selectedCurrency || fromCurrency;
 
     if (!selectedCurrency || !exchangeRates || selectedCurrency === fromCurrency) {
-      return `${getCurrencySymbol(fromCurrency)}${formatNumberWithCommas(amount)}`;
+      return `${getCurrencySymbol(fromCurrency)}${formatNumber(amount, fromCurrency)}`;
     }
 
     const convertedAmount = convertPrice(amount, fromCurrency, selectedCurrency, exchangeRates);
-    return `${getSymbol(selectedCurrency)}${formatNumberWithCommas(convertedAmount)}`;
+    return `${getSymbol(selectedCurrency)}${formatNumber(convertedAmount, displayCurrency)}`;
   }, [selectedCurrency, baseCurrency, exchangeRates]);
 
   // Helper function to display price with sign (+ or -)

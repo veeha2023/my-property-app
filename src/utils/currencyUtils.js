@@ -54,6 +54,38 @@ export const getCurrencyOptions = () => {
   }));
 };
 
+// Format number with thousand separators
+// INR uses Indian numbering system (12,34,567.89)
+// Other currencies use standard system (1,234,567.89)
+export const formatNumberWithCommas = (number, currencyCode = 'NZD') => {
+  const num = parseFloat(number);
+  if (isNaN(num)) return '0.00';
+
+  // Handle INR with Indian numbering system
+  if (currencyCode === 'INR') {
+    const [integerPart, decimalPart] = num.toFixed(2).split('.');
+
+    // For Indian numbering: first 3 digits from right, then groups of 2
+    let formattedInteger = '';
+    const reversed = integerPart.split('').reverse().join('');
+
+    for (let i = 0; i < reversed.length; i++) {
+      if (i === 3 || (i > 3 && (i - 3) % 2 === 0)) {
+        formattedInteger = ',' + formattedInteger;
+      }
+      formattedInteger = reversed[i] + formattedInteger;
+    }
+
+    return `${formattedInteger}.${decimalPart}`;
+  }
+
+  // Standard formatting for other currencies
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
 // Fetch live exchange rates from API with optional date
 export const fetchExchangeRates = async (date = null) => {
   const now = Date.now();
