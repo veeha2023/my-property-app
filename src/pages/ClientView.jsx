@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronUp, Minus, Plus, DollarSign
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, detectUserCurrency, DEFAULT_CURRENCY } from '../utils/currencyUtils.js';
+import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice } from '../utils/currencyUtils.js';
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -215,14 +215,11 @@ const ClientView = () => {
         setBaseCurrency(clientBaseCurrency);
         setConversionDate(clientConversionDate);
 
-        // Try to detect user's local currency from browser
-        const detectedCurrency = detectUserCurrency();
-
         // Check localStorage for saved preference
         const savedCurrency = localStorage.getItem(`client_${clientId}_currency`);
 
-        // Priority: saved preference > detected currency > base currency
-        const initialCurrency = savedCurrency || (detectedCurrency !== DEFAULT_CURRENCY ? detectedCurrency : clientBaseCurrency);
+        // Priority: saved preference > base currency (default to what admin set)
+        const initialCurrency = savedCurrency || clientBaseCurrency;
         setSelectedCurrency(initialCurrency);
 
         const initialIndexes = {};
