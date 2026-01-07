@@ -7,7 +7,7 @@ import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Ship, Bus, Briefcase,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Minus, Plus
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
@@ -120,10 +120,38 @@ const ClientView = () => {
     } catch (e) { return ''; }
   };
 
-  const calculateFinalActivityPrice = useCallback((activity) => {
-    const priceSelected = parseFloat(activity.price_if_selected) || 0;
-    const priceNotSelected = parseFloat(activity.price_if_not_selected) || 0;
-    return activity.selected ? priceSelected : priceNotSelected;
+  const calculateActivityDelta = useCallback((activity) => {
+    // Calculate delta from base quote
+    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+    const flatPrice = parseFloat(activity.flat_price) || 0;
+    const currentPax = parseInt(activity.pax, 10) || 1;
+    const basePrice = parseFloat(activity.base_price) || 0;
+    const isIncludedInBase = activity.included_in_base !== false;
+    const isSelected = activity.selected !== false;
+
+    // Current price calculation
+    const currentPrice = (costPerPax * currentPax) + flatPrice;
+
+    // Delta logic:
+    if (isIncludedInBase) {
+      // Was included in base
+      if (!isSelected) {
+        // Deselected: subtract the base price
+        return -basePrice;
+      } else {
+        // Still selected: delta is change from base
+        return currentPrice - basePrice;
+      }
+    } else {
+      // Was NOT included in base (optional)
+      if (isSelected) {
+        // Selected: add the full current price
+        return currentPrice;
+      } else {
+        // Not selected: no delta
+        return 0;
+      }
+    }
   }, []);
 
   const calculateFinalFlightPrice = useCallback((flight) => {
@@ -291,6 +319,11 @@ const ClientView = () => {
     setClientData(prevData => ({ ...prevData, activities: prevData.activities.map(act => act.id === activityId ? { ...act, selected: !act.selected } : act) }));
   }, []);
 
+  const updateActivityPax = useCallback((activityId, newPax) => {
+    const paxValue = Math.max(1, parseInt(newPax, 10) || 1);
+    setClientData(prevData => ({ ...prevData, activities: prevData.activities.map(act => act.id === activityId ? { ...act, pax: paxValue } : act) }));
+  }, []);
+
   const toggleTransportationSelection = useCallback((itemId) => {
     setClientData(prevData => ({ ...prevData, transportation: (prevData.transportation || []).map(item => item.id === itemId ? { ...item, selected: !item.selected } : item) }));
   }, []);
@@ -310,11 +343,11 @@ const ClientView = () => {
     if (!clientData) return 0;
     let total = 0;
     total += clientData.properties?.reduce((sum, prop) => sum + (prop.selected ? parseCurrencyToNumber(prop.price) : 0), 0) || 0;
-    total += clientData.activities?.reduce((sum, act) => sum + calculateFinalActivityPrice(act), 0) || 0;
+    total += clientData.activities?.reduce((sum, act) => sum + calculateActivityDelta(act), 0) || 0;
     total += clientData.transportation?.reduce((sum, item) => sum + (item.selected ? parseCurrencyToNumber(item.price) : 0), 0) || 0;
     total += clientData.flights?.reduce((sum, item) => sum + calculateFinalFlightPrice(item), 0) || 0;
     return total;
-  }, [clientData, parseCurrencyToNumber, calculateFinalActivityPrice, calculateFinalFlightPrice]);
+  }, [clientData, parseCurrencyToNumber, calculateActivityDelta, calculateFinalFlightPrice]);
 
   const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
   const finalQuote = baseQuote + totalChangeValue;
@@ -547,18 +580,20 @@ const ClientView = () => {
                     <div onClick={() => setActiveTab('activities')} className="cursor-pointer group">
                       <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
                       <div className="space-y-4">
-                        {selectedActivities.map(item => (
-                          <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                            <div className="flex items-center gap-4">
-                              <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
-                              <div>
-                                <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
-                                <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
+                        {selectedActivities.map(item => {
+                          return (
+                            <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                              <div className="flex items-center gap-4">
+                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
+                                <div>
+                                  <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
+                                  <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
+                                </div>
                               </div>
+                              <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateActivityDelta(item))}}>{`${calculateActivityDelta(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateActivityDelta(item)).toFixed(2)}`}</p>
                             </div>
-                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateFinalActivityPrice(item))}}>{`${calculateFinalActivityPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateFinalActivityPrice(item)).toFixed(2)}`}</p>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -667,19 +702,23 @@ const ClientView = () => {
                         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{location} Activities</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {activitiesInLocation.map(activity => {
-                                const finalPrice = calculateFinalActivityPrice(activity);
-                                const priceColorStyle = { color: getPriceColor(finalPrice) };
+                                const deltaPrice = calculateActivityDelta(activity);
+                                const priceColorStyle = { color: getPriceColor(deltaPrice) };
+                                const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+                                const hasPaxPricing = costPerPax > 0;
+                                const isSelected = activity.selected !== false;
+                                const isIncludedInBase = activity.included_in_base !== false;
                                 return (
-                                    <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 cursor-pointer group overflow-hidden ${activity.selected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => toggleActivitySelection(activity.id)}>
+                                    <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 cursor-pointer group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => toggleActivitySelection(activity.id)}>
                                         <div className="relative aspect-video">
                                             {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
-                                            {activity.selected && ( <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg"> <Check size={24} className="text-green-500" /> </div> )}
+                                            {isSelected && ( <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg"> <Check size={24} className="text-green-500" /> </div> )}
                                         </div>
                                         <div className="p-4 flex flex-col justify-between flex-grow">
                                             <div>
                                                 <h4 className="font-bold text-lg text-gray-800 truncate mb-2">{activity.name}</h4>
                                                 <div className="space-y-1 text-sm text-gray-600">
-                                                    
+
                                                     {/* --- DISPLAY LOGIC FIX --- */}
                                                     {activity.date && (
                                                         <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> <span>{formatDate(activity.date)}</span></div>
@@ -688,12 +727,45 @@ const ClientView = () => {
                                                         <div className="flex items-center"><Clock size={16} className="mr-2 text-gray-400" /> <span>{formatTime(activity.time)}</span></div>
                                                     )}
                                                     {/* --- END DISPLAY LOGIC FIX --- */}
-                                                    
+
                                                     <div className="flex items-center"><ChevronRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
-                                                    <div className="flex items-center"><Users size={16} className="mr-2 text-gray-400" /> <span>{activity.pax} Pax</span></div>
+
+                                                    {/* Pax input - only show if activity is selected and has pax pricing */}
+                                                    {isSelected && hasPaxPricing ? (
+                                                        <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                                                            <div className="flex items-center">
+                                                                <Users size={16} className="mr-2 text-gray-400" />
+                                                                <span className="text-sm mr-2">Pax:</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        updateActivityPax(activity.id, Math.max(1, activity.pax - 1));
+                                                                    }}
+                                                                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
+                                                                    disabled={activity.pax <= 1}
+                                                                >
+                                                                    <Minus size={16} className={activity.pax <= 1 ? 'text-gray-300' : 'text-gray-700'} />
+                                                                </button>
+                                                                <span className="w-8 text-center font-semibold text-gray-800">{activity.pax}</span>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        updateActivityPax(activity.id, activity.pax + 1);
+                                                                    }}
+                                                                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
+                                                                >
+                                                                    <Plus size={16} className="text-gray-700" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             </div>
-                                            <div className="mt-4 text-right"> <span className="text-2xl font-bold" style={priceColorStyle}> {`${finalPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(finalPrice).toFixed(2)}`} </span> </div>
+                                            <div className="mt-4 text-right">
+                                                <span className="text-2xl font-bold" style={priceColorStyle}> {`${deltaPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(deltaPrice).toFixed(2)}`} </span>
+                                            </div>
                                         </div>
                                     </div>
                                 )

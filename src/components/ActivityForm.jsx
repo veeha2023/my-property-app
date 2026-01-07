@@ -1,5 +1,5 @@
 // src/components/ActivityForm.jsx - Version 4.2 (Display Logic Fix)
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, MapPin, Users, DollarSign, ChevronsRight, CheckCircle, Upload } from 'lucide-react';
 
 const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
@@ -64,11 +64,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     } catch { return 'Invalid Time'; }
   };
 
-  const calculateFinalPrice = (activity) => {
-    const priceSelected = parseFloat(activity.price_if_selected) || 0;
-    const priceNotSelected = parseFloat(activity.price_if_not_selected) || 0;
-    
-    return activity.selected ? priceSelected : priceNotSelected;
+  const calculateBasePrice = (activity) => {
+    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+    const flatPrice = parseFloat(activity.flat_price) || 0;
+    const pax = parseInt(activity.pax, 10) || 1;
+
+    return (costPerPax * pax) + flatPrice;
   };
 
   const getPriceColor = (price) => {
@@ -78,6 +79,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   };
   
   const sortedActivityGroups = useMemo(() => {
+    // First, group existing activities by location
     const groupedByLocation = (activities || []).reduce((acc, activity) => {
       const location = activity.location || 'Uncategorized';
       if (!acc[location]) {
@@ -87,9 +89,25 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       return acc;
     }, {});
 
-    const locationGroups = Object.keys(groupedByLocation).map(location => {
-      const groupActivities = groupedByLocation[location];
-      
+    // Add all itinerary legs as location groups (even if they don't have activities)
+    const allLocations = new Set();
+
+    // Add locations from itinerary legs
+    (itineraryLegs || []).forEach(leg => {
+      if (leg.location) {
+        allLocations.add(leg.location);
+      }
+    });
+
+    // Add locations from existing activities
+    Object.keys(groupedByLocation).forEach(location => {
+      allLocations.add(location);
+    });
+
+    const locationGroups = Array.from(allLocations).map(location => {
+      const groupActivities = groupedByLocation[location] || [];
+
+      // Sort activities by date/time
       groupActivities.sort((a, b) => {
         const dateA = new Date(parseDateString(a.date) + 'T' + (a.time || '00:00'));
         const dateB = new Date(parseDateString(b.date) + 'T' + (b.time || '00:00'));
@@ -98,20 +116,33 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         return dateA.getTime() - dateB.getTime();
       });
 
-      const earliestActivity = groupActivities[0];
-      const sortDate = earliestActivity ? new Date(parseDateString(earliestActivity.date) + 'T' + (earliestActivity.time || '00:00')) : new Date(0);
+      // Find the corresponding itinerary leg for sorting
+      const itineraryLeg = (itineraryLegs || []).find(leg => leg.location === location);
+
+      // Use itinerary leg's check-in date for sorting, or earliest activity date
+      let sortDate;
+      if (itineraryLeg && itineraryLeg.checkIn) {
+        sortDate = new Date(parseDateString(itineraryLeg.checkIn) + 'T00:00:00');
+      } else if (groupActivities.length > 0) {
+        const earliestActivity = groupActivities[0];
+        sortDate = new Date(parseDateString(earliestActivity.date) + 'T' + (earliestActivity.time || '00:00'));
+      } else {
+        sortDate = new Date(0);
+      }
 
       return {
         location,
         activities: groupActivities,
         sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate,
+        itineraryLeg, // Include the itinerary leg data
       };
     });
 
+    // Sort by date
     locationGroups.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
-    
+
     return locationGroups;
-  }, [activities]);
+  }, [activities, itineraryLegs]);
 
   // --- HANDLER FUNCTIONS ---
   const handleStartAdding = (location) => {
@@ -125,11 +156,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       location: location,
       duration: '',
       pax: 1,
-      price_if_selected: 0,
-      price_if_not_selected: 0,
+      cost_per_pax: 0,
+      flat_price: 0,
       currency: 'NZD',
       images: [],
-      selected: true,
+      included_in_base: true, // Default to included in base quote
+      selected: true, // Default to selected
     });
     setShowDateTime(false); // Default to false for new activities
   };
@@ -137,10 +169,13 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const handleSave = () => {
     let updatedActivities;
     const activityToSave = editingActivity || newActivity;
-    
+
     activityToSave.pax = parseInt(activityToSave.pax, 10) || 1;
-    activityToSave.price_if_selected = parseFloat(activityToSave.price_if_selected) || 0;
-    activityToSave.price_if_not_selected = parseFloat(activityToSave.price_if_not_selected) || 0;
+    activityToSave.cost_per_pax = parseFloat(activityToSave.cost_per_pax) || 0;
+    activityToSave.flat_price = parseFloat(activityToSave.flat_price) || 0;
+
+    // Calculate and store the base price contribution for this activity
+    activityToSave.base_price = (activityToSave.cost_per_pax * activityToSave.pax) + activityToSave.flat_price;
 
     // --- BUG FIX ---
     // If the date/time toggle is off, clear the date and time fields before saving
@@ -165,22 +200,26 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     setActivities(updatedActivities);
   };
 
+  const toggleSelection = useCallback((activityId) => {
+    if (typeof setActivities === 'function') {
+      const updatedActivities = (activities || []).map(act => {
+        if (act && act.id === activityId) {
+          return { ...act, selected: !act.selected };
+        }
+        return act;
+      });
+      setActivities(updatedActivities);
+    } else {
+      console.error("ActivityForm: setActivities prop is not a function in toggleSelection.");
+    }
+  }, [activities, setActivities]);
+
   const resetForm = () => {
     setAddingToLocation(null);
     setEditingActivity(null);
     setNewActivity(null);
     setImageLinks('');
     setShowDateTime(false); // Reset toggle on form close
-  };
-  
-  const toggleSelection = (id) => {
-    const updatedActivities = activities.map(act => {
-      if (act.id === id) {
-        return { ...act, selected: !act.selected };
-      }
-      return act;
-    });
-    setActivities(updatedActivities);
   };
 
   const handleAddImageLinks = (currentActivity, setFunc) => {
@@ -212,7 +251,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             const headers = lines[0].split(',').map(h => h.trim());
             
             // --- CSV HEADER UPDATE ---
-            const coreHeaders = ['name', 'location', 'duration', 'pax', 'price_if_selected', 'price_if_not_selected', 'currency', 'images'];
+            const coreHeaders = ['name', 'location', 'duration', 'pax', 'cost_per_pax', 'currency', 'images'];
             const missingHeaders = coreHeaders.filter(h => !headers.includes(h));
             
             if (missingHeaders.length > 0) {
@@ -240,6 +279,25 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     return null;
                 }
 
+                const pax = parseInt(activity.pax, 10) || 1;
+                const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+                const flatPrice = parseFloat(activity.flat_price) || 0;
+                const basePrice = (costPerPax * pax) + flatPrice;
+
+                // Parse included_in_base: if explicitly 'false' or 'FALSE', set to false; otherwise default to true
+                const includedInBase = activity.included_in_base?.toLowerCase() !== 'false';
+
+                // Parse selected: if CSV has explicit value, use it; otherwise match included_in_base
+                // (included in base = selected by default, not included = deselected by default)
+                let selected;
+                if (activity.selected && activity.selected.trim() !== '') {
+                    // Explicit value provided in CSV
+                    selected = activity.selected.toLowerCase() !== 'false';
+                } else {
+                    // No explicit value: default based on included_in_base
+                    selected = includedInBase;
+                }
+
                 return {
                     id: `act-csv-${Date.now()}-${index}`,
                     name: activity.name,
@@ -248,12 +306,14 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     time: activity.time || '',
                     location: activity.location,
                     duration: parseFloat(activity.duration) || 0,
-                    pax: parseInt(activity.pax, 10) || 1,
-                    price_if_selected: parseFloat(activity.price_if_selected) || 0,
-                    price_if_not_selected: parseFloat(activity.price_if_not_selected) || 0,
+                    pax,
+                    cost_per_pax: costPerPax,
+                    flat_price: flatPrice,
+                    base_price: basePrice,
                     currency: activity.currency || 'NZD',
                     images: activity.images ? activity.images.split(';').map(url => url.trim()) : [],
-                    selected: true,
+                    included_in_base: includedInBase,
+                    selected: selected,
                 };
             }).filter(Boolean);
 
@@ -270,17 +330,20 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
 
   const downloadTemplate = () => {
     // --- CSV TEMPLATE UPDATE ---
-    const headers = "name,location,duration,pax,price_if_selected,price_if_not_selected,currency,images,date,time";
-    const exampleWithDate = "Skydiving,Queenstown,3,2,0,-280,NZD,https://example.com/image1.jpg,2025-08-15,10:00";
-    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,50,0,NZD,https://example.com/hike.jpg,,";
-    
+    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time";
+    const exampleWithDate = "Skydiving,Queenstown,3,2,140,50,NZD,https://example.com/image1.jpg,true,2025-08-15,10:00";
+    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,25,0,NZD,https://example.com/hike.jpg,false,,";
+
     const note = [
-        "\n# NOTE: Required headers are: name, location, duration, pax, price_if_selected, price_if_not_selected, currency, images.",
+        "\n# NOTE: Required headers are: name, location, duration, pax, cost_per_pax, currency, images.",
+        "# 'flat_price' is OPTIONAL - adds a fixed cost on top of per-pax pricing.",
+        "# 'included_in_base' - true means included in base quote, false means optional add-on.",
         "# 'date' and 'time' headers are OPTIONAL. You can leave them blank or omit them entirely.",
         "# Please use YYYY-MM-DD format for dates for best compatibility.",
-        "# Separate multiple image URLs with a semicolon (;) in the 'images' column."
+        "# Separate multiple image URLs with a semicolon (;) in the 'images' column.",
+        "# Base price is calculated as: (cost_per_pax × pax) + flat_price"
     ].join('\n');
-    
+
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${exampleWithDate}\n${exampleWithoutDate}${note}`;
     // --- END CSV TEMPLATE UPDATE ---
 
@@ -342,12 +405,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             <input type="number" min="1" value={activityData.pax} onChange={(e) => setActivityData({...activityData, pax: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700">Price if Selected</label>
-            <input type="number" step="0.01" value={activityData.price_if_selected} onChange={(e) => setActivityData({...activityData, price_if_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Cost Per Pax</label>
+            <input type="number" step="0.01" value={activityData.cost_per_pax || ''} onChange={(e) => setActivityData({...activityData, cost_per_pax: e.target.value})} placeholder="e.g., 140" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700">Price if Not Selected</label>
-            <input type="number" step="0.01" value={activityData.price_if_not_selected} onChange={(e) => setActivityData({...activityData, price_if_not_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Flat Price (Optional)</label>
+            <input type="number" step="0.01" value={activityData.flat_price || ''} onChange={(e) => setActivityData({...activityData, flat_price: e.target.value})} placeholder="e.g., 50" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
             <label className="block text-sm font-medium text-gray-700">Currency</label>
@@ -361,13 +424,13 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         <div className="lg:col-span-3 flex items-center">
             <input
                 type="checkbox"
-                id="selected_by_default"
-                checked={activityData.selected}
-                onChange={(e) => setActivityData({ ...activityData, selected: e.target.checked })}
+                id="included_in_base"
+                checked={activityData.included_in_base !== false}
+                onChange={(e) => setActivityData({ ...activityData, included_in_base: e.target.checked })}
                 className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <label htmlFor="selected_by_default" className="ml-2 block text-sm font-medium text-gray-700">
-                Selected by default for client
+            <label htmlFor="included_in_base" className="ml-2 block text-sm font-medium text-gray-700">
+                Included in Base Quote
             </label>
         </div>
         <div className="lg:col-span-3">
@@ -427,10 +490,23 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       </div>
 
       <div className="space-y-8">
-        {sortedActivityGroups.map(({ location, activities: locationActivities }) => (
+        {sortedActivityGroups.map(({ location, activities: locationActivities, itineraryLeg }) => (
             <div key={location} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-2xl font-bold text-gray-800">{location}</h3>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-800">{location}</h3>
+                  {itineraryLeg && itineraryLeg.checkIn && itineraryLeg.checkOut && (
+                    <p className="text-sm text-gray-600 mt-1 flex items-center">
+                      <Calendar size={14} className="mr-1" />
+                      {formatDate(itineraryLeg.checkIn)} - {formatDate(itineraryLeg.checkOut)}
+                      {itineraryLeg.checkIn && itineraryLeg.checkOut && (
+                        <span className="ml-2">
+                          ({Math.max(0, Math.ceil((new Date(parseDateString(itineraryLeg.checkOut)) - new Date(parseDateString(itineraryLeg.checkIn))) / (1000 * 60 * 60 * 24)))} nights)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
                 <button onClick={() => handleStartAdding(location)} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
                   <Plus size={18} className="mr-2" /> Add Activity
                 </button>
@@ -444,12 +520,14 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     if (editingActivity && editingActivity.id === activity.id) {
                       return <div key={activity.id} className="sm:col-span-2 xl:col-span-3">{renderForm(editingActivity, setEditingActivity)}</div>;
                     }
-                    const currentPrice = calculateFinalPrice(activity);
-                    const priceColor = getPriceColor(currentPrice);
+                    const basePrice = calculateBasePrice(activity);
+                    const priceColor = getPriceColor(basePrice);
+                    const isIncluded = activity.included_in_base !== false;
+                    const isSelected = activity.selected !== false;
                     return (
-                      <div 
-                        key={activity.id} 
-                        className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 cursor-pointer group overflow-hidden ${activity.selected ? 'selected-activity-card' : 'border-gray-200'}`}
+                      <div
+                        key={activity.id}
+                        className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 group overflow-hidden cursor-pointer ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`}
                         onClick={() => toggleSelection(activity.id)}
                       >
                         <div className="relative aspect-video">
@@ -460,9 +538,20 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                               <Image size={40} />
                             </div>
                           )}
-                          {activity.selected && (
-                            <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg">
-                              <CheckCircle size={24} className="text-green-500" />
+                          <div className="absolute top-3 left-3 z-10">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleSelection(activity.id);
+                              }}
+                              className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                            />
+                          </div>
+                          {isIncluded && (
+                            <div className="absolute top-3 left-10 bg-white rounded-full p-1 shadow-lg">
+                              <CheckCircle size={20} className="text-green-500" />
                             </div>
                           )}
                           <div className="absolute top-3 right-3 flex space-x-2">
@@ -492,12 +581,14 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                               {/* --- END DISPLAY LOGIC FIX --- */}
 
                               <div className="flex items-center"><ChevronsRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
+                              <div className="flex items-center"><Users size={16} className="mr-2 text-gray-400" /> <span>{activity.pax} Pax</span></div>
                             </div>
                           </div>
                           <div className="mt-4 text-right">
                             <span className={`text-2xl font-bold ${priceColor}`}>
-                              {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(activity.currency)}{Math.abs(currentPrice).toFixed(2)}
+                              {getCurrencySymbol(activity.currency)}{basePrice.toFixed(2)}
                             </span>
+                            {isIncluded && <div className="text-xs text-green-600 mt-1">Included in Base</div>}
                           </div>
                         </div>
                       </div>

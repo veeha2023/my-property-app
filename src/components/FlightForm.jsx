@@ -191,7 +191,7 @@ const FlightForm = ({ flights, setFlights }) => {
             }
             const headers = lines[0].split(',').map(h => h.trim());
             const requiredHeaders = ['flightType', 'airline', 'airlineLogoUrl', 'flightNumber', 'from', 'to', 'departureDate', 'departureTime', 'arrivalDate', 'arrivalTime', 'price_if_selected', 'price_if_not_selected', 'currency', 'baggage_checkInKgs', 'baggage_checkInPieces', 'baggage_cabinKgs', 'baggage_cabinPieces'];
-            
+
             if (!requiredHeaders.every(h => headers.includes(h))) {
                 setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
                 return;
@@ -239,6 +239,7 @@ const FlightForm = ({ flights, setFlights }) => {
             setError(`Failed to process CSV file: ${err.message}`);
         }
     };
+    reader.readAsText(file);
     event.target.value = null;
   };
 

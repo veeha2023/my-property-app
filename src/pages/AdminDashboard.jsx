@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Version 8.0 (Feature Update)
+// src/pages/AdminDashboard.jsx - Version 9.0 (Auto-Save + Visibility Detection)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient.js';
 import PropertyForm from '../components/PropertyForm.jsx';
@@ -6,10 +6,11 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { getCurrencySymbol, getCurrencyName, getCurrencyOptions, convertItemsCurrency } from '../utils/currencyUtils.js';
+import { useVisibility, useAutoSave } from '../hooks/useVisibility.js';
 
 const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
 
@@ -19,10 +20,38 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
         return 'text-gray-900';
     };
 
-    const calculateFinalActivityPrice = useCallback((activity) => {
-        const priceSelected = parseFloat(activity.price_if_selected) || 0;
-        const priceNotSelected = parseFloat(activity.price_if_not_selected) || 0;
-        return activity.selected ? priceSelected : priceNotSelected;
+    const calculateActivityDelta = useCallback((activity) => {
+        // Calculate delta from base quote using new pricing model
+        const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+        const flatPrice = parseFloat(activity.flat_price) || 0;
+        const currentPax = parseInt(activity.pax, 10) || 1;
+        const basePrice = parseFloat(activity.base_price) || 0;
+        const isIncludedInBase = activity.included_in_base !== false;
+        const isSelected = activity.selected !== false;
+
+        // Current price calculation
+        const currentPrice = (costPerPax * currentPax) + flatPrice;
+
+        // Delta logic:
+        if (isIncludedInBase) {
+            // Was included in base
+            if (!isSelected) {
+                // Deselected: subtract the base price
+                return -basePrice;
+            } else {
+                // Still selected: delta is change from base
+                return currentPrice - basePrice;
+            }
+        } else {
+            // Was NOT included in base (optional)
+            if (isSelected) {
+                // Selected: add the full current price
+                return currentPrice;
+            } else {
+                // Not selected: no delta
+                return 0;
+            }
+        }
     }, []);
 
     const calculateFinalFlightPrice = useCallback((flight) => {
@@ -41,11 +70,11 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
     const totalChange = useMemo(() => {
         let total = 0;
         total += selectedProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
-        total += (clientData?.activities || []).reduce((sum, act) => sum + calculateFinalActivityPrice(act), 0);
+        total += (clientData?.activities || []).reduce((sum, act) => sum + calculateActivityDelta(act), 0);
         total += selectedTransportation.reduce((sum, item) => sum + (item.price || 0), 0);
         total += (clientData?.flights || []).reduce((sum, item) => sum + calculateFinalFlightPrice(item), 0);
         return total;
-    }, [clientData, selectedProperties, selectedTransportation, calculateFinalActivityPrice, calculateFinalFlightPrice]);
+    }, [clientData, selectedProperties, selectedTransportation, calculateActivityDelta, calculateFinalFlightPrice]);
 
     const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
     const finalQuote = baseQuote + totalChange;
@@ -117,18 +146,23 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                         <div onClick={() => setActiveTab('activities')} className="cursor-pointer group">
                             <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
                             <div className="space-y-4">
-                                {selectedActivities.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
-                                            <div>
-                                                <p className="font-bold text-gray-800">{item.name}</p>
-                                                <p className="text-sm text-gray-600">{item.location}</p>
+                                {selectedActivities.map(item => {
+                                    const deltaPrice = calculateActivityDelta(item);
+                                    const costPerPax = parseFloat(item.cost_per_pax) || 0;
+                                    return (
+                                        <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
+                                                <div>
+                                                    <p className="font-bold text-gray-800">{item.name}</p>
+                                                    <p className="text-sm text-gray-600">{item.location}</p>
+                                                    {costPerPax > 0 && <p className="text-xs text-gray-500">{item.pax} pax × {getCurrencySymbol(item.currency)}{costPerPax.toFixed(2)}</p>}
+                                                </div>
                                             </div>
+                                            <p className={`font-bold text-lg ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(deltaPrice).toFixed(2)}`}</p>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalActivityPrice(item))}`}>{`${calculateFinalActivityPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateFinalActivityPrice(item)).toFixed(2)}`}</p>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -190,7 +224,22 @@ const AdminDashboard = () => {
   // V1 FIX: Removed unused state variables for original check-in/out
   // const [originalEditingLegCheckIn, setOriginalEditingLegCheckIn] = useState('');
   // const [originalEditingLegCheckOut, setOriginalEditingLegCheckOut] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+
+  // V9.0: Visibility detection to prevent loading on tab switch
+  const isVisible = useVisibility();
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+
+  // V9.0: Auto-save functionality with debouncing (2 second delay)
+  const saveFunction = useCallback(
+    async (data) => {
+      await handleSaveClientData(data, true); // Silent save
+    },
+    [selectedClient] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const { debouncedSave, saveImmediately, isSaving, lastSaved } = useAutoSave(saveFunction, 2000);
 
   useEffect(() => {
     const getSession = async () => {
@@ -280,7 +329,14 @@ const AdminDashboard = () => {
 
     const data = typeof clientPropertiesData === 'object' && clientPropertiesData !== null ? clientPropertiesData : {};
     const existingProperties = Array.isArray(data.properties) ? data.properties : [];
-    const existingActivities = (data.activities || []).map(a => ({ ...a, price_if_selected: parseFloat(a.price_if_selected) || 0, price_if_not_selected: parseFloat(a.price_if_not_selected) || 0 }));
+    const existingActivities = (data.activities || []).map(a => ({
+        ...a,
+        cost_per_pax: parseFloat(a.cost_per_pax) || 0,
+        flat_price: parseFloat(a.flat_price) || 0,
+        base_price: parseFloat(a.base_price) || 0,
+        pax: parseInt(a.pax, 10) || 1,
+        included_in_base: a.included_in_base !== false,
+    }));
     const existingTransportation = Array.isArray(data.transportation) ? data.transportation : [];
     const existingFlights = (data.flights || []).map(f => ({ ...f, price_if_selected: parseFloat(f.price_if_selected) || 0, price_if_not_selected: parseFloat(f.price_if_not_selected) || 0 }));
 
@@ -341,7 +397,7 @@ const AdminDashboard = () => {
       console.error("Error parsing client_properties:", e);
       parsedClientProperties = null;
     }
-    
+
     const fullClientData = initializeClientData(parsedClientProperties);
     setClientData(fullClientData);
 
@@ -353,14 +409,67 @@ const AdminDashboard = () => {
     setError(null);
   };
 
-  const handleSaveClientData = async (updatedData = clientData) => {
+  // Refresh client data without refreshing the whole page
+  const handleRefreshClientData = async () => {
+    if (!selectedClient) return;
+
+    setIsRefreshing(true);
+    setMessage('Refreshing client data...');
+    setError(null);
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', selectedClient.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the selected client with fresh data
+      setSelectedClient(data);
+
+      // Parse and initialize the fresh client data
+      let parsedClientProperties = null;
+      try {
+        if (typeof data.client_properties === 'string') {
+          parsedClientProperties = JSON.parse(data.client_properties);
+        } else {
+          parsedClientProperties = data.client_properties;
+        }
+      } catch (e) {
+        console.error("Error parsing client_properties:", e);
+        parsedClientProperties = null;
+      }
+
+      const fullClientData = initializeClientData(parsedClientProperties);
+      setClientData(fullClientData);
+
+      setEditingClientName(data.client_name);
+      setEditingClientQuote(fullClientData.quote);
+      setEditingClientCurrency(fullClientData.currency);
+
+      setMessage('Client data refreshed successfully!');
+    } catch (err) {
+      console.error("Error refreshing client data:", err.message);
+      setError("Failed to refresh client data: " + err.message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // V9.0: Updated to support auto-save (silent saves without UI feedback)
+  const handleSaveClientData = async (updatedData = clientData, silent = false) => {
     if (!selectedClient || !updatedData) {
-      setMessage('No client selected to save data.');
+      if (!silent) setMessage('No client selected to save data.');
       return;
     }
-    setLoading(true);
-    setMessage('');
-    setError(null);
+
+    if (!silent) {
+      setLoading(true);
+      setMessage('');
+      setError(null);
+    }
 
     const dataToSave = {
         ...updatedData,
@@ -378,28 +487,40 @@ const AdminDashboard = () => {
 
     if (updateError) {
       console.error('Error saving client data:', updateError.message);
-      setError('Error saving client data: ' + updateError.message);
+      if (!silent) setError('Error saving client data: ' + updateError.message);
     } else {
-      setMessage('Client data saved successfully!');
-      fetchClients(); 
+      if (!silent) {
+        setMessage('Client data saved successfully!');
+        fetchClients();
+      }
     }
-    setLoading(false);
+
+    if (!silent) setLoading(false);
   };
 
+  // V9.0: Updated to trigger auto-save on data changes
   const handleUpdateProperties = (updatedProperties) => {
-    setClientData(prevData => ({ ...prevData, properties: updatedProperties }));
+    const newData = { ...clientData, properties: updatedProperties };
+    setClientData(newData);
+    debouncedSave(newData); // Auto-save after 2 seconds
   };
 
   const handleUpdateActivities = (updatedActivities) => {
-    setClientData(prevData => ({ ...prevData, activities: updatedActivities }));
+    const newData = { ...clientData, activities: updatedActivities };
+    setClientData(newData);
+    debouncedSave(newData); // Auto-save after 2 seconds
   };
-  
+
   const handleUpdateTransportation = (updatedTransportation) => {
-    setClientData(prevData => ({ ...prevData, transportation: updatedTransportation }));
+    const newData = { ...clientData, transportation: updatedTransportation };
+    setClientData(newData);
+    debouncedSave(newData); // Auto-save after 2 seconds
   };
 
   const handleUpdateFlights = (updatedFlights) => {
-    setClientData(prevData => ({ ...prevData, flights: updatedFlights }));
+    const newData = { ...clientData, flights: updatedFlights };
+    setClientData(newData);
+    debouncedSave(newData); // Auto-save after 2 seconds
   };
 
   // V1 FIX: Reworked Add Itinerary Leg logic
@@ -656,12 +777,14 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  // V9.0: Only fetch on initial mount, prevent re-fetching on tab visibility changes
   useEffect(() => {
-    if (session) {
+    if (session && !hasInitiallyLoaded) {
         fetchClients();
         fetchGlobalSettings();
+        setHasInitiallyLoaded(true);
     }
-  }, [session, fetchClients, fetchGlobalSettings]);
+  }, [session, hasInitiallyLoaded, fetchClients, fetchGlobalSettings]);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -1093,7 +1216,7 @@ const AdminDashboard = () => {
           </nav>
         </div>
         
-        <div className="flex-grow bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+        <div className="flex-grow bg-white rounded-xl shadow-lg p-6 border border-gray-200 relative">
           {activeTab === 'clients' && (
             selectedClient ? (
               <>
@@ -1102,6 +1225,15 @@ const AdminDashboard = () => {
                     Editing: "{selectedClient.client_name}"
                   </h2>
                   <div className="flex space-x-2">
+                    <button
+                      onClick={handleRefreshClientData}
+                      disabled={isRefreshing}
+                      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Refresh client data"
+                    >
+                      <RefreshCw size={20} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </button>
                     <button onClick={() => { setShowItineraryModal(true); setNewItinerary({ location: '', checkIn: '', checkOut: '' }); setEditingItineraryLeg(null); }} className="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out">
                           <MapPin size={20} className="mr-2" />
                           Add Itinerary Leg
@@ -1112,7 +1244,17 @@ const AdminDashboard = () => {
                       </button>
                   </div>
                 </div>
-                
+
+                {/* Refreshing overlay with smooth animation */}
+                {isRefreshing && (
+                  <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-40 rounded-xl animate-fade-in">
+                    <div className="flex flex-col items-center">
+                      <RefreshCw size={48} className="text-blue-600 animate-spin mb-4" />
+                      <p className="text-lg font-semibold text-gray-700">Refreshing client data...</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border-b border-gray-200 mb-6">
                     <nav className="-mb-px flex space-x-6" aria-label="Tabs">
                         <button onClick={() => setActiveClientTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
@@ -1141,7 +1283,6 @@ const AdminDashboard = () => {
                         <PropertyForm
                             properties={clientData.properties}
                             setProperties={handleUpdateProperties}
-                            onSave={() => handleSaveClientData()}
                             adminMode={true}
                         />
                     )}
@@ -1168,13 +1309,32 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="mt-6 text-center">
-                  <button
-                    onClick={() => handleSaveClientData()}
-                    disabled={loading}
-                    className="px-6 py-3 bg-accent text-gray-900 rounded-lg shadow-md hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Saving...' : 'Save All Client Changes'}
-                  </button>
+                  <div className="flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => handleSaveClientData()}
+                      disabled={loading}
+                      className="px-6 py-3 bg-accent text-gray-900 rounded-lg shadow-md hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Saving...' : 'Save Now'}
+                    </button>
+                    {isSaving && (
+                      <div className="flex items-center gap-2 text-blue-600 animate-pulse">
+                        <Save size={16} />
+                        <span className="text-sm font-medium">Auto-saving...</span>
+                      </div>
+                    )}
+                    {!isSaving && lastSaved && (
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle size={16} />
+                        <span className="text-sm">
+                          Saved {new Date(lastSaved).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Changes are automatically saved 2 seconds after you stop editing
+                  </p>
                 </div>
               </>
             ) : (

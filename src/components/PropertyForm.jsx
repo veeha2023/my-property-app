@@ -49,8 +49,6 @@ const PropertyForm = ({
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [imageLinks, setImageLinks] = useState('');
-  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
-  const [propertyToDelete, setPropertyToDelete] = useState(null);
   const [collapsedSections, setCollapsedSections] = useState({});
   const fileInputRef = useRef(null);
 
@@ -382,23 +380,14 @@ const PropertyForm = ({
     setImageLinks('');
   };
 
-  const confirmDeleteProperty = (property) => {
-    setPropertyToDelete(property);
-    setShowConfirmDeleteModal(true);
-  };
-
-  const handleDeleteProperty = () => {
-    if (!propertyToDelete) return;
-    const idToDelete = propertyToDelete.id;
+  // V9.0: Direct delete without confirmation modal - auto-save handles persistence
+  const handleDeleteProperty = (property) => {
+    const idToDelete = property.id;
     const updatedProperties = properties.filter(prop => prop.id !== idToDelete);
     setProperties(updatedProperties);
-    if (onSave) {
-      onSave(updatedProperties);
-    }
-    setMessage('Property deleted successfully!');
+    // Auto-save in parent will handle this - no need to call onSave which triggers loading
+    setMessage('Property deleted!');
     setError(null);
-    setShowConfirmDeleteModal(false);
-    setPropertyToDelete(null);
   };
 
   const toggleSelection = useCallback((locationId, propertyId) => {
@@ -882,35 +871,6 @@ const PropertyForm = ({
         </div>
       )}
 
-      {showConfirmDeleteModal && propertyToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800 text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Confirm Deletion</h2>
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to delete the property "
-              <span className="font-semibold">{propertyToDelete.name}</span>"? This
-              action cannot be undone.
-            </p>
-            <div className="flex justify-center space-x-4">
-              <button
-                onClick={() => {
-                  setShowConfirmDeleteModal(false);
-                  setPropertyToDelete(null);
-                }}
-                className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteProperty}
-                className="px-6 py-3 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {adminMode && showPropertyFormModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1099,7 +1059,7 @@ const PropertyForm = ({
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    confirmDeleteProperty(property);
+                                    handleDeleteProperty(property);
                                   }}
                                   className="p-2 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
                                   title="Delete Property"
