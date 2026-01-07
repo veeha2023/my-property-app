@@ -12,6 +12,11 @@ const FlightForm = ({ flights, setFlights }) => {
   const fileInputRef = useRef(null);
   const accentColor = '#FFD700';
 
+  // Helper function to format number with thousand separators
+  const formatNumberWithCommas = (number) => {
+    return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   const flightTypes = [
     { type: 'domestic', label: 'Domestic Flight' },
     { type: 'international', label: 'International Flight' },
@@ -364,7 +369,7 @@ const FlightForm = ({ flights, setFlights }) => {
                 <div className="flex items-center justify-end flex-1 gap-6">
                     <div className="text-right">
                         <span className={`text-3xl font-bold whitespace-nowrap ${priceColor}`}>
-                            {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(item.currency)}{Math.abs(currentPrice).toFixed(2)}
+                            {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(item.currency)}{formatNumberWithCommas(Math.abs(currentPrice))}
                         </span>
                     </div>
                     <div className="flex flex-col space-y-2">

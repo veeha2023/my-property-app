@@ -35,9 +35,8 @@ export const CURRENCIES = {
 export const DEFAULT_CURRENCY = 'NZD';
 export const MARKUP_PERCENTAGE = 0.02; // 2% markup
 
-// Exchange rate cache
-let exchangeRates = {};
-let lastFetchTime = 0;
+// Exchange rate cache with date support
+let exchangeRateCache = {};
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
 export const getCurrencySymbol = (currencyCode) => {
@@ -55,36 +54,94 @@ export const getCurrencyOptions = () => {
   }));
 };
 
-// Fetch live exchange rates from API
-export const fetchExchangeRates = async () => {
+// Fetch live exchange rates from API with optional date
+export const fetchExchangeRates = async (date = null) => {
   const now = Date.now();
-  
+  const cacheKey = date || 'latest';
+
   // Return cached rates if still valid
-  if (exchangeRates.rates && (now - lastFetchTime) < CACHE_DURATION) {
-    return exchangeRates;
+  if (exchangeRateCache[cacheKey] && (now - (exchangeRateCache[cacheKey].timestamp || 0)) < CACHE_DURATION) {
+    return exchangeRateCache[cacheKey].data;
   }
 
   try {
-    const response = await fetch('https://api.freecurrencyapi.com/v1/latest', {
-      method: 'GET',
-      headers: {
-        'apikey': 'fca_live_QWblV13xKQrCWDBd7heibrjh6OUDwaFYbwbBFwtm'
-      }
+    // Check if the provided date is today
+    const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    const isToday = date === today || !date;
+
+    let url;
+    if (isToday) {
+      // Use latest endpoint for today or no date
+      url = 'https://api.freecurrencyapi.com/v1/latest?apikey=fca_live_QWblV13xKQrCWDBd7heibrjh6OUDwaFYbwbBFwtm';
+    } else {
+      // Use historical endpoint for past dates
+      url = `https://api.freecurrencyapi.com/v1/historical?apikey=fca_live_QWblV13xKQrCWDBd7heibrjh6OUDwaFYbwbBFwtm&date=${date}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET'
     });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    exchangeRates = data;
-    lastFetchTime = now;
-    
-    return exchangeRates;
+    const jsonData = await response.json();
+
+    // Extract rates based on endpoint type
+    let rates;
+    if (isToday) {
+      // Latest endpoint returns: {data: {USD: 1, EUR: 0.85, ...}}
+      rates = jsonData.data || {};
+    } else {
+      // Historical endpoint returns: {data: {"2026-01-06": {USD: 1, ...}}}
+      // Extract the rates from the nested date object
+      const dataObj = jsonData.data || {};
+      rates = dataObj[date] || {};
+    }
+
+    // Cache the rates (not the whole response)
+    exchangeRateCache[cacheKey] = {
+      data: rates,
+      timestamp: now
+    };
+
+    return rates;
   } catch (error) {
     console.error('Error fetching exchange rates:', error);
     // Return cached rates if available, otherwise return empty object
-    return exchangeRates.rates ? exchangeRates : { rates: {} };
+    return exchangeRateCache[cacheKey]?.data || {};
+  }
+};
+
+// Detect user's currency based on locale
+export const detectUserCurrency = () => {
+  try {
+    // Try to get currency from browser locale
+    const userLocale = navigator.language || 'en-US';
+    const formatter = new Intl.NumberFormat(userLocale, { style: 'currency', currency: 'USD' });
+    const parts = formatter.formatToParts(1);
+    const currencyPart = parts.find(part => part.type === 'currency');
+
+    if (currencyPart && CURRENCIES[currencyPart.value]) {
+      return currencyPart.value;
+    }
+
+    // Fallback: Map common locales to currencies
+    const localeToCurrency = {
+      'en-US': 'USD', 'en-GB': 'GBP', 'en-AU': 'AUD', 'en-NZ': 'NZD', 'en-CA': 'CAD',
+      'de': 'EUR', 'fr': 'EUR', 'es': 'EUR', 'it': 'EUR', 'nl': 'EUR',
+      'ja': 'JPY', 'zh-CN': 'CNY', 'ko': 'KRW', 'hi': 'INR', 'th': 'THB',
+      'pt-BR': 'BRL', 'ru': 'RUB', 'tr': 'TRY', 'pl': 'PLN', 'sv': 'SEK',
+      'no': 'NOK', 'da': 'DKK', 'cs': 'CZK', 'hu': 'HUF', 'id': 'IDR',
+      'ms': 'MYR', 'vi': 'VND', 'fil': 'PHP', 'he': 'ILS', 'ar': 'SAR'
+    };
+
+    const baseLocale = userLocale.split('-')[0];
+    return localeToCurrency[userLocale] || localeToCurrency[baseLocale] || DEFAULT_CURRENCY;
+  } catch (error) {
+    console.error('Error detecting currency:', error);
+    return DEFAULT_CURRENCY;
   }
 };
 
@@ -114,19 +171,19 @@ export const convertCurrency = (amount, fromCurrency, toCurrency, rates = null) 
 };
 
 // Convert all items in an array to a new currency
-export const convertItemsCurrency = async (items, fromCurrency, toCurrency) => {
+export const convertItemsCurrency = async (items, fromCurrency, toCurrency, conversionDate = null) => {
   if (fromCurrency === toCurrency) {
     return items;
   }
 
-  const rates = await fetchExchangeRates();
-  
+  const rates = await fetchExchangeRates(conversionDate);
+
   return items.map(item => ({
     ...item,
     currency: toCurrency,
-    price: convertCurrency(item.price || 0, fromCurrency, toCurrency, rates.rates),
-    price_if_selected: convertCurrency(item.price_if_selected || 0, fromCurrency, toCurrency, rates.rates),
-    price_if_not_selected: convertCurrency(item.price_if_not_selected || 0, fromCurrency, toCurrency, rates.rates)
+    price: convertCurrency(item.price || 0, fromCurrency, toCurrency, rates),
+    price_if_selected: convertCurrency(item.price_if_selected || 0, fromCurrency, toCurrency, rates),
+    price_if_not_selected: convertCurrency(item.price_if_not_selected || 0, fromCurrency, toCurrency, rates)
   }));
 };
 

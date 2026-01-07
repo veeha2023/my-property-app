@@ -13,6 +13,11 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   const [imageLinks, setImageLinks] = useState(''); // State for image URL input
   const accentColor = '#FFD700';
 
+  // Helper function to format number with thousand separators
+  const formatNumberWithCommas = (number) => {
+    return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   const transportationTypes = [
     { type: 'car', label: 'Car Rental', icon: <Car/> },
     { type: 'ferry', label: 'Ferry', icon: <Ship/> },
@@ -486,13 +491,44 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   );
   
   const renderForm = (data, setData) => {
+    console.log('renderForm called with data:', data);
+    if (!data || !data.transportType) {
+      console.error('Invalid data or missing transportType:', data);
+      return (
+        <div className="bg-red-50 p-6 rounded-lg border border-red-200 mb-6">
+          <p className="text-red-600">Error: Invalid transportation item. Missing transportType field.</p>
+          <button onClick={resetForm} className="mt-4 bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+        </div>
+      );
+    }
+
     let fields;
-    switch (data.transportType) {
-      case 'car': fields = renderCarForm(data, setData); break;
-      case 'ferry': fields = renderFerryBusForm(data, setData, 'ferry'); break;
-      case 'bus': fields = renderFerryBusForm(data, setData, 'bus'); break;
-      case 'driver': fields = renderDriverForm(data, setData); break;
-      default: return null;
+    // Convert to lowercase for case-insensitive matching
+    const transportTypeLower = data.transportType.toLowerCase();
+    switch (transportTypeLower) {
+      case 'car':
+      case 'van':
+      case 'suv':
+      case 'sedan':
+        fields = renderCarForm(data, setData);
+        break;
+      case 'ferry':
+        fields = renderFerryBusForm(data, setData, 'ferry');
+        break;
+      case 'bus':
+        fields = renderFerryBusForm(data, setData, 'bus');
+        break;
+      case 'driver':
+        fields = renderDriverForm(data, setData);
+        break;
+      default:
+        console.error('Unknown transportType:', data.transportType);
+        return (
+          <div className="bg-red-50 p-6 rounded-lg border border-red-200 mb-6">
+            <p className="text-red-600">Error: Unknown transportation type "{data.transportType}". Supported types: car, van, suv, sedan, ferry, bus, driver.</p>
+            <button onClick={resetForm} className="mt-4 bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+          </div>
+        );
     }
     return (
       <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-6 mt-4">
@@ -577,11 +613,33 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         </div>
         <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
           <span className={`text-3xl font-bold whitespace-nowrap ${priceColor}`}>
-            {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`}
+            {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(price))}`}
           </span>
         </div>
         <div className="absolute top-4 right-4 flex space-x-2">
-            <button onClick={(e) => { e.stopPropagation(); setEditingItem(item); }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Editing item:', item);
+                setEditingItem(item);
+                // Populate imageLinks with existing images for editing
+                if (item.images && item.images.length > 0) {
+                  setImageLinks(item.images.join('\n'));
+                } else {
+                  setImageLinks('');
+                }
+                // Scroll to the item after a brief delay to ensure DOM update
+                setTimeout(() => {
+                  const element = document.getElementById(`transport-${item.id}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }, 100);
+              }}
+              className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"
+            >
+              <Edit3 size={16} />
+            </button>
             <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
         </div>
       </div>
@@ -650,8 +708,8 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         <div className="space-y-4">
           {sortedTransportation.length > 0 ? (
             sortedTransportation.map(item => (
-              editingItem?.id === item.id 
-                ? <div key={item.id}>{renderForm(editingItem, setEditingItem)}</div>
+              editingItem?.id === item.id
+                ? <div key={item.id} id={`transport-${item.id}`}>{renderForm(editingItem, setEditingItem)}</div>
                 : renderItemRow(item)
             ))
           ) : (

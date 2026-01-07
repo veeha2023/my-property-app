@@ -14,6 +14,11 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const accentColor = '#FFD700';
 
   // --- UTILITY FUNCTIONS ---
+  // Helper function to format number with thousand separators
+  const formatNumberWithCommas = (number) => {
+    return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode) {
       case 'NZD': return 'NZ$';
@@ -586,7 +591,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                           </div>
                           <div className="mt-4 text-right">
                             <span className={`text-2xl font-bold ${priceColor}`}>
-                              {getCurrencySymbol(activity.currency)}{basePrice.toFixed(2)}
+                              {getCurrencySymbol(activity.currency)}{formatNumberWithCommas(basePrice)}
                             </span>
                             {isIncluded && <div className="text-xs text-green-600 mt-1">Included in Base</div>}
                           </div>

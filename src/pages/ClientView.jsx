@@ -1,4 +1,4 @@
-// src/pages/ClientView.jsx - Version 6.1 (Conditional Date/Time Display)
+// src/pages/ClientView.jsx - Version 6.2 (Currency Conversion)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
@@ -7,9 +7,10 @@ import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Ship, Bus, Briefcase,
-  ChevronDown, ChevronUp, Minus, Plus
+  ChevronDown, ChevronUp, Minus, Plus, DollarSign
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, detectUserCurrency, DEFAULT_CURRENCY } from '../utils/currencyUtils.js';
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -34,7 +35,15 @@ const ClientView = () => {
   const [expandedImagePropertyId, setExpandedImagePropertyId] = useState(null);
   
   const [collapsedSections, setCollapsedSections] = useState({});
-  
+
+  // Currency conversion state
+  const [selectedCurrency, setSelectedCurrency] = useState(null);
+  const [baseCurrency, setBaseCurrency] = useState('NZD');
+  const [conversionDate, setConversionDate] = useState(null);
+  const [exchangeRates, setExchangeRates] = useState(null);
+  const [isLoadingRates, setIsLoadingRates] = useState(false);
+  const [showAllCurrencies, setShowAllCurrencies] = useState(false);
+
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
@@ -200,6 +209,22 @@ const ClientView = () => {
         setClientName(responseData.clientName || 'Client Selection');
         setGlobalLogoUrl(responseData.globalLogoUrl);
 
+        // Set base currency and conversion date from client data
+        const clientBaseCurrency = fullClientData.currency || 'NZD';
+        const clientConversionDate = fullClientData.conversion_rate_date || null;
+        setBaseCurrency(clientBaseCurrency);
+        setConversionDate(clientConversionDate);
+
+        // Try to detect user's local currency from browser
+        const detectedCurrency = detectUserCurrency();
+
+        // Check localStorage for saved preference
+        const savedCurrency = localStorage.getItem(`client_${clientId}_currency`);
+
+        // Priority: saved preference > detected currency > base currency
+        const initialCurrency = savedCurrency || (detectedCurrency !== DEFAULT_CURRENCY ? detectedCurrency : clientBaseCurrency);
+        setSelectedCurrency(initialCurrency);
+
         const initialIndexes = {};
         const initialSwipeState = {};
         (fullClientData.properties || []).forEach(p => {
@@ -219,6 +244,55 @@ const ClientView = () => {
   }, [clientId, location.search, parseCurrencyToNumber]);
 
   useEffect(() => { fetchClientData(); }, [fetchClientData]);
+
+  // Fetch exchange rates when currency or conversion date changes
+  useEffect(() => {
+    const loadExchangeRates = async () => {
+      if (!selectedCurrency || !baseCurrency) return;
+
+      setIsLoadingRates(true);
+      try {
+        const rates = await fetchExchangeRates(conversionDate);
+        setExchangeRates(rates);
+      } catch (error) {
+        console.error('Failed to fetch exchange rates:', error);
+      } finally {
+        setIsLoadingRates(false);
+      }
+    };
+
+    loadExchangeRates();
+  }, [selectedCurrency, baseCurrency, conversionDate]);
+
+  // Handle currency change
+  const handleCurrencyChange = useCallback((newCurrency) => {
+    setSelectedCurrency(newCurrency);
+    // Save preference to localStorage
+    localStorage.setItem(`client_${clientId}_currency`, newCurrency);
+  }, [clientId]);
+
+  // Helper function to format number with thousand separators
+  const formatNumberWithCommas = (number) => {
+    return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // Helper function to convert and display price
+  const displayPrice = useCallback((amount, itemCurrency = null) => {
+    const fromCurrency = itemCurrency || baseCurrency;
+
+    if (!selectedCurrency || !exchangeRates || selectedCurrency === fromCurrency) {
+      return `${getCurrencySymbol(fromCurrency)}${formatNumberWithCommas(amount)}`;
+    }
+
+    const convertedAmount = convertPrice(amount, fromCurrency, selectedCurrency, exchangeRates);
+    return `${getSymbol(selectedCurrency)}${formatNumberWithCommas(convertedAmount)}`;
+  }, [selectedCurrency, baseCurrency, exchangeRates]);
+
+  // Helper function to display price with sign (+ or -)
+  const displayPriceWithSign = useCallback((amount, itemCurrency = null) => {
+    const sign = amount >= 0 ? '+' : '-';
+    return `${sign}${displayPrice(Math.abs(amount), itemCurrency)}`;
+  }, [displayPrice]);
 
   const handleSaveSelection = useCallback(async () => {
     const searchParams = new URLSearchParams(location.search);
@@ -352,7 +426,6 @@ const ClientView = () => {
   const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
   const finalQuote = baseQuote + totalChangeValue;
   const totalChangeColorStyle = { color: getPriceColor(totalChangeValue) };
-  const currencySymbol = getCurrencySymbol(clientData?.currency);
 
   const nextImage = (propertyId) => {
     setCurrentImageIndex(prev => {
@@ -472,6 +545,104 @@ const ClientView = () => {
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
+      {/* Currency Selection Modal */}
+      {showAllCurrencies && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowAllCurrencies(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Select your currency</h2>
+              <button onClick={() => setShowAllCurrencies(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X size={24} className="text-gray-600" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+              <p className="text-sm text-gray-600 mb-6">
+                Where applicable prices will be converted to, and shown in, the currency that you select. The currency you pay in may differ based on your reservation, and a service fee may also apply.
+              </p>
+
+              {/* Suggested Currencies */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Suggested for you</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { code: 'NZD', name: 'New Zealand Dollar' },
+                    { code: 'AUD', name: 'Australian Dollar' },
+                    { code: 'INR', name: 'Indian Rupee' },
+                    { code: 'USD', name: 'United States Dollar' },
+                    { code: 'GBP', name: 'Pound Sterling' },
+                    { code: 'EUR', name: 'Euro' }
+                  ].map(currency => (
+                    <button
+                      key={currency.code}
+                      onClick={() => {
+                        handleCurrencyChange(currency.code);
+                        setShowAllCurrencies(false);
+                      }}
+                      className={`text-left px-4 py-3 rounded-lg border-2 hover:border-blue-600 transition-colors ${
+                        selectedCurrency === currency.code ? 'border-blue-600 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="font-semibold text-gray-900">{currency.name}</div>
+                      <div className="text-sm text-gray-600">{currency.code}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* All Currencies */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">All currencies</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { code: 'BRL', name: 'Brazilian Real' },
+                    { code: 'CAD', name: 'Canadian Dollar' },
+                    { code: 'CHF', name: 'Swiss Franc' },
+                    { code: 'CNY', name: 'Chinese Yuan' },
+                    { code: 'CZK', name: 'Czech Koruna' },
+                    { code: 'DKK', name: 'Danish Krone' },
+                    { code: 'HKD', name: 'Hong Kong Dollar' },
+                    { code: 'HUF', name: 'Hungarian Forint' },
+                    { code: 'IDR', name: 'Indonesian Rupiah' },
+                    { code: 'ILS', name: 'Israeli Shekel' },
+                    { code: 'JPY', name: 'Japanese Yen' },
+                    { code: 'KRW', name: 'South Korean Won' },
+                    { code: 'MXN', name: 'Mexican Peso' },
+                    { code: 'MYR', name: 'Malaysian Ringgit' },
+                    { code: 'NOK', name: 'Norwegian Krone' },
+                    { code: 'PHP', name: 'Philippine Peso' },
+                    { code: 'PLN', name: 'Polish Zloty' },
+                    { code: 'RUB', name: 'Russian Ruble' },
+                    { code: 'SEK', name: 'Swedish Krona' },
+                    { code: 'SGD', name: 'Singapore Dollar' },
+                    { code: 'THB', name: 'Thai Baht' },
+                    { code: 'TRY', name: 'Turkish Lira' },
+                    { code: 'VND', name: 'Vietnamese Dong' },
+                    { code: 'ZAR', name: 'South African Rand' }
+                  ].map(currency => (
+                    <button
+                      key={currency.code}
+                      onClick={() => {
+                        handleCurrencyChange(currency.code);
+                        setShowAllCurrencies(false);
+                      }}
+                      className={`text-left px-4 py-3 rounded-lg border-2 hover:border-blue-600 transition-colors ${
+                        selectedCurrency === currency.code ? 'border-blue-600 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="font-semibold text-gray-900">{currency.name}</div>
+                      <div className="text-sm text-gray-600">{currency.code}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {expandedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center overflow-hidden" onClick={closeExpandedImage}>
           <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()} onTouchStart={handleExpandedTouchStart} onTouchMove={handleExpandedTouchMove} onTouchEnd={handleExpandedTouchEnd}>
@@ -494,28 +665,73 @@ const ClientView = () => {
       )}
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-        <div className="flex flex-col md:flex-row justify-between items-start mb-8 bg-white rounded-xl shadow-md p-4 md:p-6">
-          <div className="flex items-center mb-4 md:mb-0">
-            {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" /> ) : ( <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div> )}
-            <div className="text-left">
-              <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-1">Veeha Travels</h1>
-              <p className="text-lg md:text-xl font-bold text-gray-900">Your Curated Selections</p>
-              <p className="text-base md:text-lg text-gray-700 mt-2">Viewing: {clientName}</p>
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-8">
+          {/* Currency on top for mobile only */}
+          <div className="flex justify-end mb-3 sm:hidden">
+            <button
+              onClick={() => setShowAllCurrencies(true)}
+              disabled={isLoadingRates}
+              className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoadingRates ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span>Loading...</span>
+                </>
+              ) : (
+                <>
+                  <span>{selectedCurrency || baseCurrency}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-200">
+            <div className="flex items-center mb-4 md:mb-0">
+              {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" /> ) : ( <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div> )}
+              <div className="text-left">
+                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-1">Veeha Travels</h1>
+                <p className="text-lg md:text-xl font-bold text-gray-900">Your Curated Selections</p>
+                <p className="text-base md:text-lg text-gray-700 mt-2">Viewing: {clientName}</p>
+              </div>
+            </div>
+
+            {/* Currency on the right for desktop */}
+            <div className="hidden sm:flex items-center">
+              <button
+                onClick={() => setShowAllCurrencies(true)}
+                disabled={isLoadingRates}
+                className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {isLoadingRates ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>Loading...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{selectedCurrency || baseCurrency}</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
-          <div className="flex flex-col gap-2 w-full md:w-auto mt-4 md:mt-0 md:grid md:grid-cols-3 md:gap-4">
-              <div className="text-center p-2 md:p-3 rounded-lg bg-gray-100">
-                  <p className="text-xs text-gray-600">Base Quote</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-800">{currencySymbol}{baseQuote.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 md:p-3 rounded-lg bg-gray-100">
-                  <p className="text-xs text-gray-600">Selections</p>
-                  <p className="text-xl md:text-2xl font-bold" style={totalChangeColorStyle}>{totalChangeValue >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(totalChangeValue).toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 md:p-3 rounded-lg bg-blue-100 border border-blue-200">
-                  <p className="text-xs text-blue-800">Final Quote</p>
-                  <p className="text-xl md:text-2xl font-bold text-blue-800">{currencySymbol}{finalQuote.toFixed(2)}</p>
-              </div>
+
+          {/* Quote Details Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="text-center p-3 md:p-4 rounded-lg bg-gray-50 border border-gray-200">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Base Quote</p>
+              <p className="text-2xl md:text-3xl font-bold text-gray-800">{displayPrice(baseQuote)}</p>
+            </div>
+            <div className="text-center p-3 md:p-4 rounded-lg bg-gray-50 border border-gray-200">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Selections</p>
+              <p className="text-2xl md:text-3xl font-bold" style={totalChangeColorStyle}>{totalChangeValue >= 0 ? '+' : ''}{displayPrice(Math.abs(totalChangeValue))}</p>
+            </div>
+            <div className="text-center p-3 md:p-4 rounded-lg bg-blue-50 border-2 border-blue-300">
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Final Quote</p>
+              <p className="text-2xl md:text-3xl font-bold text-blue-700">{displayPrice(finalQuote)}</p>
+            </div>
           </div>
         </div>
 
@@ -551,7 +767,7 @@ const ClientView = () => {
                                 <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
                               </div>
                             </div>
-                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
                           </div>
                         ))}
                       </div>
@@ -570,7 +786,7 @@ const ClientView = () => {
                                 <p className="text-xs sm:text-sm text-gray-600">{item.from} to {item.to}</p>
                               </div>
                             </div>
-                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateFinalFlightPrice(item))}}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateFinalFlightPrice(item)).toFixed(2)}`}</p>
+                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateFinalFlightPrice(item))}}>{displayPriceWithSign(calculateFinalFlightPrice(item), item.currency)}</p>
                           </div>
                         ))}
                       </div>
@@ -590,7 +806,7 @@ const ClientView = () => {
                                   <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
                                 </div>
                               </div>
-                              <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateActivityDelta(item))}}>{`${calculateActivityDelta(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateActivityDelta(item)).toFixed(2)}`}</p>
+                              <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateActivityDelta(item))}}>{displayPriceWithSign(calculateActivityDelta(item), item.currency)}</p>
                             </div>
                           );
                         })}
@@ -610,7 +826,7 @@ const ClientView = () => {
                                 <p className="text-xs sm:text-sm text-gray-600 capitalize">{item.transportType}</p>
                               </div>
                             </div>
-                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
                           </div>
                         ))}
                       </div>
@@ -678,7 +894,7 @@ const ClientView = () => {
                                     </div>
                                     <div className="flex items-center justify-between mt-2">
                                         <span className="text-base text-gray-700 font-medium">{calculateNights(property.checkIn, property.checkOut)} nights</span>
-                                        <div className="text-right"> <span className="font-bold text-xl" style={priceColorStyle}>{`${priceValue < 0 ? '-' : '+'}${getCurrencySymbol(property.currency)}${Math.abs(priceValue).toFixed(2)}`}</span> </div>
+                                        <div className="text-right"> <span className="font-bold text-xl" style={priceColorStyle}>{displayPriceWithSign(priceValue, property.currency)}</span> </div>
                                     </div>
                                   </div>
                                 </div>
@@ -764,7 +980,7 @@ const ClientView = () => {
                                                 </div>
                                             </div>
                                             <div className="mt-4 text-right">
-                                                <span className="text-2xl font-bold" style={priceColorStyle}> {`${deltaPrice < 0 ? `-` : `+`}${getCurrencySymbol(activity.currency)}${Math.abs(deltaPrice).toFixed(2)}`} </span>
+                                                <span className="text-2xl font-bold" style={priceColorStyle}> {displayPriceWithSign(deltaPrice, activity.currency)} </span>
                                             </div>
                                         </div>
                                     </div>
@@ -798,7 +1014,7 @@ const ClientView = () => {
                                                 <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
                                                 <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</div>
                                                 { (item.dropoffDate || item.departingDate) && <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>}
-                                                {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>}
+                                                {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {displayPrice(item.excessAmount || 0, item.currency)})</div>}
                                                 {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
                                                 {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
                                                 {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
@@ -806,7 +1022,7 @@ const ClientView = () => {
                                             </div>
                                         </div>
                                         <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
-                                            <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(price).toFixed(2)}`} </span>
+                                            <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {displayPriceWithSign(price, item.currency)} </span>
                                         </div>
                                     </div>
                                 )
@@ -862,7 +1078,7 @@ const ClientView = () => {
                                                         </div>
                                                         <div className="flex items-center justify-end flex-1 gap-6">
                                                             <div className="text-right">
-                                                                <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {`${currentPrice < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${Math.abs(currentPrice).toFixed(2)}`} </span>
+                                                                <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {displayPriceWithSign(currentPrice, item.currency)} </span>
                                                             </div>
                                                         </div>
                                                     </div>

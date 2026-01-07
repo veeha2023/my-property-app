@@ -6,7 +6,7 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Ship, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { getCurrencySymbol, getCurrencyName, getCurrencyOptions, convertItemsCurrency } from '../utils/currencyUtils.js';
@@ -14,10 +14,49 @@ import { useVisibility, useAutoSave } from '../hooks/useVisibility.js';
 
 const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
 
+    // Helper function to format number with thousand separators
+    const formatNumberWithCommas = (number) => {
+        return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     const getPriceColor = (price) => {
         if (price < 0) return 'text-green-600';
         if (price > 0) return 'text-red-600';
         return 'text-gray-900';
+    };
+
+    // Helper functions for date and time formatting
+    const parseDateString = (dateString) => {
+        if (!dateString) return '';
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
+        const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (parts) {
+            const day = parts[1].padStart(2, '0');
+            const month = parts[2].padStart(2, '0');
+            const year = parts[3];
+            return `${year}-${month}-${day}`;
+        }
+        return dateString;
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            const parsedDateStr = parseDateString(dateString);
+            const date = new Date(parsedDateStr + 'T00:00:00');
+            if (isNaN(date.getTime())) return 'Invalid Date';
+            return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+        } catch { return 'Invalid Date'; }
+    };
+
+    const formatTime = (timeString) => {
+        if (!timeString) return 'N/A';
+        try {
+            const [hours, minutes] = timeString.split(':');
+            const date = new Date();
+            date.setHours(hours, minutes);
+            return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(date);
+        } catch { return 'Invalid Time'; }
     };
 
     const calculateActivityDelta = useCallback((activity) => {
@@ -87,15 +126,15 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                 <div className="grid grid-cols-3 gap-4 w-full md:w-auto">
                     <div className="text-center p-3 rounded-lg bg-gray-100">
                         <p className="text-xs text-gray-600">Base Quote</p>
-                        <p className="text-2xl font-bold text-gray-800">{currencySymbol}{baseQuote.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-gray-800">{currencySymbol}{formatNumberWithCommas(baseQuote)}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-gray-100">
                         <p className="text-xs text-gray-600">Selections</p>
-                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(totalChange).toFixed(2)}</p>
+                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{currencySymbol}{formatNumberWithCommas(Math.abs(totalChange))}</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-blue-100 border border-blue-200">
                         <p className="text-xs text-blue-800">Final Quote</p>
-                        <p className="text-2xl font-bold text-blue-800">{currencySymbol}{finalQuote.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-blue-800">{currencySymbol}{formatNumberWithCommas(finalQuote)}</p>
                     </div>
                 </div>
             </div>
@@ -117,7 +156,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                 <p className="text-sm text-gray-600">{item.location}</p>
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price))}`}</p>
                                     </div>
                                 ))}
                             </div>
@@ -136,7 +175,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                 <p className="text-sm text-gray-600">{item.from} to {item.to}</p>
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalFlightPrice(item))}`}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(calculateFinalFlightPrice(item)).toFixed(2)}`}</p>
+                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalFlightPrice(item))}`}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(calculateFinalFlightPrice(item)))}`}</p>
                                     </div>
                                 ))}
                             </div>
@@ -156,10 +195,10 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                 <div>
                                                     <p className="font-bold text-gray-800">{item.name}</p>
                                                     <p className="text-sm text-gray-600">{item.location}</p>
-                                                    {costPerPax > 0 && <p className="text-xs text-gray-500">{item.pax} pax × {getCurrencySymbol(item.currency)}{costPerPax.toFixed(2)}</p>}
+                                                    {costPerPax > 0 && <p className="text-xs text-gray-500">{item.pax} pax × {getCurrencySymbol(item.currency)}{formatNumberWithCommas(costPerPax)}</p>}
                                                 </div>
                                             </div>
-                                            <p className={`font-bold text-lg ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(deltaPrice).toFixed(2)}`}</p>
+                                            <p className={`font-bold text-lg ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(deltaPrice))}`}</p>
                                         </div>
                                     );
                                 })}
@@ -171,15 +210,62 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                             <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
                             <div className="space-y-4">
                                 {selectedTransportation.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
-                                            <div>
-                                                <p className="font-bold text-gray-800">{item.name}</p>
-                                                <p className="text-sm text-gray-600 capitalize">{item.transportType}</p>
+                                    <div key={item.id} className="flex flex-col lg:flex-row items-start lg:items-center gap-4 p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                        <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-full lg:w-32 h-auto object-cover rounded-lg shadow-sm flex-shrink-0"/>
+                                        <div className="flex-grow">
+                                            <h4 className="font-bold text-lg text-gray-800">{item.name}</h4>
+                                            <p className="text-sm text-gray-500 mb-2 capitalize">{item.type || item.carType || item.transportType}</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-700">
+                                                {(() => {
+                                                    const transportTypeLower = item.transportType?.toLowerCase() || '';
+
+                                                    // Handle car-type vehicles (car, van, suv, sedan)
+                                                    if (['car', 'van', 'suv', 'sedan'].includes(transportTypeLower)) {
+                                                        return (
+                                                            <>
+                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation}</div>
+                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation}</div>
+                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate)} at {formatTime(item.dropoffTime)}</div>
+                                                                <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{formatNumberWithCommas(item.excessAmount || 0)})</div>
+                                                                <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>
+                                                            </>
+                                                        );
+                                                    }
+
+                                                    // Handle ferry and bus
+                                                    if (transportTypeLower === 'ferry' || transportTypeLower === 'bus') {
+                                                        return (
+                                                            <>
+                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>From:</strong> &nbsp;{item.boardingFrom}</div>
+                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>To:</strong> &nbsp;{item.departingTo}</div>
+                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.boardingDate)} at {formatTime(item.boardingTime)}</div>
+                                                                <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
+                                                                <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>
+                                                            </>
+                                                        );
+                                                    }
+
+                                                    // Handle driver
+                                                    if (transportTypeLower === 'driver') {
+                                                        return (
+                                                            <>
+                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupFrom} ({item.location})</div>
+                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffTo}</div>
+                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+                                                                <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
+                                                            </>
+                                                        );
+                                                    }
+
+                                                    // Fallback for unknown types
+                                                    return <div className="text-gray-500">Transport type: {item.transportType}</div>;
+                                                })()}
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${Math.abs(item.price).toFixed(2)}`}</p>
+                                        <div className="w-full lg:w-auto text-right lg:ml-auto flex-shrink-0">
+                                            <p className={`text-2xl font-bold whitespace-nowrap ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price))}`}</p>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -205,6 +291,7 @@ const AdminDashboard = () => {
   const [editingClientName, setEditingClientName] = useState('');
   const [editingClientQuote, setEditingClientQuote] = useState(0);
   const [editingClientCurrency, setEditingClientCurrency] = useState('NZD');
+  const [editingConversionDate, setEditingConversionDate] = useState('');
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -404,6 +491,7 @@ const AdminDashboard = () => {
     setEditingClientName(client.client_name);
     setEditingClientQuote(fullClientData.quote);
     setEditingClientCurrency(fullClientData.currency);
+    setEditingConversionDate(fullClientData.conversion_rate_date || new Date().toISOString().split('T')[0]);
     setActiveClientTab('summary');
     setMessage(`Editing details for ${client.client_name}`);
     setError(null);
@@ -448,6 +536,7 @@ const AdminDashboard = () => {
       setEditingClientName(data.client_name);
       setEditingClientQuote(fullClientData.quote);
       setEditingClientCurrency(fullClientData.currency);
+      setEditingConversionDate(fullClientData.conversion_rate_date || new Date().toISOString().split('T')[0]);
 
       setMessage('Client data refreshed successfully!');
     } catch (err) {
@@ -822,6 +911,7 @@ const AdminDashboard = () => {
     const currentData = initializeClientData(client.client_properties);
     setEditingClientQuote(currentData.quote);
     setEditingClientCurrency(currentData.currency || 'NZD');
+    setEditingConversionDate(currentData.conversion_rate_date || new Date().toISOString().split('T')[0]);
     if (client.share_token) {
         setShareLink(`${window.location.origin}/client/${client.id}?token=${client.share_token}`);
     } else {
@@ -859,6 +949,7 @@ const AdminDashboard = () => {
             ...clientData,
             quote: parseFloat(editingClientQuote) || 0,
             currency: newCurrency,
+            conversion_rate_date: editingConversionDate,
             properties: updatedProperties,
             activities: updatedActivities,
             transportation: updatedTransportation,
@@ -866,10 +957,10 @@ const AdminDashboard = () => {
         };
         const { error: updateClientError } = await supabase
             .from('clients')
-            .update({ 
-                client_name: editingClientName, 
+            .update({
+                client_name: editingClientName,
                 client_properties: updatedClientData,
-                last_updated: new Date().toISOString() 
+                last_updated: new Date().toISOString()
             })
             .eq('id', selectedClient.id);
 
@@ -1001,6 +1092,19 @@ const AdminDashboard = () => {
                                 </option>
                             ))}
                         </select>
+                    </div>
+                    <div>
+                        <label htmlFor="editingConversionDate" className="block text-sm font-medium text-gray-800">Currency Conversion Rate Date</label>
+                        <input
+                            type="date"
+                            id="editingConversionDate"
+                            value={editingConversionDate}
+                            onChange={(e) => setEditingConversionDate(e.target.value)}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400"
+                            required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Exchange rates will be locked to this date for client currency conversion</p>
                     </div>
                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200" disabled={loading}>
                         {loading ? 'Updating...' : 'Update Details'}

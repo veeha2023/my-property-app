@@ -28,6 +28,10 @@ const PropertyForm = ({
   onSave,
   adminMode = false
 }) => {
+  // Helper function to format number with thousand separators
+  const formatNumberWithCommas = (number) => {
+    return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
@@ -1159,7 +1163,7 @@ const PropertyForm = ({
                                 </div>
                                 <div className="text-right w-full sm:w-auto">
                                   <span className="font-bold text-xl text-gray-900" style={priceColorStyle}>
-                                    {getCurrencySymbol(property.currency)}{priceValue >= 0 ? '+' : ''}{priceValue.toFixed(2)}
+                                    {getCurrencySymbol(property.currency)}{priceValue >= 0 ? '+' : ''}{formatNumberWithCommas(priceValue)}
                                   </span>
                                 </div>
                               </div>
@@ -1218,7 +1222,7 @@ const PropertyForm = ({
               <div className="flex justify-between items-center">
                 <span className="text-xl font-bold text-gray-900">Total Price Change:</span>
                 <span className={`text-3xl font-extrabold`} style={getTotalChangeColorStyle(totalChange)}>
-                  {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}
+                  {totalChange >= 0 ? '+' : ''}{formatNumberWithCommas(totalChange)}
                 </span>
               </div>
             </div>
