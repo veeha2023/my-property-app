@@ -933,11 +933,12 @@ const AdminDashboard = () => {
 
         if (currentCurrency !== newCurrency) {
             setMessage('Converting currencies... This may take a moment.');
-            
-            updatedProperties = await convertItemsCurrency(updatedProperties, currentCurrency, newCurrency);
-            updatedActivities = await convertItemsCurrency(updatedActivities, currentCurrency, newCurrency);
-            updatedTransportation = await convertItemsCurrency(updatedTransportation, currentCurrency, newCurrency);
-            updatedFlights = await convertItemsCurrency(updatedFlights, currentCurrency, newCurrency);
+
+            // Use the conversion date to ensure consistent exchange rates
+            updatedProperties = await convertItemsCurrency(updatedProperties, currentCurrency, newCurrency, editingConversionDate);
+            updatedActivities = await convertItemsCurrency(updatedActivities, currentCurrency, newCurrency, editingConversionDate);
+            updatedTransportation = await convertItemsCurrency(updatedTransportation, currentCurrency, newCurrency, editingConversionDate);
+            updatedFlights = await convertItemsCurrency(updatedFlights, currentCurrency, newCurrency, editingConversionDate);
         }
 
         const updatedClientData = {

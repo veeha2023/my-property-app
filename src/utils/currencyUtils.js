@@ -89,25 +89,26 @@ export const formatNumberWithCommas = (number, currencyCode = 'NZD') => {
 // Fetch live exchange rates from API with optional date
 export const fetchExchangeRates = async (date = null) => {
   const now = Date.now();
-  const cacheKey = date || 'latest';
 
-  // Return cached rates if still valid
+  // Use the specific date or default to today
+  const targetDate = date || new Date().toISOString().split('T')[0];
+  const cacheKey = targetDate;
+
+  // Check memory cache first
   if (exchangeRateCache[cacheKey] && (now - (exchangeRateCache[cacheKey].timestamp || 0)) < CACHE_DURATION) {
     return exchangeRateCache[cacheKey].data;
   }
 
+  // Fetch from API
   try {
-    // Check if the provided date is today
-    const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-    const isToday = date === today || !date;
-
+    // Always use the specific date for the API call to ensure consistency
     let url;
-    if (isToday) {
-      // Use latest endpoint for today or no date
-      url = 'https://api.freecurrencyapi.com/v1/latest?apikey=fca_live_QWblV13xKQrCWDBd7heibrjh6OUDwaFYbwbBFwtm';
+    if (date) {
+      // Use historical endpoint for specific dates
+      url = `https://api.freecurrencyapi.com/v1/historical?apikey=fca_live_QWblV13xKQrCWDBd7heibrjh6OUDwaFYbwbBFwtm&date=${targetDate}`;
     } else {
-      // Use historical endpoint for past dates
-      url = `https://api.freecurrencyapi.com/v1/historical?apikey=fca_live_QWblV13xKQrCWDBd7heibrjh6OUDwaFYbwbBFwtm&date=${date}`;
+      // Use latest endpoint only when no date is specified
+      url = 'https://api.freecurrencyapi.com/v1/latest?apikey=fca_live_QWblV13xKQrCWDBd7heibrjh6OUDwaFYbwbBFwtm';
     }
 
     const response = await fetch(url, {
@@ -122,17 +123,16 @@ export const fetchExchangeRates = async (date = null) => {
 
     // Extract rates based on endpoint type
     let rates;
-    if (isToday) {
+    if (date) {
+      // Historical endpoint returns: {data: {"2026-01-06": {USD: 1, ...}}}
+      const dataObj = jsonData.data || {};
+      rates = dataObj[targetDate] || {};
+    } else {
       // Latest endpoint returns: {data: {USD: 1, EUR: 0.85, ...}}
       rates = jsonData.data || {};
-    } else {
-      // Historical endpoint returns: {data: {"2026-01-06": {USD: 1, ...}}}
-      // Extract the rates from the nested date object
-      const dataObj = jsonData.data || {};
-      rates = dataObj[date] || {};
     }
 
-    // Cache the rates (not the whole response)
+    // Cache the rates in memory
     exchangeRateCache[cacheKey] = {
       data: rates,
       timestamp: now
