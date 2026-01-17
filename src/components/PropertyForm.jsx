@@ -1,6 +1,5 @@
 // src/components/PropertyForm.jsx - Version 6.12 (Robust CSV Import & Error Handling)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../supabaseClient';
 import {
   Calendar,
   MapPin,
@@ -20,7 +19,7 @@ import {
   ChevronUp,
   Download,
 } from 'lucide-react';
-import { getCurrencySymbol, getCurrencyName, getCurrencyOptions } from '../utils/currencyUtils';
+import { getCurrencyOptions } from '../utils/currencyUtils';
 
 const PropertyForm = ({
   properties,
@@ -859,10 +858,10 @@ const PropertyForm = ({
               <button onClick={exportToCSV} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
                   <Download size={18} className="mr-2" /> Export to CSV
               </button>
-              <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+              <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 <Download size={16} />
                 <span>Download Template</span>
-              </a>
+              </button>
             </div>
           </div>
         </div>

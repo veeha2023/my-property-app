@@ -1,7 +1,7 @@
 // src/components/FlightForm.jsx - Version 1.5 (Enhanced Pricing Model)
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, Plane, Calendar, Clock, MapPin, Briefcase, DollarSign, CheckCircle, Upload, Download } from 'lucide-react';
-import { getCurrencySymbol, getCurrencyName, getCurrencyOptions } from '../utils/currencyUtils';
+import React, { useState, useMemo, useRef } from 'react';
+import { Plus, Edit3, Trash2, X, Plane, Briefcase, CheckCircle, Upload, Download } from 'lucide-react';
+import { getCurrencyOptions } from '../utils/currencyUtils';
 
 const FlightForm = ({ flights, setFlights }) => {
   const [editingFlight, setEditingFlight] = useState(null);
@@ -418,7 +418,7 @@ const FlightForm = ({ flights, setFlights }) => {
             </div>
         </div>
         <div className="text-right mb-4">
-            <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</a>
+            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}

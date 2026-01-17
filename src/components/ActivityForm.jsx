@@ -1,6 +1,6 @@
 // src/components/ActivityForm.jsx - Version 4.2 (Display Logic Fix)
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, MapPin, Users, DollarSign, ChevronsRight, CheckCircle, Upload } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload } from 'lucide-react';
 
 const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [editingActivity, setEditingActivity] = useState(null);
@@ -488,7 +488,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             </div>
         </div>
         <div className="text-right mb-4">
-            <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</a>
+            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}

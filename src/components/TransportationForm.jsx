@@ -1,7 +1,7 @@
 // src/components/TransportationForm.jsx - Version 2.7 (Image Link Input Fix)
 import React, { useState, useMemo, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, Car, Calendar, Clock, MapPin, ShieldCheck, Users, DollarSign, Image, Link2, Ship, Bus, CheckCircle, Upload, Download } from 'lucide-react';
-import { getCurrencySymbol, getCurrencyName, getCurrencyOptions } from '../utils/currencyUtils';
+import { Plus, Edit3, Trash2, X, Car, Calendar, MapPin, ShieldCheck, Users, Link2, Ship, Bus, CheckCircle, Upload, Download } from 'lucide-react';
+import { getCurrencyOptions } from '../utils/currencyUtils';
 
 const TransportationForm = ({ transportation, setTransportation, itineraryLegs }) => {
   const [editingItem, setEditingItem] = useState(null);
@@ -735,7 +735,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
             </div>
         </div>
         <div className="text-right mb-4">
-            <a href="#" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</a>
+            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
