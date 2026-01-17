@@ -97,6 +97,63 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
     const selectedProperties = useMemo(() => clientData?.properties?.filter(p => p.selected && !p.isPlaceholder) || [], [clientData]);
     const selectedActivities = useMemo(() => clientData?.activities?.filter(a => a.selected) || [], [clientData]);
     const selectedTransportation = useMemo(() => clientData?.transportation?.filter(t => t.selected) || [], [clientData]);
+
+    // Group selected transportation by pickup/onboard point
+    const groupedSelectedTransportation = useMemo(() => {
+        if (!selectedTransportation || selectedTransportation.length === 0) return [];
+
+        const groupedByPickup = selectedTransportation.reduce((acc, item) => {
+            // Determine pickup point based on transport type
+            let pickupPoint = 'Uncategorized';
+            if (item.transportType === 'car') {
+                pickupPoint = item.pickupLocation || 'Uncategorized';
+            } else if (item.transportType === 'ferry' || item.transportType === 'bus') {
+                pickupPoint = item.boardingFrom || 'Uncategorized';
+            } else if (item.transportType === 'driver') {
+                pickupPoint = item.pickupFrom || 'Uncategorized';
+            }
+
+            if (!acc[pickupPoint]) acc[pickupPoint] = [];
+            acc[pickupPoint].push(item);
+            return acc;
+        }, {});
+
+        // Convert to sorted array of groups
+        const pickupGroups = Object.keys(groupedByPickup).map(pickupPoint => {
+            const groupItems = groupedByPickup[pickupPoint];
+
+            // Sort items within group by pickup/boarding date/time
+            groupItems.sort((a, b) => {
+                const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
+                const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
+
+                const dateTimeA = new Date(`${getDate(a)}T${getTime(a)}`);
+                const dateTimeB = new Date(`${getDate(b)}T${getTime(b)}`);
+
+                if (isNaN(dateTimeA.getTime())) return 1;
+                if (isNaN(dateTimeB.getTime())) return -1;
+
+                return dateTimeA.getTime() - dateTimeB.getTime();
+            });
+
+            // Determine earliest date for group sorting
+            const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
+            const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
+            const firstItem = groupItems[0];
+            const sortDate = new Date(`${getDate(firstItem)}T${getTime(firstItem)}`);
+
+            return {
+                pickupPoint,
+                items: groupItems,
+                sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate
+            };
+        });
+
+        // Sort groups by earliest date
+        pickupGroups.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+
+        return pickupGroups;
+    }, [selectedTransportation]);
     const selectedFlights = useMemo(() => clientData?.flights?.filter(f => f.selected) || [], [clientData]);
 
     const hasSelections = selectedProperties.length > 0 || selectedActivities.length > 0 || selectedTransportation.length > 0 || selectedFlights.length > 0;
@@ -203,63 +260,72 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                     {selectedTransportation.length > 0 && (
                         <div onClick={() => setActiveTab('transportation')} className="cursor-pointer group">
                             <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
-                            <div className="space-y-4">
-                                {selectedTransportation.map(item => (
-                                    <div key={item.id} className="flex flex-col lg:flex-row items-start lg:items-center gap-4 p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                                        <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-full lg:w-32 h-auto object-cover rounded-lg shadow-sm flex-shrink-0"/>
-                                        <div className="flex-grow">
-                                            <h4 className="font-bold text-lg text-gray-800">{item.name}</h4>
-                                            <p className="text-sm text-gray-500 mb-2 capitalize">{item.type || item.carType || item.transportType}</p>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-700">
-                                                {(() => {
-                                                    const transportTypeLower = item.transportType?.toLowerCase() || '';
+                            <div className="space-y-6">
+                                {groupedSelectedTransportation.map(({ pickupPoint, items }) => (
+                                    <div key={pickupPoint}>
+                                        <h4 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                            <MapPin size={18} className="text-blue-600" /> {pickupPoint}
+                                        </h4>
+                                        <div className="space-y-4">
+                                            {items.map(item => (
+                                                <div key={item.id} className="flex flex-col lg:flex-row items-start lg:items-center gap-4 p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                                    <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-full lg:w-32 h-auto object-cover rounded-lg shadow-sm flex-shrink-0"/>
+                                                    <div className="flex-grow">
+                                                        <h4 className="font-bold text-lg text-gray-800">{item.name}</h4>
+                                                        <p className="text-sm text-gray-500 mb-2 capitalize">{item.type || item.carType || item.transportType}</p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-700">
+                                                            {(() => {
+                                                                const transportTypeLower = item.transportType?.toLowerCase() || '';
 
-                                                    // Handle car-type vehicles (car, van, suv, sedan)
-                                                    if (['car', 'van', 'suv', 'sedan'].includes(transportTypeLower)) {
-                                                        return (
-                                                            <>
-                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation}</div>
-                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
-                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation}</div>
-                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate)} at {formatTime(item.dropoffTime)}</div>
-                                                                <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{formatNumberWithCommas(item.excessAmount || 0, item.currency)})</div>
-                                                                <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>
-                                                            </>
-                                                        );
-                                                    }
+                                                                // Handle car-type vehicles (car, van, suv, sedan)
+                                                                if (['car', 'van', 'suv', 'sedan'].includes(transportTypeLower)) {
+                                                                    return (
+                                                                        <>
+                                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation}</div>
+                                                                            <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+                                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation}</div>
+                                                                            <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate)} at {formatTime(item.dropoffTime)}</div>
+                                                                            <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{formatNumberWithCommas(item.excessAmount || 0, item.currency)})</div>
+                                                                            <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>
+                                                                        </>
+                                                                    );
+                                                                }
 
-                                                    // Handle ferry and bus
-                                                    if (transportTypeLower === 'ferry' || transportTypeLower === 'bus') {
-                                                        return (
-                                                            <>
-                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>From:</strong> &nbsp;{item.boardingFrom}</div>
-                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>To:</strong> &nbsp;{item.departingTo}</div>
-                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.boardingDate)} at {formatTime(item.boardingTime)}</div>
-                                                                <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
-                                                                <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>
-                                                            </>
-                                                        );
-                                                    }
+                                                                // Handle ferry and bus
+                                                                if (transportTypeLower === 'ferry' || transportTypeLower === 'bus') {
+                                                                    return (
+                                                                        <>
+                                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>From:</strong> &nbsp;{item.boardingFrom}</div>
+                                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>To:</strong> &nbsp;{item.departingTo}</div>
+                                                                            <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.boardingDate)} at {formatTime(item.boardingTime)}</div>
+                                                                            <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
+                                                                            <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>
+                                                                        </>
+                                                                    );
+                                                                }
 
-                                                    // Handle driver
-                                                    if (transportTypeLower === 'driver') {
-                                                        return (
-                                                            <>
-                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupFrom} ({item.location})</div>
-                                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffTo}</div>
-                                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
-                                                                <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
-                                                            </>
-                                                        );
-                                                    }
+                                                                // Handle driver
+                                                                if (transportTypeLower === 'driver') {
+                                                                    return (
+                                                                        <>
+                                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupFrom} ({item.location})</div>
+                                                                            <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffTo}</div>
+                                                                            <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+                                                                            <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
+                                                                        </>
+                                                                    );
+                                                                }
 
-                                                    // Fallback for unknown types
-                                                    return <div className="text-gray-500">Transport type: {item.transportType}</div>;
-                                                })()}
-                                            </div>
-                                        </div>
-                                        <div className="w-full lg:w-auto text-right lg:ml-auto flex-shrink-0">
-                                            <p className={`text-2xl font-bold whitespace-nowrap ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
+                                                                // Fallback for unknown types
+                                                                return <div className="text-gray-500">Transport type: {item.transportType}</div>;
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full lg:w-auto text-right lg:ml-auto flex-shrink-0">
+                                                        <p className={`text-2xl font-bold whitespace-nowrap ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 ))}

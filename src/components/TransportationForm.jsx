@@ -71,21 +71,61 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   };
 
   // --- DATA DERIVATION ---
-  const sortedTransportation = useMemo(() => {
+  const sortedTransportationGroups = useMemo(() => {
     if (!transportation || transportation.length === 0) return [];
-    
-    return [...transportation].sort((a, b) => {
+
+    // Group by pickup/onboard point
+    const groupedByPickup = (transportation || []).reduce((acc, item) => {
+      // Determine pickup point based on transport type
+      let pickupPoint = 'Uncategorized';
+      if (item.transportType === 'car') {
+        pickupPoint = item.pickupLocation || 'Uncategorized';
+      } else if (item.transportType === 'ferry' || item.transportType === 'bus') {
+        pickupPoint = item.boardingFrom || 'Uncategorized';
+      } else if (item.transportType === 'driver') {
+        pickupPoint = item.pickupFrom || 'Uncategorized';
+      }
+
+      if (!acc[pickupPoint]) acc[pickupPoint] = [];
+      acc[pickupPoint].push(item);
+      return acc;
+    }, {});
+
+    // Convert to sorted array of groups
+    const pickupGroups = Object.keys(groupedByPickup).map(pickupPoint => {
+      const groupItems = groupedByPickup[pickupPoint];
+
+      // Sort items within group by pickup/boarding date/time
+      groupItems.sort((a, b) => {
+        const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
+        const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
+
+        const dateTimeA = new Date(`${parseDateString(getDate(a))}T${getTime(a)}`);
+        const dateTimeB = new Date(`${parseDateString(getDate(b))}T${getTime(b)}`);
+
+        if (isNaN(dateTimeA.getTime())) return 1;
+        if (isNaN(dateTimeB.getTime())) return -1;
+
+        return dateTimeA.getTime() - dateTimeB.getTime();
+      });
+
+      // Determine earliest date for group sorting
       const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
       const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
+      const firstItem = groupItems[0];
+      const sortDate = new Date(`${parseDateString(getDate(firstItem))}T${getTime(firstItem)}`);
 
-      const dateTimeA = new Date(`${parseDateString(getDate(a))}T${getTime(a)}`);
-      const dateTimeB = new Date(`${parseDateString(getDate(b))}T${getTime(b)}`);
-
-      if (isNaN(dateTimeA.getTime())) return 1;
-      if (isNaN(dateTimeB.getTime())) return -1;
-
-      return dateTimeA.getTime() - dateTimeB.getTime();
+      return {
+        pickupPoint,
+        items: groupItems,
+        sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate
+      };
     });
+
+    // Sort groups by earliest date
+    pickupGroups.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+
+    return pickupGroups;
   }, [transportation]);
 
   // --- HANDLER FUNCTIONS ---
@@ -702,20 +742,29 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
       </div>
 
       {(newItem && !editingItem) && renderForm(newItem, setNewItem)}
-      
-      <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-        <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3"><Car /> All Transportation</h3>
-        <div className="space-y-4">
-          {sortedTransportation.length > 0 ? (
-            sortedTransportation.map(item => (
-              editingItem?.id === item.id
-                ? <div key={item.id} id={`transport-${item.id}`}>{renderForm(editingItem, setEditingItem)}</div>
-                : renderItemRow(item)
-            ))
-          ) : (
-            <p className="text-center text-gray-500 py-4">No transportation options added yet.</p>
-          )}
-        </div>
+
+      <div className="space-y-8">
+        {sortedTransportationGroups.map(({ pickupPoint, items }) => (
+          <div key={pickupPoint} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800">{pickupPoint}</h3>
+              </div>
+            </div>
+
+            {items.length > 0 ? (
+              <div className="space-y-4">
+                {items.map(item => (
+                  editingItem?.id === item.id
+                    ? <div key={item.id} id={`transport-${item.id}`}>{renderForm(editingItem, setEditingItem)}</div>
+                    : renderItemRow(item)
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-4">No transportation options added for {pickupPoint} yet.</p>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -345,17 +345,61 @@ const ClientView = () => {
     return locationGroups;
   }, [clientData?.activities]);
 
-  const sortedTransportation = useMemo(() => {
+  const sortedTransportationGroups = useMemo(() => {
     if (!clientData?.transportation || clientData.transportation.length === 0) return [];
-    return [...clientData.transportation].sort((a, b) => {
+
+    // Group by pickup/onboard point
+    const groupedByPickup = (clientData.transportation || []).reduce((acc, item) => {
+      // Determine pickup point based on transport type
+      let pickupPoint = 'Uncategorized';
+      if (item.transportType === 'car') {
+        pickupPoint = item.pickupLocation || 'Uncategorized';
+      } else if (item.transportType === 'ferry' || item.transportType === 'bus') {
+        pickupPoint = item.boardingFrom || 'Uncategorized';
+      } else if (item.transportType === 'driver') {
+        pickupPoint = item.pickupFrom || 'Uncategorized';
+      }
+
+      if (!acc[pickupPoint]) acc[pickupPoint] = [];
+      acc[pickupPoint].push(item);
+      return acc;
+    }, {});
+
+    // Convert to sorted array of groups
+    const pickupGroups = Object.keys(groupedByPickup).map(pickupPoint => {
+      const groupItems = groupedByPickup[pickupPoint];
+
+      // Sort items within group by pickup/boarding date/time
+      groupItems.sort((a, b) => {
+        const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
+        const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
+
+        const dateTimeA = new Date(`${parseDateString(getDate(a))}T${getTime(a)}`);
+        const dateTimeB = new Date(`${parseDateString(getDate(b))}T${getTime(b)}`);
+
+        if (isNaN(dateTimeA.getTime())) return 1;
+        if (isNaN(dateTimeB.getTime())) return -1;
+
+        return dateTimeA.getTime() - dateTimeB.getTime();
+      });
+
+      // Determine earliest date for group sorting
       const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
       const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
-      const dateTimeA = new Date(`${parseDateString(getDate(a))}T${getTime(a)}`);
-      const dateTimeB = new Date(`${parseDateString(getDate(b))}T${getTime(b)}`);
-      if (isNaN(dateTimeA.getTime())) return 1;
-      if (isNaN(dateTimeB.getTime())) return -1;
-      return dateTimeA.getTime() - dateTimeB.getTime();
+      const firstItem = groupItems[0];
+      const sortDate = new Date(`${parseDateString(getDate(firstItem))}T${getTime(firstItem)}`);
+
+      return {
+        pickupPoint,
+        items: groupItems,
+        sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate
+      };
     });
+
+    // Sort groups by earliest date
+    pickupGroups.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+
+    return pickupGroups;
   }, [clientData?.transportation]);
   
   const groupedFlights = useMemo(() => {
@@ -988,40 +1032,44 @@ const ClientView = () => {
 
         {activeTab === 'transportation' && (
             <div className="space-y-10">
-                {sortedTransportation.length === 0 ? ( <PlaceholderContent title="Transportation" /> ) : (
-                    <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3"><Car /> All Transportation</h3>
-                        <div className="space-y-6">
-                            {sortedTransportation.map(item => {
-                                const price = parseCurrencyToNumber(item.price);
-                                const priceColorStyle = { color: getPriceColor(price) };
-                                return (
-                                    <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
-                                        {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
-                                        <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" />
-                                        <div className="flex-grow">
-                                            <h4 className="font-bold text-lg sm:text-xl text-gray-800">{item.name}</h4>
-                                            <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
-                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom || item.pickupFrom} ({item.location})</div>
-                                                <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
-                                                <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</div>
-                                                { (item.dropoffDate || item.departingDate) && <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>}
-                                                {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {displayPrice(item.excessAmount || 0, item.currency)})</div>}
-                                                {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
-                                                {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
-                                                {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
-                                                {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                {sortedTransportationGroups.length === 0 ? ( <PlaceholderContent title="Transportation" /> ) : (
+                    sortedTransportationGroups.map(({ pickupPoint, items }) => (
+                        <div key={pickupPoint} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+                            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <MapPin size={24} className="text-blue-600" /> {pickupPoint}
+                            </h3>
+                            <div className="space-y-6">
+                                {items.map(item => {
+                                    const price = parseCurrencyToNumber(item.price);
+                                    const priceColorStyle = { color: getPriceColor(price) };
+                                    return (
+                                        <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
+                                            {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
+                                            <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" />
+                                            <div className="flex-grow">
+                                                <h4 className="font-bold text-lg sm:text-xl text-gray-800">{item.name}</h4>
+                                                <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+                                                    <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom || item.pickupFrom} ({item.location})</div>
+                                                    <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
+                                                    <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</div>
+                                                    { (item.dropoffDate || item.departingDate) && <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>}
+                                                    {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {displayPrice(item.excessAmount || 0, item.currency)})</div>}
+                                                    {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
+                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
+                                                    {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                                </div>
+                                            </div>
+                                            <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
+                                                <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {displayPriceWithSign(price, item.currency)} </span>
                                             </div>
                                         </div>
-                                        <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
-                                            <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {displayPriceWithSign(price, item.currency)} </span>
-                                        </div>
-                                    </div>
-                                )
-                            })}
+                                    )
+                                })}
+                            </div>
                         </div>
-                    </div>
+                    ))
                 )}
             </div>
         )}
