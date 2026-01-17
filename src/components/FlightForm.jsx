@@ -1,6 +1,6 @@
 // src/components/FlightForm.jsx - Version 1.5 (Enhanced Pricing Model)
 import React, { useState, useMemo, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, Plane, Briefcase, CheckCircle, Upload, Download } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Plane, Briefcase, CheckCircle, Upload } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
 
 const FlightForm = ({ flights, setFlights }) => {

@@ -6,10 +6,10 @@ import { supabase } from '../supabaseClient.js';
 import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
-  Clock, Users, Link2Off, ShieldCheck, CheckCircle, Ship, Bus, Briefcase,
-  ChevronDown, ChevronUp, Minus, Plus, DollarSign
+  Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
+  ChevronDown, ChevronUp, Minus, Plus
 } from 'lucide-react';
-import { format, differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
 
 const PlaceholderContent = ({ title }) => (
@@ -960,7 +960,6 @@ const ClientView = () => {
                                 const costPerPax = parseFloat(activity.cost_per_pax) || 0;
                                 const hasPaxPricing = costPerPax > 0;
                                 const isSelected = activity.selected !== false;
-                                const isIncludedInBase = activity.included_in_base !== false;
                                 return (
                                     <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 cursor-pointer group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => toggleActivitySelection(activity.id)}>
                                         <div className="relative aspect-video">

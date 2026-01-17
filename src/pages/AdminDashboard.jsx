@@ -6,10 +6,10 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Bus, Briefcase, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
-import { getCurrencySymbol, getCurrencyName, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
+import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
 import { useVisibility, useAutoSave } from '../hooks/useVisibility.js';
 
 const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
@@ -355,9 +355,9 @@ const AdminDashboard = () => {
   const [editingConversionDate, setEditingConversionDate] = useState('');
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [, setShowSettingsModal] = useState(false);
   const [globalLogoUrl, setGlobalLogoUrl] = useState(null);
-  const [newGlobalLogoFile, setNewGlobalLogoFile] = useState(null);
+  const [, setNewGlobalLogoFile] = useState(null);
   const [companyName, setCompanyName] = useState('Veeha Travels');
   const [activeTab, setActiveTab] = useState('clients');
   const [showItineraryModal, setShowItineraryModal] = useState(false);
@@ -376,7 +376,7 @@ const AdminDashboard = () => {
   const GLOBAL_SETTINGS_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
   // V9.0: Visibility detection to prevent loading on tab switch
-  const isVisible = useVisibility();
+  useVisibility();
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
   // V9.0: Auto-save functionality with debouncing (2 second delay)
@@ -387,7 +387,7 @@ const AdminDashboard = () => {
     [selectedClient] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const { debouncedSave, saveImmediately, isSaving, lastSaved } = useAutoSave(saveFunction, 2000);
+  const { debouncedSave, isSaving, lastSaved } = useAutoSave(saveFunction, 2000);
 
   useEffect(() => {
     const getSession = async () => {
@@ -979,7 +979,7 @@ const AdminDashboard = () => {
         setShareLink('');
     }
     setShowEditClientModal(true);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdateClientDetails = async (e) => {
     e.preventDefault();
@@ -1097,6 +1097,7 @@ const AdminDashboard = () => {
         setMessage('Share link copied to clipboard!');
     };
 
+  // eslint-disable-next-line no-unused-vars
   const handleUpdateGlobalSettings = async (newCompanyName, newLogoFileFromInput = null) => {
     setLoading(true);
     setError(null);
