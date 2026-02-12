@@ -369,18 +369,11 @@ const ClientView = () => {
     const pickupGroups = Object.keys(groupedByPickup).map(pickupPoint => {
       const groupItems = groupedByPickup[pickupPoint];
 
-      // Sort items within group by pickup/boarding date/time
+      // Sort items within group by price ascending (cheapest first)
       groupItems.sort((a, b) => {
-        const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
-        const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
-
-        const dateTimeA = new Date(`${parseDateString(getDate(a))}T${getTime(a)}`);
-        const dateTimeB = new Date(`${parseDateString(getDate(b))}T${getTime(b)}`);
-
-        if (isNaN(dateTimeA.getTime())) return 1;
-        if (isNaN(dateTimeB.getTime())) return -1;
-
-        return dateTimeA.getTime() - dateTimeB.getTime();
+        const priceA = parseCurrencyToNumber(a.price) || 0;
+        const priceB = parseCurrencyToNumber(b.price) || 0;
+        return priceA - priceB;
       });
 
       // Determine earliest date for group sorting
