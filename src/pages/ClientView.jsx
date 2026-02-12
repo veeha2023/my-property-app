@@ -976,13 +976,16 @@ const ClientView = () => {
 
                                                     <div className="flex items-center"><ChevronRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
 
-                                                    {/* Pax input - only show if activity is selected, has pax pricing, and not finalized */}
-                                                    {isSelected && hasPaxPricing && !isFinalized ? (
+                                                    {/* Pax display - show controls only when not finalized */}
+                                                    {isSelected && hasPaxPricing ? (
                                                         <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                                                             <div className="flex items-center">
                                                                 <Users size={16} className="mr-2 text-gray-400" />
                                                                 <span className="text-sm mr-2">Pax:</span>
                                                             </div>
+                                                            {isFinalized ? (
+                                                                <span className="font-semibold text-gray-800">{activity.pax}</span>
+                                                            ) : (
                                                             <div className="flex items-center gap-2">
                                                                 <button
                                                                     onClick={(e) => {
@@ -1005,6 +1008,7 @@ const ClientView = () => {
                                                                     <Plus size={16} className="text-gray-700" />
                                                                 </button>
                                                             </div>
+                                                            )}
                                                         </div>
                                                     ) : null}
                                                 </div>
