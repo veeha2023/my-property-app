@@ -976,8 +976,8 @@ const ClientView = () => {
 
                                                     <div className="flex items-center"><ChevronRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
 
-                                                    {/* Pax input - only show if activity is selected and has pax pricing */}
-                                                    {isSelected && hasPaxPricing ? (
+                                                    {/* Pax input - only show if activity is selected, has pax pricing, and not finalized */}
+                                                    {isSelected && hasPaxPricing && !isFinalized ? (
                                                         <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                                                             <div className="flex items-center">
                                                                 <Users size={16} className="mr-2 text-gray-400" />
