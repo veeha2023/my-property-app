@@ -393,8 +393,8 @@ const ClientView = () => {
     pickupGroups.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
 
     return pickupGroups;
-  }, [clientData?.transportation]);
-  
+  }, [clientData?.transportation, parseCurrencyToNumber]);
+
   const groupedFlights = useMemo(() => {
     if (!clientData?.flights) return { domestic: [], international: [] };
     const groups = { domestic: [], international: [] };
