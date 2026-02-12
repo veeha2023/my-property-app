@@ -560,6 +560,7 @@ const ClientView = () => {
     );
   }
 
+  const isFinalized = clientData?.finalized || false;
   const selectedProperties = clientData?.properties?.filter(p => p.selected && !p.isPlaceholder) || [];
   const selectedActivities = clientData?.activities?.filter(a => a.selected) || [];
   const selectedTransportation = clientData?.transportation?.filter(t => t.selected) || [];
@@ -869,7 +870,7 @@ const ClientView = () => {
 
         {activeTab === 'property' && (
             <div className="space-y-10">
-              {itineraries.filter(it => it.properties.length > 0).map((itinerary) => {
+              {itineraries.filter(it => (isFinalized ? it.properties.some(p => p.selected) : it.properties.length > 0)).map((itinerary) => {
                 const isCollapsed = collapsedSections[itinerary.id];
                 return (
                   <div key={itinerary.id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
@@ -889,7 +890,7 @@ const ClientView = () => {
                       <div className="p-4 sm:p-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {(itinerary.properties || []).length === 0 ? ( <div className="col-span-full text-center py-8 text-gray-500"><p>No properties for this itinerary.</p></div> ) : (
-                            itinerary.properties.map((property) => {
+                            (isFinalized ? itinerary.properties.filter(p => p.selected) : itinerary.properties).map((property) => {
                               const priceValue = parseCurrencyToNumber(property.price);
                               const priceColorStyle = { color: getPriceColor(priceValue) };
                               const currentIdx = currentImageIndex[property.id] || 0;
@@ -897,7 +898,7 @@ const ClientView = () => {
                               const hasMultipleImages = property.images && property.images.length > 1;
 
                               return (
-                                <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 cursor-pointer ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => toggleSelection(itinerary.id, property.id)}>
+                                <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleSelection(itinerary.id, property.id)}>
                                   <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl bg-gray-200" onTouchStart={(e) => handleTouchStart(e, property.id)} onTouchMove={(e) => handleTouchMove(e, property.id)} onTouchEnd={() => handleTouchEnd(property.id)} onClick={(e) => openExpandedImage(e, property.id, currentIdx)}>
                                     <div className="flex h-full" style={{ transform: `translateX(calc(-${currentIdx * 100}% + ${currentSwipeState.moveX}px))`, transition: currentSwipeState.isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                                         {property.images && property.images.length > 0 ? (
@@ -943,18 +944,18 @@ const ClientView = () => {
 
         {activeTab === 'activities' && (
             <div className="space-y-10">
-                {sortedActivityGroups.map(({ location, activities: activitiesInLocation }) => (
+                {sortedActivityGroups.filter(({ activities: acts }) => !isFinalized || acts.some(a => a.selected !== false)).map(({ location, activities: activitiesInLocation }) => (
                     <div key={location} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
                         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{location} Activities</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {activitiesInLocation.map(activity => {
+                            {(isFinalized ? activitiesInLocation.filter(a => a.selected !== false) : activitiesInLocation).map(activity => {
                                 const deltaPrice = calculateActivityDelta(activity);
                                 const priceColorStyle = { color: getPriceColor(deltaPrice) };
                                 const costPerPax = parseFloat(activity.cost_per_pax) || 0;
                                 const hasPaxPricing = costPerPax > 0;
                                 const isSelected = activity.selected !== false;
                                 return (
-                                    <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 cursor-pointer group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => toggleActivitySelection(activity.id)}>
+                                    <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleActivitySelection(activity.id)}>
                                         <div className="relative aspect-video">
                                             {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
                                             {isSelected && ( <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg"> <Check size={24} className="text-green-500" /> </div> )}
@@ -1025,17 +1026,17 @@ const ClientView = () => {
         {activeTab === 'transportation' && (
             <div className="space-y-10">
                 {sortedTransportationGroups.length === 0 ? ( <PlaceholderContent title="Transportation" /> ) : (
-                    sortedTransportationGroups.map(({ pickupPoint, items }) => (
+                    sortedTransportationGroups.filter(({ items: grpItems }) => !isFinalized || grpItems.some(i => i.selected)).map(({ pickupPoint, items }) => (
                         <div key={pickupPoint} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
                             <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                                 <MapPin size={24} className="text-blue-600" /> {pickupPoint}
                             </h3>
                             <div className="space-y-6">
-                                {items.map(item => {
+                                {(isFinalized ? items.filter(i => i.selected) : items).map(item => {
                                     const price = parseCurrencyToNumber(item.price);
                                     const priceColorStyle = { color: getPriceColor(price) };
                                     return (
-                                        <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleTransportationSelection(item.id)}>
+                                        <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
                                             {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
                                             <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" />
                                             <div className="flex-grow">
@@ -1070,18 +1071,19 @@ const ClientView = () => {
             <div className="space-y-12">
                 {Object.keys(groupedFlights).every(key => groupedFlights[key].length === 0) ? ( <PlaceholderContent title="Flights" /> ) : (
                     Object.entries(groupedFlights).map(([type, itemsInType]) => {
-                        if (itemsInType.length === 0) return null;
+                        const visibleItems = isFinalized ? itemsInType.filter(f => f.selected) : itemsInType;
+                        if (visibleItems.length === 0) return null;
                         const typeInfo = { domestic: { label: 'Domestic Flight', icon: <Plane /> }, international: { label: 'International Flight', icon: <Plane /> } }[type] || { label: type, icon: <Plane /> };
                         return (
                             <div key={type} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
                                 <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">{typeInfo.icon} {typeInfo.label}</h3>
                                 <div className="space-y-4">
-                                    {itemsInType.map(item => {
+                                    {visibleItems.map(item => {
                                         const currentPrice = calculateFinalFlightPrice(item);
                                         const priceColorStyle = { color: getPriceColor(currentPrice) };
                                         const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
                                         return (
-                                            <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => toggleFlightSelection(item.id)}>
+                                            <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleFlightSelection(item.id)}>
                                                 <div className="flex flex-col w-full">
                                                     <div className="flex flex-col sm:flex-row justify-between items-center w-full">
                                                         {item.selected && ( <div className="absolute top-1/2 -translate-y-1/2 left-4 sm:left-6 rounded-full p-1 shadow-md bg-white z-10"> <CheckCircle size={24} className="text-green-500" /> </div> )}
@@ -1132,9 +1134,11 @@ const ClientView = () => {
             </div>
         )}
 
-        <div className="mt-6 mb-12">
-          <button onClick={handleSaveSelection} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" disabled={loading}>{loading ? 'Saving...' : 'Confirm My Selections'}</button>
-        </div>
+        {!isFinalized && (
+          <div className="mt-6 mb-12">
+            <button onClick={handleSaveSelection} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" disabled={loading}>{loading ? 'Saving...' : 'Confirm My Selections'}</button>
+          </div>
+        )}
       </div>
     </div>
   );

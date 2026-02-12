@@ -6,7 +6,7 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users, Lock, Unlock } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
@@ -606,6 +606,13 @@ const AdminDashboard = () => {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const handleToggleFinalize = async () => {
+    if (!selectedClient || !clientData) return;
+    const updatedData = { ...clientData, finalized: !clientData.finalized };
+    setClientData(updatedData);
+    await handleSaveClientData(updatedData);
   };
 
   // V9.0: Updated to support auto-save (silent saves without UI feedback)
@@ -1408,6 +1415,10 @@ const AdminDashboard = () => {
                       <button onClick={() => { setShowItineraryListModal(true); }} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out">
                           <Edit size={20} className="mr-2" />
                           Edit Itinerary
+                      </button>
+                      <button onClick={handleToggleFinalize} className={`flex items-center font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out ${clientData?.finalized ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'}`} title={clientData?.finalized ? 'Unfinalize Quote' : 'Finalize Quote'}>
+                          {clientData?.finalized ? <Unlock size={20} className="mr-2" /> : <Lock size={20} className="mr-2" />}
+                          {clientData?.finalized ? 'Unfinalize' : 'Finalize'}
                       </button>
                   </div>
                 </div>
