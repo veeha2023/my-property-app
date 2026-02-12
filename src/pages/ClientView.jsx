@@ -978,10 +978,10 @@ const ClientView = () => {
 
                                                     {/* Pax display - show controls only when not finalized */}
                                                     {isSelected && hasPaxPricing ? (
-                                                        <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                                                        <div className={`flex items-center ${isFinalized ? '' : 'justify-between'}`} onClick={(e) => e.stopPropagation()}>
                                                             <div className="flex items-center">
                                                                 <Users size={16} className="mr-2 text-gray-400" />
-                                                                <span className="text-sm mr-2">Pax:</span>
+                                                                <span className="text-sm">Pax:&nbsp;</span>
                                                             </div>
                                                             {isFinalized ? (
                                                                 <span className="font-semibold text-gray-800">{activity.pax}</span>
