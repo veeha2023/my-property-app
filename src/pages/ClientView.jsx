@@ -981,6 +981,22 @@ const ClientView = () => {
                                     <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleActivitySelection(activity.id)}>
                                         <div className="relative aspect-video">
                                             {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
+
+                                            {/* Included/Optional badge - positioned bottom-left with backdrop blur */}
+                                            <div className="absolute bottom-3 left-3 backdrop-blur-sm rounded-full">
+                                              {activity.included_in_base !== false ? (
+                                                <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1 text-xs font-semibold">
+                                                  <Check size={12} />
+                                                  Included
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full px-3 py-1 text-xs font-semibold">
+                                                  + Optional
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            {/* Existing selected checkmark (keep this) */}
                                             {isSelected && ( <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg"> <Check size={24} className="text-green-500" /> </div> )}
                                         </div>
                                         <div className="p-4 flex flex-col justify-between flex-grow">
