@@ -107,10 +107,10 @@ Plans:
   2. Summary tab shows quick stats (locations count, flights count, vehicles count, activity counts)
   3. Summary tab shows selected items grouped with included/optional badges
   4. Summary tab shows total price with "See full breakdown" link opening the modal from Phase 2
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Create itinerary route visualization and quick stats components for Summary tab
 
 ### Phase 7: Accessibility Fixes
 **Goal**: Interface meets WCAG 2.1 Level AA standards for keyboard navigation and screen reader support
@@ -169,9 +169,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Sticky Price Summary Panel | 0/1 | Planning complete | - |
 | 2. Price Breakdown Modal | 0/1 | Planning complete | - |
 | 3. Activity Badges & Per-Person Math | 0/1 | Planning complete | - |
-| 4. Contextual Price Labels | 0/TBD | Not started | - |
+| 4. Contextual Price Labels | 0/2 | Planning complete | - |
 | 5. Welcome Banner | 0/1 | Planning complete | - |
-| 6. Summary Tab Enhancement | 0/TBD | Not started | - |
+| 6. Summary Tab Enhancement | 0/1 | Planning complete | - |
 | 7. Accessibility Fixes | 0/1 | Planning complete | - |
 | 8. Performance & Loading | 0/1 | Planning complete | - |
 | 9. Agent's Pick | 0/1 | Planning complete | - |
