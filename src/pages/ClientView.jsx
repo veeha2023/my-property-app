@@ -13,6 +13,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
 import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
+import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -45,6 +46,7 @@ const ClientView = () => {
   const [exchangeRates, setExchangeRates] = useState(null);
   const [isLoadingRates, setIsLoadingRates] = useState(false);
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
+  const [showBreakdownModal, setShowBreakdownModal] = useState(false);
 
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
@@ -1175,6 +1177,7 @@ const ClientView = () => {
                   flightDelta={flightDelta}
                   displayPrice={displayPrice}
                   selectedCurrency={selectedCurrency}
+                  onBreakdownClick={() => setShowBreakdownModal(true)}
                   onConfirm={handleSaveSelection}
                 />
               </div>
@@ -1189,7 +1192,7 @@ const ClientView = () => {
               finalQuote={finalQuote}
               displayPrice={displayPrice}
               selectedCurrency={selectedCurrency}
-              onDetailsClick={() => {/* Phase 2: open breakdown modal */}}
+              onDetailsClick={() => setShowBreakdownModal(true)}
               onConfirm={handleSaveSelection}
             />
           </div>
@@ -1197,6 +1200,17 @@ const ClientView = () => {
 
         {/* Add bottom padding to prevent content overlap with fixed bottom bar on mobile */}
         <div className="h-20 lg:hidden" aria-hidden="true"></div>
+
+        {/* Price Breakdown Modal */}
+        <PriceBreakdownModal
+          isOpen={showBreakdownModal}
+          onClose={() => setShowBreakdownModal(false)}
+          baseQuote={baseQuote}
+          clientData={clientData}
+          displayPrice={displayPrice}
+          selectedCurrency={selectedCurrency}
+          parseCurrencyToNumber={parseCurrencyToNumber}
+        />
       </div>
     </div>
   );

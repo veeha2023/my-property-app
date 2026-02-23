@@ -12,6 +12,7 @@ const PriceSummaryPanel = ({
   flightDelta,
   displayPrice,
   selectedCurrency,
+  onBreakdownClick,
   onConfirm
 }) => {
   // Color helpers
@@ -105,10 +106,7 @@ const PriceSummaryPanel = ({
         {/* See Full Breakdown Button */}
         <button
           className="w-full py-3 px-4 border border-gray-300 rounded-lg font-semibold text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-          onClick={() => {
-            // Phase 2: Will open breakdown modal
-            console.log('See full breakdown clicked');
-          }}
+          onClick={onBreakdownClick}
         >
           <span>See full breakdown</span>
           <ChevronDown size={16} />
