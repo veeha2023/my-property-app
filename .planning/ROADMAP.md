@@ -92,10 +92,10 @@ Plans:
   2. Client can dismiss banner and dismissal persists through page refreshes (sessionStorage)
   3. Banner reappears on new browser session (expected behavior — banner is brief and helpful)
   4. Banner text is maximum 2 lines without color-teaching or legend explanations
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Add dismissible welcome banner with sessionStorage persistence
 
 ### Phase 6: Summary Tab Enhancement
 **Goal**: Summary tab provides at-a-glance itinerary understanding instead of flat selection list
@@ -169,7 +169,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 2. Price Breakdown Modal | 0/1 | Planning complete | - |
 | 3. Activity Badges & Per-Person Math | 0/TBD | Not started | - |
 | 4. Contextual Price Labels | 0/TBD | Not started | - |
-| 5. Welcome Banner | 0/TBD | Not started | - |
+| 5. Welcome Banner | 0/1 | Planning complete | - |
 | 6. Summary Tab Enhancement | 0/TBD | Not started | - |
 | 7. Accessibility Fixes | 0/TBD | Not started | - |
 | 8. Performance & Loading | 0/TBD | Not started | - |
