@@ -1,6 +1,6 @@
 // src/components/ActivityForm.jsx - Version 4.2 (Display Logic Fix)
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download } from 'lucide-react';
 
 const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [editingActivity, setEditingActivity] = useState(null);
@@ -265,13 +265,11 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             }
             // --- END CSV HEADER UPDATE ---
 
-            const newActivitiesFromCSV = lines.slice(1).map((line, index) => {
+            // Parse CSV rows into raw activity objects
+            const parsedRows = lines.slice(1).map((line, index) => {
                 const data = line.split(',');
-                if (data.length < headers.length) {
-                    // Handle case where trailing commas might be omitted for empty optional fields
-                    while (data.length < headers.length) {
-                        data.push('');
-                    }
+                while (data.length < headers.length) {
+                    data.push('');
                 }
 
                 const activity = {};
@@ -279,51 +277,77 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     activity[header] = data[i] ? data[i].trim() : '';
                 });
 
-                // Ensure core fields are present
                 if (!activity.name || !activity.location) {
                     return null;
                 }
-
-                const pax = parseInt(activity.pax, 10) || 1;
-                const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-                const flatPrice = parseFloat(activity.flat_price) || 0;
-                const basePrice = (costPerPax * pax) + flatPrice;
-
-                // Parse included_in_base: if explicitly 'false' or 'FALSE', set to false; otherwise default to true
-                const includedInBase = activity.included_in_base?.toLowerCase() !== 'false';
-
-                // Parse selected: if CSV has explicit value, use it; otherwise match included_in_base
-                // (included in base = selected by default, not included = deselected by default)
-                let selected;
-                if (activity.selected && activity.selected.trim() !== '') {
-                    // Explicit value provided in CSV
-                    selected = activity.selected.toLowerCase() !== 'false';
-                } else {
-                    // No explicit value: default based on included_in_base
-                    selected = includedInBase;
-                }
-
-                return {
-                    id: `act-csv-${Date.now()}-${index}`,
-                    name: activity.name,
-                    // Conditionally assign date/time only if columns exist and have data
-                    date: activity.date ? parseDateString(activity.date) : '',
-                    time: activity.time || '',
-                    location: activity.location,
-                    duration: parseFloat(activity.duration) || 0,
-                    pax,
-                    cost_per_pax: costPerPax,
-                    flat_price: flatPrice,
-                    base_price: basePrice,
-                    currency: activity.currency || 'NZD',
-                    images: activity.images ? activity.images.split(';').map(url => url.trim()) : [],
-                    included_in_base: includedInBase,
-                    selected: selected,
-                };
+                return { raw: activity, index };
             }).filter(Boolean);
 
-            setActivities([...activities, ...newActivitiesFromCSV]);
-            setMessage(`${newActivitiesFromCSV.length} activities imported successfully!`);
+            // Separate into updates vs new activities by matching name+location
+            const updatedActivities = [...activities];
+            let updatedCount = 0;
+            const brandNewActivities = [];
+
+            parsedRows.forEach(({ raw, index }) => {
+                const matchKey = (raw.name.trim().toLowerCase()) + '||' + (raw.location.trim().toLowerCase());
+                const existingIdx = updatedActivities.findIndex(
+                    a => (a.name || '').trim().toLowerCase() + '||' + (a.location || '').trim().toLowerCase() === matchKey
+                );
+
+                if (existingIdx !== -1) {
+                    // Update existing: only overwrite fields that have non-empty values in the CSV
+                    const existing = { ...updatedActivities[existingIdx] };
+                    if (raw.duration !== '') existing.duration = parseFloat(raw.duration) || 0;
+                    if (raw.pax !== '') existing.pax = parseInt(raw.pax, 10) || 1;
+                    if (raw.cost_per_pax !== '') existing.cost_per_pax = parseFloat(raw.cost_per_pax) || 0;
+                    if (raw.flat_price !== '') existing.flat_price = parseFloat(raw.flat_price) || 0;
+                    if (raw.currency !== '') existing.currency = raw.currency;
+                    if (raw.date !== '') existing.date = parseDateString(raw.date);
+                    if (raw.time !== '') existing.time = raw.time;
+                    if (raw.images !== '') existing.images = raw.images.split(';').map(url => url.trim());
+                    if (raw.included_in_base !== '') existing.included_in_base = raw.included_in_base.toLowerCase() !== 'false';
+                    if (raw.selected !== '') existing.selected = raw.selected.toLowerCase() !== 'false';
+                    // Recalculate base_price
+                    existing.base_price = ((parseFloat(existing.cost_per_pax) || 0) * (parseInt(existing.pax, 10) || 1)) + (parseFloat(existing.flat_price) || 0);
+                    updatedActivities[existingIdx] = existing;
+                    updatedCount++;
+                } else {
+                    // New activity (original behavior)
+                    const pax = parseInt(raw.pax, 10) || 1;
+                    const costPerPax = parseFloat(raw.cost_per_pax) || 0;
+                    const flatPrice = parseFloat(raw.flat_price) || 0;
+                    const basePrice = (costPerPax * pax) + flatPrice;
+                    const includedInBase = raw.included_in_base?.toLowerCase() !== 'false';
+                    let selected;
+                    if (raw.selected && raw.selected.trim() !== '') {
+                        selected = raw.selected.toLowerCase() !== 'false';
+                    } else {
+                        selected = includedInBase;
+                    }
+                    brandNewActivities.push({
+                        id: `act-csv-${Date.now()}-${index}`,
+                        name: raw.name,
+                        date: raw.date ? parseDateString(raw.date) : '',
+                        time: raw.time || '',
+                        location: raw.location,
+                        duration: parseFloat(raw.duration) || 0,
+                        pax,
+                        cost_per_pax: costPerPax,
+                        flat_price: flatPrice,
+                        base_price: basePrice,
+                        currency: raw.currency || 'NZD',
+                        images: raw.images ? raw.images.split(';').map(url => url.trim()) : [],
+                        included_in_base: includedInBase,
+                        selected: selected,
+                    });
+                }
+            });
+
+            setActivities([...updatedActivities, ...brandNewActivities]);
+            const parts = [];
+            if (updatedCount > 0) parts.push(`${updatedCount} activit${updatedCount === 1 ? 'y' : 'ies'} updated`);
+            if (brandNewActivities.length > 0) parts.push(`${brandNewActivities.length} new activit${brandNewActivities.length === 1 ? 'y' : 'ies'} added`);
+            setMessage(parts.join(', ') + '.');
             setError(null);
         } catch (err) {
             setError(`Failed to process CSV file: ${err.message}`);
@@ -359,6 +383,44 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const exportActivitiesToCSV = () => {
+    if (!activities || activities.length === 0) {
+      setError("No activities to export.");
+      return;
+    }
+    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,selected";
+    const rows = activities.map(act => {
+      const escapeCsvField = (val) => {
+        const str = String(val ?? '');
+        return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str.replace(/"/g, '""')}"` : str;
+      };
+      return [
+        escapeCsvField(act.name),
+        escapeCsvField(act.location),
+        act.duration ?? '',
+        act.pax ?? 1,
+        act.cost_per_pax ?? 0,
+        act.flat_price ?? 0,
+        act.currency || 'NZD',
+        (act.images || []).join(';'),
+        act.included_in_base !== false,
+        act.date || '',
+        act.time || '',
+        act.selected !== false,
+      ].join(',');
+    });
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "activities_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // --- RENDER FUNCTIONS ---
@@ -482,6 +544,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     accept=".csv"
                     onChange={handleFileUpload}
                 />
+                <button onClick={exportActivitiesToCSV} className="bg-gray-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800 flex items-center transition-transform hover:scale-105">
+                    <Download size={18} className="mr-2" /> Export to CSV
+                </button>
                 <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
                     <Upload size={18} className="mr-2" /> Import from CSV
                 </button>
