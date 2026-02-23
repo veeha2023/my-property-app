@@ -213,6 +213,55 @@ const ClientView = () => {
     }
   }, [displayPrice]);
 
+  const getActivityMathBreakdown = useCallback((activity) => {
+    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+    const flatPrice = parseFloat(activity.flat_price) || 0;
+    const currentPax = parseInt(activity.pax, 10) || 0;
+    const basePax = parseInt(activity.base_pax, 10) || 0;
+    const basePrice = parseFloat(activity.base_price) || 0;
+    const isIncludedInBase = activity.included_in_base !== false;
+    const isSelected = activity.selected !== false;
+
+    // No math to show if no per-pax pricing
+    if (costPerPax === 0) return null;
+
+    const currentSubtotal = costPerPax * currentPax;
+    const currentTotal = currentSubtotal + flatPrice;
+
+    // For included activities with pax change, show before/after
+    if (isIncludedInBase && isSelected && currentPax !== basePax && basePax > 0) {
+      const baseSubtotal = costPerPax * basePax;
+      const baseTotal = baseSubtotal + flatPrice;
+      const change = currentTotal - baseTotal;
+
+      return {
+        type: 'comparison',
+        lines: [
+          `Base: ${displayPrice(costPerPax)}/person × ${basePax} = ${displayPrice(baseTotal)}`,
+          `Now:  ${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentTotal)}`,
+          `Change: ${change >= 0 ? '+' : ''}${displayPrice(Math.abs(change))}`
+        ]
+      };
+    }
+
+    // Standard per-person calculation
+    const lines = [];
+
+    if (currentPax > 0) {
+      lines.push(`${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentSubtotal)}`);
+    }
+
+    if (flatPrice > 0) {
+      lines.push(`+ ${displayPrice(flatPrice)} fee`);
+    }
+
+    if (lines.length > 1 || flatPrice > 0) {
+      lines.push(`= ${displayPrice(currentTotal)}`);
+    }
+
+    return lines.length > 0 ? { type: 'standard', lines } : null;
+  }, [displayPrice]);
+
   const calculateFinalFlightPrice = useCallback((flight) => {
     const priceSelected = parseFloat(flight.price_if_selected) || 0;
     const priceNotSelected = parseFloat(flight.price_if_not_selected) || 0;
@@ -1109,8 +1158,28 @@ const ClientView = () => {
                                                     ) : null}
                                                 </div>
                                             </div>
-                                            <div className="mt-4 text-right">
+                                            <div className="mt-4">
+                                              {/* Per-person math breakdown */}
+                                              {(() => {
+                                                const math = getActivityMathBreakdown(activity);
+                                                if (math) {
+                                                  return (
+                                                    <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm font-mono space-y-1">
+                                                      {math.lines.map((line, idx) => (
+                                                        <div key={idx} className={`${idx === math.lines.length - 1 && math.type === 'standard' ? 'font-bold border-t border-gray-300 pt-1 mt-1' : ''} ${math.type === 'comparison' && idx === math.lines.length - 1 ? 'font-bold text-amber-600' : 'text-gray-700'}`}>
+                                                          {line}
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  );
+                                                }
+                                                return null;
+                                              })()}
+
+                                              {/* Price delta (existing display) */}
+                                              <div className="text-right">
                                                 <span className="text-2xl font-bold" style={priceColorStyle}> {displayPriceWithSign(deltaPrice, activity.currency)} </span>
+                                              </div>
                                             </div>
                                         </div>
                                     </div>
