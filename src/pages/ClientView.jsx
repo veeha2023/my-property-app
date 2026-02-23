@@ -167,6 +167,52 @@ const ClientView = () => {
     }
   }, []);
 
+  const getActivityContextLabel = useCallback((activity) => {
+    const isIncludedInBase = activity.included_in_base !== false;
+    const isSelected = activity.selected !== false;
+    const currentPax = parseInt(activity.pax, 10) || 0;
+    const basePax = parseInt(activity.base_pax, 10) || 0;
+    const basePrice = parseFloat(activity.base_price) || 0;
+    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+    const flatPrice = parseFloat(activity.flat_price) || 0;
+    const currentPrice = (costPerPax * currentPax) + flatPrice;
+
+    if (isIncludedInBase) {
+      if (!isSelected) {
+        // Included but deselected
+        return {
+          text: `Removing saves ${displayPrice(basePrice)}`,
+          color: 'text-green-600'
+        };
+      } else if (currentPax !== basePax && basePax > 0) {
+        // Included, selected, pax changed
+        return {
+          text: `Base: ${basePax} people → Now: ${currentPax}`,
+          color: 'text-amber-600'
+        };
+      } else {
+        // Included, selected, same pax
+        return {
+          text: 'Part of your base package — no extra cost',
+          color: 'text-gray-600'
+        };
+      }
+    } else {
+      // Optional activity
+      if (isSelected) {
+        return {
+          text: `Adds ${displayPrice(currentPrice)} to your total`,
+          color: 'text-blue-600'
+        };
+      } else {
+        return {
+          text: `Available for ${displayPrice(currentPrice)} extra`,
+          color: 'text-gray-500'
+        };
+      }
+    }
+  }, [displayPrice]);
+
   const calculateFinalFlightPrice = useCallback((flight) => {
     const priceSelected = parseFloat(flight.price_if_selected) || 0;
     const priceNotSelected = parseFloat(flight.price_if_not_selected) || 0;
@@ -1002,6 +1048,17 @@ const ClientView = () => {
                                         <div className="p-4 flex flex-col justify-between flex-grow">
                                             <div>
                                                 <h4 className="font-bold text-lg text-gray-800 truncate mb-2">{activity.name}</h4>
+
+                                                {/* Contextual one-liner */}
+                                                {(() => {
+                                                  const label = getActivityContextLabel(activity);
+                                                  return (
+                                                    <p className={`text-sm ${label.color} mb-3 italic`}>
+                                                      {label.text}
+                                                    </p>
+                                                  );
+                                                })()}
+
                                                 <div className="space-y-1 text-sm text-gray-600">
 
                                                     {/* --- DISPLAY LOGIC FIX --- */}
