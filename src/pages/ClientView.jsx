@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
+import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
+import MobileBottomBar from '../components/MobileBottomBar.jsx';
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -455,7 +457,35 @@ const ClientView = () => {
 
   const baseQuote = useMemo(() => clientData?.quote || 0, [clientData]);
   const finalQuote = baseQuote + totalChangeValue;
-  const totalChangeColorStyle = { color: getPriceColor(totalChangeValue) };
+
+  // Category-specific deltas for sidebar
+  const propertyDelta = useMemo(() => {
+    if (!clientData?.properties) return 0;
+    return clientData.properties
+      .filter(p => p.selected)
+      .reduce((sum, p) => sum + parseCurrencyToNumber(p.price), 0);
+  }, [clientData?.properties, parseCurrencyToNumber]);
+
+  const activityDelta = useMemo(() => {
+    if (!clientData?.activities) return 0;
+    return clientData.activities
+      .filter(a => a.selected)
+      .reduce((sum, a) => sum + calculateActivityDelta(a), 0);
+  }, [clientData?.activities, calculateActivityDelta]);
+
+  const transportDelta = useMemo(() => {
+    if (!clientData?.transportation) return 0;
+    return clientData.transportation
+      .filter(t => t.selected)
+      .reduce((sum, t) => sum + parseCurrencyToNumber(t.price), 0);
+  }, [clientData?.transportation, parseCurrencyToNumber]);
+
+  const flightDelta = useMemo(() => {
+    if (!clientData?.flights) return 0;
+    return clientData.flights.reduce((sum, f) => {
+      return sum + calculateFinalFlightPrice(f);
+    }, 0);
+  }, [clientData?.flights, calculateFinalFlightPrice]);
 
   const nextImage = (propertyId) => {
     setCurrentImageIndex(prev => {
@@ -748,27 +778,18 @@ const ClientView = () => {
               </button>
             </div>
           </div>
-
-          {/* Quote Details Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="text-center p-3 md:p-4 rounded-lg bg-gray-50 border border-gray-200">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Base Quote</p>
-              <p className="text-2xl md:text-3xl font-bold text-gray-800">{displayPrice(baseQuote)}</p>
-            </div>
-            <div className="text-center p-3 md:p-4 rounded-lg bg-gray-50 border border-gray-200">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Selections</p>
-              <p className="text-2xl md:text-3xl font-bold" style={totalChangeColorStyle}>{totalChangeValue >= 0 ? '+' : ''}{displayPrice(Math.abs(totalChangeValue))}</p>
-            </div>
-            <div className="text-center p-3 md:p-4 rounded-lg bg-blue-50 border-2 border-blue-300">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Final Quote</p>
-              <p className="text-2xl md:text-3xl font-bold text-blue-700">{displayPrice(finalQuote)}</p>
-            </div>
-          </div>
         </div>
 
-        {message && <p className="mb-4 text-center text-sm text-blue-600 bg-blue-100 p-3 rounded-lg">{message}</p>}
-        
-        <div className="border-b border-gray-200 mb-8">
+        {/* Responsive layout: sidebar on desktop, content takes remaining space */}
+        <div className="flex gap-6">
+          {/* Main content area */}
+          <div className="flex-1 min-w-0 lg:min-w-[600px]">
+
+            {/* Message display */}
+            {message && <p className="mb-4 text-center text-sm text-blue-600 bg-blue-100 p-3 rounded-lg">{message}</p>}
+
+            {/* Tab navigation */}
+            <div className="border-b border-gray-200 mb-8">
             <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto hide-scrollbar" aria-label="Tabs">
                 <button onClick={() => setActiveTab('summary')} className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
                 <button onClick={() => setActiveTab('property')} className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
@@ -1138,11 +1159,44 @@ const ClientView = () => {
             </div>
         )}
 
+          </div>
+
+          {/* Desktop sidebar - only shows on lg+ screens */}
+          {!isFinalized && (
+            <div className="hidden lg:block w-[320px] shrink-0">
+              <div className="sticky top-4">
+                <PriceSummaryPanel
+                  baseQuote={baseQuote}
+                  totalChangeValue={totalChangeValue}
+                  finalQuote={finalQuote}
+                  propertyDelta={propertyDelta}
+                  activityDelta={activityDelta}
+                  transportDelta={transportDelta}
+                  flightDelta={flightDelta}
+                  displayPrice={displayPrice}
+                  selectedCurrency={selectedCurrency}
+                  onConfirm={handleSaveSelection}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile/Tablet bottom bar - only shows on <lg screens */}
         {!isFinalized && (
-          <div className="mt-6 mb-12">
-            <button onClick={handleSaveSelection} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" disabled={loading}>{loading ? 'Saving...' : 'Confirm My Selections'}</button>
+          <div className="fixed bottom-0 inset-x-0 lg:hidden z-40 bg-white border-t shadow-lg">
+            <MobileBottomBar
+              finalQuote={finalQuote}
+              displayPrice={displayPrice}
+              selectedCurrency={selectedCurrency}
+              onDetailsClick={() => {/* Phase 2: open breakdown modal */}}
+              onConfirm={handleSaveSelection}
+            />
           </div>
         )}
+
+        {/* Add bottom padding to prevent content overlap with fixed bottom bar on mobile */}
+        <div className="h-20 lg:hidden" aria-hidden="true"></div>
       </div>
     </div>
   );
