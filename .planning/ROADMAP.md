@@ -122,10 +122,10 @@ Plans:
   4. Price summary sidebar has aria-live="polite" to announce changes to screen readers
   5. All interactive elements meet 44x44px minimum touch target size (especially pax +/- buttons)
   6. All interactive elements have visible focus indicators (focus-visible:ring-2 focus-visible:ring-blue-500)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md — Add ARIA roles, labels, focus indicators, and touch target fixes for WCAG 2.1 AA compliance
 
 ### Phase 8: Performance & Loading
 **Goal**: Fast perceived load time on mobile networks with professional loading states
@@ -171,7 +171,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Contextual Price Labels | 0/TBD | Not started | - |
 | 5. Welcome Banner | 0/1 | Planning complete | - |
 | 6. Summary Tab Enhancement | 0/TBD | Not started | - |
-| 7. Accessibility Fixes | 0/TBD | Not started | - |
+| 7. Accessibility Fixes | 0/1 | Planning complete | - |
 | 8. Performance & Loading | 0/TBD | Not started | - |
 | 9. Agent's Pick | 0/TBD | Not started | - |
 
