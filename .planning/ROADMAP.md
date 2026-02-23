@@ -48,10 +48,10 @@ Plans:
   2. Modal shows category subtotals (Properties, Activities, Transport, Flights) with individual line items
   3. Modal shows per-person math for activities (e.g., "NZ$549/person x 4 = NZ$2,196")
   4. All prices in modal respect client's selected currency conversion with 2% markup
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md — Create price breakdown modal with itemization and wire up desktop/mobile buttons
 
 ### Phase 3: Activity Badges & Per-Person Math
 **Goal**: Client immediately understands which activities are included vs optional and how costs are calculated
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Sticky Price Summary Panel | 0/1 | Planning complete | - |
-| 2. Price Breakdown Modal | 0/TBD | Not started | - |
+| 2. Price Breakdown Modal | 0/1 | Planning complete | - |
 | 3. Activity Badges & Per-Person Math | 0/TBD | Not started | - |
 | 4. Contextual Price Labels | 0/TBD | Not started | - |
 | 5. Welcome Banner | 0/TBD | Not started | - |
