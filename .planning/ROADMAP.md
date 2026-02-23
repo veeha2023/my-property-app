@@ -139,10 +139,10 @@ Plans:
   4. Activity images all load lazily (below fold in their tab)
   5. Initial loading state shows skeleton layout with header placeholder, tab bar shapes, and card outlines
   6. Skeleton uses animate-pulse with bg-gray-200 rounded shapes (no "Loading..." text)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md — Add lazy loading to images and create skeleton loading component
 
 ### Phase 9: Agent's Pick
 **Goal**: Admin can highlight recommended options to reduce client decision paralysis
@@ -154,10 +154,10 @@ Plans:
   3. Client sees "Recommended" gold badge on recommended properties with Lucide Star icon
   4. Badge styling uses bg-amber-50 text-amber-800 border border-amber-300 for gold effect
   5. Backward compatible (no badge appears if recommended field is missing or false)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md — Add Agent's Pick toggle switches and gold badge rendering
 
 ## Progress
 
@@ -168,13 +168,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Sticky Price Summary Panel | 0/1 | Planning complete | - |
 | 2. Price Breakdown Modal | 0/1 | Planning complete | - |
-| 3. Activity Badges & Per-Person Math | 0/2 | Planning complete | - |
+| 3. Activity Badges & Per-Person Math | 0/1 | Planning complete | - |
 | 4. Contextual Price Labels | 0/TBD | Not started | - |
 | 5. Welcome Banner | 0/1 | Planning complete | - |
 | 6. Summary Tab Enhancement | 0/TBD | Not started | - |
 | 7. Accessibility Fixes | 0/1 | Planning complete | - |
-| 8. Performance & Loading | 0/TBD | Not started | - |
-| 9. Agent's Pick | 0/TBD | Not started | - |
+| 8. Performance & Loading | 0/1 | Planning complete | - |
+| 9. Agent's Pick | 0/1 | Planning complete | - |
 
 ---
 *Roadmap created: 2026-02-24*
