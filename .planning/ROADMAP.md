@@ -34,10 +34,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Old 3-card header grid (Base | Selections | Final) no longer appears on any screen size
   4. Main content remains readable with proper minimum width on desktop (sidebar doesn't crush content)
   5. Mobile content has bottom padding preventing overlap with fixed bottom bar
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Create sticky sidebar and mobile bottom bar with responsive layout integration
 
 ### Phase 2: Price Breakdown Modal
 **Goal**: Client can see full itemized breakdown of every selection with transparent pricing
@@ -165,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Sticky Price Summary Panel | 0/TBD | Not started | - |
+| 1. Sticky Price Summary Panel | 0/1 | Planning complete | - |
 | 2. Price Breakdown Modal | 0/TBD | Not started | - |
 | 3. Activity Badges & Per-Person Math | 0/TBD | Not started | - |
 | 4. Contextual Price Labels | 0/TBD | Not started | - |
