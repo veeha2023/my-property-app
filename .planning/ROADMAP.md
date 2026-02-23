@@ -63,10 +63,10 @@ Plans:
   3. Activities with cost_per_pax show calculation breakdown (e.g., "NZ$179/person x 3 = NZ$537")
   4. Activities with both cost_per_pax and flat_price show full math (e.g., "NZ$537 + NZ$50 fee = NZ$587")
   5. Included activities with pax changes show before/after comparison math
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md — Add included/optional badges, contextual labels, and per-person math to activity cards
 
 ### Phase 4: Contextual Price Labels
 **Goal**: Client sees clear, scannable price context instead of meaningless raw deltas
@@ -78,10 +78,11 @@ Plans:
   3. Property cards with zero delta show "Base option" neutral badge
   4. Transport and flight cards use same contextual label pattern (Saves/upgrade/Base option)
   5. All labels fit within mobile card layout without wrapping or truncation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Create contextual label utility and update property cards
+- [ ] 04-02-PLAN.md — Update transport, flight, and activity cards with contextual labels
 
 ### Phase 5: Welcome Banner
 **Goal**: First-time visitors understand the interface purpose and how to use it
@@ -167,7 +168,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Sticky Price Summary Panel | 0/1 | Planning complete | - |
 | 2. Price Breakdown Modal | 0/1 | Planning complete | - |
-| 3. Activity Badges & Per-Person Math | 0/TBD | Not started | - |
+| 3. Activity Badges & Per-Person Math | 0/2 | Planning complete | - |
 | 4. Contextual Price Labels | 0/TBD | Not started | - |
 | 5. Welcome Banner | 0/1 | Planning complete | - |
 | 6. Summary Tab Enhancement | 0/TBD | Not started | - |
