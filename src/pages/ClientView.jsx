@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
+import { formatContextualLabel } from '../utils/priceLabels.js';
 import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
@@ -1010,7 +1011,6 @@ const ClientView = () => {
                           {(itinerary.properties || []).length === 0 ? ( <div className="col-span-full text-center py-8 text-gray-500"><p>No properties for this itinerary.</p></div> ) : (
                             (isFinalized ? itinerary.properties.filter(p => p.selected) : itinerary.properties).map((property) => {
                               const priceValue = parseCurrencyToNumber(property.price);
-                              const priceColorStyle = { color: getPriceColor(priceValue) };
                               const currentIdx = currentImageIndex[property.id] || 0;
                               const currentSwipeState = swipeState[property.id] || { moveX: 0, isSwiping: false };
                               const hasMultipleImages = property.images && property.images.length > 1;
@@ -1043,7 +1043,20 @@ const ClientView = () => {
                                     </div>
                                     <div className="flex items-center justify-between mt-2">
                                         <span className="text-base text-gray-700 font-medium">{calculateNights(property.checkIn, property.checkOut)} nights</span>
-                                        <div className="text-right"> <span className="font-bold text-xl" style={priceColorStyle}>{displayPriceWithSign(priceValue, property.currency)}</span> </div>
+                                        <div className="text-right">
+                                          {(() => {
+                                            const label = formatContextualLabel(
+                                              priceValue,
+                                              (amt) => displayPrice(amt, property.currency),
+                                              'property'
+                                            );
+                                            return label.isBadge ? (
+                                              <span className={label.className}>{label.text}</span>
+                                            ) : (
+                                              <span className={`text-xl ${label.className}`}>{label.text}</span>
+                                            );
+                                          })()}
+                                        </div>
                                     </div>
                                   </div>
                                 </div>
