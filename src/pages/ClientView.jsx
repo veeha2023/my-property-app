@@ -822,7 +822,7 @@ const ClientView = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900">Select your currency</h2>
-              <button onClick={() => setShowAllCurrencies(false)} aria-label="Close currency selector" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <button onClick={() => setShowAllCurrencies(false)} aria-label="Close currency selector" className="p-2 hover:bg-gray-100 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
                 <X size={24} className="text-gray-600" />
               </button>
             </div>
@@ -916,7 +916,7 @@ const ClientView = () => {
       {expandedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center overflow-hidden" onClick={closeExpandedImage}>
           <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()} onTouchStart={handleExpandedTouchStart} onTouchMove={handleExpandedTouchMove} onTouchEnd={handleExpandedTouchEnd}>
-            <button onClick={closeExpandedImage} className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-20" aria-label="Close"><X size={24} /></button>
+            <button onClick={closeExpandedImage} className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black" aria-label="Close"><X size={24} /></button>
             <div className="flex h-full w-full items-center" style={{ transform: `translateX(calc(-${expandedImageCurrentIndex * 100}% + ${expandedSwipeState.moveX}px))`, transition: expandedSwipeState.isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
               {expandedImages.map((url, index) => (
                 <div key={index} className="w-full h-full flex-shrink-0 flex items-center justify-center p-4">
@@ -926,8 +926,8 @@ const ClientView = () => {
             </div>
             {expandedImages.length > 1 && (
               <>
-                <button onClick={(e) => {e.stopPropagation(); prevExpandedImage();}} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Previous image in gallery"><ChevronLeft size={24} /></button>
-                <button onClick={(e) => {e.stopPropagation(); nextExpandedImage();}} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Next image in gallery"><ChevronRight size={24} /></button>
+                <button onClick={(e) => {e.stopPropagation(); prevExpandedImage();}} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" aria-label="Previous image in gallery"><ChevronLeft size={24} /></button>
+                <button onClick={(e) => {e.stopPropagation(); nextExpandedImage();}} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" aria-label="Next image in gallery"><ChevronRight size={24} /></button>
               </>
             )}
           </div>
@@ -942,7 +942,7 @@ const ClientView = () => {
               onClick={() => setShowAllCurrencies(true)}
               disabled={isLoadingRates}
               aria-label="Change currency"
-              className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               {isLoadingRates ? (
                 <>
@@ -974,7 +974,7 @@ const ClientView = () => {
                 onClick={() => setShowAllCurrencies(true)}
                 disabled={isLoadingRates}
                 aria-label="Change currency"
-                className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
                 {isLoadingRates ? (
                   <>
@@ -1012,11 +1012,11 @@ const ClientView = () => {
             {/* Tab navigation */}
             <div className="border-b border-gray-200 mb-8">
             <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto hide-scrollbar" aria-label="Tabs" role="tablist">
-                <button onClick={() => setActiveTab('summary')} role="tab" aria-selected={activeTab === 'summary'} aria-controls="summary-panel" id="summary-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
-                <button onClick={() => setActiveTab('property')} role="tab" aria-selected={activeTab === 'property'} aria-controls="property-panel" id="property-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
-                <button onClick={() => setActiveTab('activities')} role="tab" aria-selected={activeTab === 'activities'} aria-controls="activities-panel" id="activities-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Activity size={18} className="mr-2" /> Activities </button>
-                <button onClick={() => setActiveTab('flights')} role="tab" aria-selected={activeTab === 'flights'} aria-controls="flights-panel" id="flights-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Plane size={18} className="mr-2" /> Flights </button>
-                <button onClick={() => setActiveTab('transportation')} role="tab" aria-selected={activeTab === 'transportation'} aria-controls="transportation-panel" id="transportation-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Car size={18} className="mr-2" /> Transportation </button>
+                <button onClick={() => setActiveTab('summary')} role="tab" aria-selected={activeTab === 'summary'} aria-controls="summary-panel" id="summary-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${activeTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
+                <button onClick={() => setActiveTab('property')} role="tab" aria-selected={activeTab === 'property'} aria-controls="property-panel" id="property-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${activeTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
+                <button onClick={() => setActiveTab('activities')} role="tab" aria-selected={activeTab === 'activities'} aria-controls="activities-panel" id="activities-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${activeTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Activity size={18} className="mr-2" /> Activities </button>
+                <button onClick={() => setActiveTab('flights')} role="tab" aria-selected={activeTab === 'flights'} aria-controls="flights-panel" id="flights-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${activeTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Plane size={18} className="mr-2" /> Flights </button>
+                <button onClick={() => setActiveTab('transportation')} role="tab" aria-selected={activeTab === 'transportation'} aria-controls="transportation-panel" id="transportation-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${activeTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Car size={18} className="mr-2" /> Transportation </button>
             </nav>
         </div>
 
@@ -1147,7 +1147,7 @@ const ClientView = () => {
                     </div>
                     <button
                       onClick={() => setShowBreakdownModal(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg font-semibold text-sm transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg font-semibold text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                       See full breakdown
                       <ChevronDown size={16} />
@@ -1197,8 +1197,8 @@ const ClientView = () => {
                                     {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
                                     {hasMultipleImages && (
                                       <>
-                                        <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} aria-label="Previous image" className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronLeft size={20} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} aria-label="Next image" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronRight size={20} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} aria-label="Previous image" className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:opacity-100"><ChevronLeft size={20} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} aria-label="Next image" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:opacity-100"><ChevronRight size={20} /></button>
                                         <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
                                             {property.images.map((_, index) => ( <span key={index} className={`block w-2 h-2 rounded-full transition-colors ${currentIdx === index ? 'bg-white' : 'bg-gray-400'}`}></span> ))}
                                         </div>
@@ -1320,7 +1320,7 @@ const ClientView = () => {
                                                                         updateActivityPax(activity.id, Math.max(1, activity.pax - 1));
                                                                     }}
                                                                     aria-label="Decrease number of participants"
-                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
+                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                                                                     disabled={activity.pax <= 1}
                                                                 >
                                                                     <Minus size={16} className={activity.pax <= 1 ? 'text-gray-300' : 'text-gray-700'} />
@@ -1332,7 +1332,7 @@ const ClientView = () => {
                                                                         updateActivityPax(activity.id, activity.pax + 1);
                                                                     }}
                                                                     aria-label="Increase number of participants"
-                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
+                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                                                                 >
                                                                     <Plus size={16} className="text-gray-700" />
                                                                 </button>

@@ -55,7 +55,7 @@ const PriceSummaryPanel = ({
       <div className="border-t border-gray-300 my-4"></div>
 
       {/* Final Price Row */}
-      <div className="flex justify-between items-center mb-6">
+      <div aria-live="polite" aria-atomic="true" className="flex justify-between items-center mb-6">
         <span className="text-xl font-bold text-gray-900">FINAL PRICE</span>
         <span className="text-2xl font-bold text-blue-700">
           {displayPrice(finalQuote)}
@@ -105,7 +105,7 @@ const PriceSummaryPanel = ({
       <div className="mt-6 space-y-3">
         {/* See Full Breakdown Button */}
         <button
-          className="w-full py-3 px-4 border border-gray-300 rounded-lg font-semibold text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 px-4 border border-gray-300 rounded-lg font-semibold text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           onClick={onBreakdownClick}
         >
           <span>See full breakdown</span>
@@ -114,7 +114,7 @@ const PriceSummaryPanel = ({
 
         {/* Confirm Button */}
         <button
-          className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           onClick={onConfirm}
         >
           Confirm My Selections
