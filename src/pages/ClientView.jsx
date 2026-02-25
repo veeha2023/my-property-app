@@ -7,7 +7,7 @@ import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
-  ChevronDown, ChevronUp, Minus, Plus
+  ChevronDown, ChevronUp, Minus, Plus, Info
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
@@ -20,6 +20,24 @@ const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
     <h3 className="text-2xl font-bold">{title}</h3>
     <p className="mt-2">Options for this section will be displayed here once added by your agent.</p>
+  </div>
+);
+
+const WelcomeBanner = ({ clientName, baseQuote, onDismiss, displayPrice }) => (
+  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex gap-3 items-start">
+    <Info className="text-blue-600 shrink-0 mt-0.5" size={20} />
+    <div className="flex-1 min-w-0">
+      <p className="text-gray-800 text-sm sm:text-base leading-relaxed">
+        <strong>Welcome, {clientName}!</strong> Your travel package starts at {displayPrice(baseQuote)}. Browse each tab to customize, and the sidebar tracks your total.
+      </p>
+    </div>
+    <button
+      onClick={onDismiss}
+      className="text-blue-600 hover:text-blue-800 shrink-0 p-1 rounded hover:bg-blue-100 transition-colors"
+      aria-label="Dismiss welcome message"
+    >
+      <X size={20} />
+    </button>
   </div>
 );
 
@@ -48,6 +66,7 @@ const ClientView = () => {
   const [isLoadingRates, setIsLoadingRates] = useState(false);
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
 
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
@@ -342,6 +361,16 @@ const ClientView = () => {
 
   useEffect(() => { fetchClientData(); }, [fetchClientData]);
 
+  // Check sessionStorage for welcome banner dismissal state
+  useEffect(() => {
+    if (clientId) {
+      const dismissed = sessionStorage.getItem(`welcome_dismissed_${clientId}`);
+      if (dismissed === 'true') {
+        setShowWelcomeBanner(false);
+      }
+    }
+  }, [clientId]);
+
   // Fetch exchange rates when currency or conversion date changes
   useEffect(() => {
     const loadExchangeRates = async () => {
@@ -367,6 +396,14 @@ const ClientView = () => {
     // Save preference to localStorage
     localStorage.setItem(`client_${clientId}_currency`, newCurrency);
   }, [clientId]);
+
+  // Dismiss welcome banner and persist to sessionStorage
+  const dismissWelcomeBanner = () => {
+    setShowWelcomeBanner(false);
+    if (clientId) {
+      sessionStorage.setItem(`welcome_dismissed_${clientId}`, 'true');
+    }
+  };
 
   // Helper function to convert and display price
   const displayPrice = useCallback((amount, itemCurrency = null) => {
@@ -885,6 +922,16 @@ const ClientView = () => {
 
             {/* Message display */}
             {message && <p className="mb-4 text-center text-sm text-blue-600 bg-blue-100 p-3 rounded-lg">{message}</p>}
+
+            {/* Welcome banner */}
+            {showWelcomeBanner && !loading && clientData && (
+              <WelcomeBanner
+                clientName={clientName}
+                baseQuote={baseQuote}
+                onDismiss={dismissWelcomeBanner}
+                displayPrice={displayPrice}
+              />
+            )}
 
             {/* Tab navigation */}
             <div className="border-b border-gray-200 mb-8">
