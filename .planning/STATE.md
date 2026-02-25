@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 
 ## Current Position
 
-Phase: 4 of 9 (Contextual Price Labels)
-Plan: 2 of 2 complete
-Status: Phase 4 complete
-Last activity: 2026-02-25 — Completed 04-02-PLAN.md (Contextual Price Labels — Transport, Flight, Activity Cards)
+Phase: 5 of 9 (Welcome Banner)
+Plan: 1 of 1 complete
+Status: Phase 5 complete
+Last activity: 2026-02-25 — Completed 05-01-PLAN.md (Welcome Banner — dismissible onboarding banner with sessionStorage)
 
-Progress: [█████░░░░░] 56%
+Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
@@ -31,6 +31,7 @@ Progress: [█████░░░░░] 56%
 | 02 | 1 | 3 min | 3 min |
 | 03 | 1 | 3 min | 3 min |
 | 04 | 2 | 9 min | 4.5 min |
+| 05 | 1 | 4 min | 4 min |
 
 **Recent Completions:**
 - 01-01: 4 minutes (3 tasks, 3 files)
@@ -38,6 +39,7 @@ Progress: [█████░░░░░] 56%
 - 03-01: 3 minutes (3 tasks, 1 file)
 - 04-01: 4 minutes (2 tasks, 2 files)
 - 04-02: 5 minutes (2 tasks, 1 file)
+- 05-01: 4 minutes (1 task, 1 file)
 
 ## Accumulated Context
 
@@ -68,6 +70,8 @@ Recent decisions affecting current work:
 - [Phase 04-01]: Removed unused priceColorStyle from property card scope after contextual label adoption
 - [Phase 04-02]: Summary tab displayPriceWithSign retained — compact list rows are not selection cards
 - [Phase 04-02]: formatActivityLabel receives parseCurrencyToNumber as callback — keeps utility pure and component-decoupled
+- [Phase 05-01]: sessionStorage over localStorage for welcome banner — survives refresh, reappears on new sessions, no stale data
+- [Phase 05-01]: ClientId in sessionStorage key (`welcome_dismissed_{clientId}`) — prevents cross-client dismissal in shared browsers
 
 ### Pending Todos
 
@@ -80,7 +84,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25 (plan execution)
-Stopped at: Completed 04-02-PLAN.md
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
 
 ---
