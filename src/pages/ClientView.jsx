@@ -1009,17 +1009,17 @@ const ClientView = () => {
 
             {/* Tab navigation */}
             <div className="border-b border-gray-200 mb-8">
-            <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto hide-scrollbar" aria-label="Tabs">
-                <button onClick={() => setActiveTab('summary')} className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
-                <button onClick={() => setActiveTab('property')} className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
-                <button onClick={() => setActiveTab('activities')} className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Activity size={18} className="mr-2" /> Activities </button>
-                <button onClick={() => setActiveTab('flights')} className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Plane size={18} className="mr-2" /> Flights </button>
-                <button onClick={() => setActiveTab('transportation')} className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Car size={18} className="mr-2" /> Transportation </button>
+            <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto hide-scrollbar" aria-label="Tabs" role="tablist">
+                <button onClick={() => setActiveTab('summary')} role="tab" aria-selected={activeTab === 'summary'} aria-controls="summary-panel" id="summary-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
+                <button onClick={() => setActiveTab('property')} role="tab" aria-selected={activeTab === 'property'} aria-controls="property-panel" id="property-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
+                <button onClick={() => setActiveTab('activities')} role="tab" aria-selected={activeTab === 'activities'} aria-controls="activities-panel" id="activities-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Activity size={18} className="mr-2" /> Activities </button>
+                <button onClick={() => setActiveTab('flights')} role="tab" aria-selected={activeTab === 'flights'} aria-controls="flights-panel" id="flights-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Plane size={18} className="mr-2" /> Flights </button>
+                <button onClick={() => setActiveTab('transportation')} role="tab" aria-selected={activeTab === 'transportation'} aria-controls="transportation-panel" id="transportation-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center ${activeTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Car size={18} className="mr-2" /> Transportation </button>
             </nav>
         </div>
 
         {activeTab === 'summary' && (
-            <div className="space-y-6">
+            <div role="tabpanel" id="summary-panel" aria-labelledby="summary-tab" className="space-y-6">
               {/* Route Visualization */}
               <ItineraryRouteVisualization
                 locations={uniqueLocations}
@@ -1157,7 +1157,7 @@ const ClientView = () => {
         )}
 
         {activeTab === 'property' && (
-            <div className="space-y-10">
+            <div role="tabpanel" id="property-panel" aria-labelledby="property-tab" className="space-y-10">
               {itineraries.filter(it => (isFinalized ? it.properties.some(p => p.selected) : it.properties.length > 0)).map((itinerary) => {
                 const isCollapsed = collapsedSections[itinerary.id];
                 return (
@@ -1243,7 +1243,7 @@ const ClientView = () => {
         )}
 
         {activeTab === 'activities' && (
-            <div className="space-y-10">
+            <div role="tabpanel" id="activities-panel" aria-labelledby="activities-tab" className="space-y-10">
                 {sortedActivityGroups.filter(({ activities: acts }) => !isFinalized || acts.some(a => a.selected !== false)).map(({ location, activities: activitiesInLocation }) => (
                     <div key={location} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
                         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{location} Activities</h3>
@@ -1384,7 +1384,7 @@ const ClientView = () => {
         )}
 
         {activeTab === 'transportation' && (
-            <div className="space-y-10">
+            <div role="tabpanel" id="transportation-panel" aria-labelledby="transportation-tab" className="space-y-10">
                 {sortedTransportationGroups.length === 0 ? ( <PlaceholderContent title="Transportation" /> ) : (
                     sortedTransportationGroups.filter(({ items: grpItems }) => !isFinalized || grpItems.some(i => i.selected)).map(({ pickupPoint, items }) => (
                         <div key={pickupPoint} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
@@ -1440,7 +1440,7 @@ const ClientView = () => {
         )}
 
         {activeTab === 'flights' && (
-            <div className="space-y-12">
+            <div role="tabpanel" id="flights-panel" aria-labelledby="flights-tab" className="space-y-12">
                 {Object.keys(groupedFlights).every(key => groupedFlights[key].length === 0) ? ( <PlaceholderContent title="Flights" /> ) : (
                     Object.entries(groupedFlights).map(([type, itemsInType]) => {
                         const visibleItems = isFinalized ? itemsInType.filter(f => f.selected) : itemsInType;
