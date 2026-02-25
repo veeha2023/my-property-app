@@ -15,6 +15,8 @@ import { formatContextualLabel, formatActivityLabel } from '../utils/priceLabels
 import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
+import ItineraryRouteVisualization from '../components/ItineraryRouteVisualization.jsx';
+import QuickStats from '../components/QuickStats.jsx';
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -710,6 +712,78 @@ const ClientView = () => {
   const expandedImageCurrentIndex = useMemo(() => currentImageIndex[expandedImagePropertyId] || 0, [currentImageIndex, expandedImagePropertyId]);
   const expandedSwipeState = useMemo(() => swipeState.expanded || { moveX: 0, isSwiping: false }, [swipeState.expanded]);
 
+  // Derive unique locations from selected properties for route visualization
+  const uniqueLocations = useMemo(() => {
+    if (!clientData?.properties) return [];
+    const locationSet = new Set();
+    clientData.properties
+      .filter(p => p.selected && !p.isPlaceholder)
+      .forEach(p => {
+        if (p.location) locationSet.add(p.location);
+      });
+    return Array.from(locationSet);
+  }, [clientData?.properties]);
+
+  // Calculate total nights across all selected properties
+  const totalNights = useMemo(() => {
+    if (!clientData?.properties) return 0;
+    return clientData.properties
+      .filter(p => p.selected && !p.isPlaceholder)
+      .reduce((sum, p) => {
+        const nights = calculateNights(p.checkIn, p.checkOut);
+        return sum + nights;
+      }, 0);
+  }, [clientData?.properties]);
+
+  // Get earliest check-in and latest check-out for date range display
+  const dateRange = useMemo(() => {
+    if (!clientData?.properties || clientData.properties.length === 0) {
+      return { startDate: null, endDate: null };
+    }
+    const selectedProps = clientData.properties.filter(p => p.selected && !p.isPlaceholder);
+    if (selectedProps.length === 0) {
+      return { startDate: null, endDate: null };
+    }
+
+    let earliestCheckIn = null;
+    let latestCheckOut = null;
+
+    selectedProps.forEach(p => {
+      const checkInParsed = parseDateString(p.checkIn);
+      const checkOutParsed = parseDateString(p.checkOut);
+      const checkInDate = checkInParsed ? new Date(checkInParsed + 'T00:00:00') : null;
+      const checkOutDate = checkOutParsed ? new Date(checkOutParsed + 'T00:00:00') : null;
+
+      if (checkInDate && !isNaN(checkInDate.getTime())) {
+        if (!earliestCheckIn || checkInDate < earliestCheckIn) {
+          earliestCheckIn = checkInDate;
+        }
+      }
+      if (checkOutDate && !isNaN(checkOutDate.getTime())) {
+        if (!latestCheckOut || checkOutDate > latestCheckOut) {
+          latestCheckOut = checkOutDate;
+        }
+      }
+    });
+
+    return {
+      startDate: earliestCheckIn ? formatDate(earliestCheckIn.toISOString().split('T')[0]) : null,
+      endDate: latestCheckOut ? formatDate(latestCheckOut.toISOString().split('T')[0]) : null
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientData?.properties]);
+
+  // Count stats for QuickStats component
+  const statsData = useMemo(() => {
+    const locationCount = uniqueLocations.length;
+    const flightCount = clientData?.flights?.filter(f => f.selected).length || 0;
+    const vehicleCount = clientData?.transportation?.filter(t => t.selected).length || 0;
+    const includedActivityCount = clientData?.activities?.filter(a => a.selected && a.included_in_base !== false).length || 0;
+    const optionalActivityCount = clientData?.activities?.filter(a => a.selected && a.included_in_base === false).length || 0;
+
+    return { locationCount, flightCount, vehicleCount, includedActivityCount, optionalActivityCount };
+  }, [uniqueLocations, clientData?.flights, clientData?.transportation, clientData?.activities]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center font-sans text-xl">Loading client selection...</div>;
   
   // CHANGE: Unified error/disabled link handling
@@ -945,90 +1019,131 @@ const ClientView = () => {
         </div>
 
         {activeTab === 'summary' && (
-            <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 font-sans border border-gray-100 text-left">
-              <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">Your Selection Summary</h2>
-              {!hasSelections ? (
-                <p className="text-gray-500 text-center py-10 text-lg">You haven't made any selections yet. Click on the other tabs to view your options!</p>
-              ) : (
-                <div className="space-y-8">
-                  {selectedProperties.length > 0 && (
-                    <div onClick={() => setActiveTab('property')} className="cursor-pointer group">
-                      <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Building /> Properties</h3>
-                      <div className="space-y-4">
-                        {selectedProperties.map(item => (
-                          <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                            <div className="flex items-center gap-3 sm:gap-4">
-                              <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
-                              <div>
-                                <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
-                                <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
-                              </div>
-                            </div>
-                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selectedFlights.length > 0 && (
-                    <div onClick={() => setActiveTab('flights')} className="cursor-pointer group">
-                      <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Plane /> Flights</h3>
-                      <div className="space-y-4">
-                        {selectedFlights.map(item => (
-                          <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                            <div className="flex items-center gap-3 sm:gap-4">
-                              <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-8 sm:h-10 object-contain"/>
-                              <div>
-                                <p className="font-bold text-gray-800 text-sm sm:text-base">{item.airline} ({item.flightNumber})</p>
-                                <p className="text-xs sm:text-sm text-gray-600">{item.from} to {item.to}</p>
-                              </div>
-                            </div>
-                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateFinalFlightPrice(item))}}>{displayPriceWithSign(calculateFinalFlightPrice(item), item.currency)}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selectedActivities.length > 0 && (
-                    <div onClick={() => setActiveTab('activities')} className="cursor-pointer group">
-                      <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
-                      <div className="space-y-4">
-                        {selectedActivities.map(item => {
-                          return (
+            <div className="space-y-6">
+              {/* Route Visualization */}
+              <ItineraryRouteVisualization
+                locations={uniqueLocations}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                totalNights={totalNights}
+              />
+
+              {/* Quick Stats */}
+              <QuickStats
+                locationCount={statsData.locationCount}
+                flightCount={statsData.flightCount}
+                vehicleCount={statsData.vehicleCount}
+                includedActivityCount={statsData.includedActivityCount}
+                optionalActivityCount={statsData.optionalActivityCount}
+              />
+
+              {/* Existing selection summary section */}
+              <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 font-sans border border-gray-100 text-left">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">Your Selections</h2>
+                {!hasSelections ? (
+                  <p className="text-gray-500 text-center py-10 text-lg">You haven't made any selections yet. Click on the other tabs to view your options!</p>
+                ) : (
+                  <div className="space-y-8">
+                    {selectedProperties.length > 0 && (
+                      <div onClick={() => setActiveTab('property')} className="cursor-pointer group">
+                        <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Building /> Properties</h3>
+                        <div className="space-y-4">
+                          {selectedProperties.map(item => (
                             <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                              <div className="flex items-center gap-4">
-                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
+                              <div className="flex items-center gap-3 sm:gap-4">
+                                <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
                                 <div>
                                   <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
                                   <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
                                 </div>
                               </div>
-                              <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateActivityDelta(item))}}>{displayPriceWithSign(calculateActivityDelta(item), item.currency)}</p>
+                              <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {selectedTransportation.length > 0 && (
-                    <div onClick={() => setActiveTab('transportation')} className="cursor-pointer group">
-                      <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
-                      <div className="space-y-4">
-                        {selectedTransportation.map(item => (
-                          <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                            <div className="flex items-center gap-4">
-                              <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
-                              <div>
-                                <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
-                                <p className="text-xs sm:text-sm text-gray-600 capitalize">{item.transportType}</p>
+                    )}
+                    {selectedFlights.length > 0 && (
+                      <div onClick={() => setActiveTab('flights')} className="cursor-pointer group">
+                        <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Plane /> Flights</h3>
+                        <div className="space-y-4">
+                          {selectedFlights.map(item => (
+                            <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                              <div className="flex items-center gap-3 sm:gap-4">
+                                <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-8 sm:h-10 object-contain"/>
+                                <div>
+                                  <p className="font-bold text-gray-800 text-sm sm:text-base">{item.airline} ({item.flightNumber})</p>
+                                  <p className="text-xs sm:text-sm text-gray-600">{item.from} to {item.to}</p>
+                                </div>
                               </div>
+                              <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateFinalFlightPrice(item))}}>{displayPriceWithSign(calculateFinalFlightPrice(item), item.currency)}</p>
                             </div>
-                            <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedActivities.length > 0 && (
+                      <div onClick={() => setActiveTab('activities')} className="cursor-pointer group">
+                        <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
+                        <div className="space-y-4">
+                          {selectedActivities.map(item => {
+                            return (
+                              <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                <div className="flex items-center gap-4">
+                                  <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
+                                  <div>
+                                    <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
+                                  </div>
+                                </div>
+                                <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateActivityDelta(item))}}>{displayPriceWithSign(calculateActivityDelta(item), item.currency)}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {selectedTransportation.length > 0 && (
+                      <div onClick={() => setActiveTab('transportation')} className="cursor-pointer group">
+                        <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
+                        <div className="space-y-4">
+                          {selectedTransportation.map(item => (
+                            <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                              <div className="flex items-center gap-4">
+                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
+                                <div>
+                                  <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
+                                  <p className="text-xs sm:text-sm text-gray-600 capitalize">{item.transportType}</p>
+                                </div>
+                              </div>
+                              <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Total price with breakdown link - only if has selections */}
+              {hasSelections && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Price</div>
+                      <div className="text-3xl font-bold text-blue-700 mt-1">
+                        {displayPrice(finalQuote)}
                       </div>
                     </div>
-                  )}
+                    <button
+                      onClick={() => setShowBreakdownModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg font-semibold text-sm transition-colors"
+                    >
+                      See full breakdown
+                      <ChevronDown size={16} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
