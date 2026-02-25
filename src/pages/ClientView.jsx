@@ -822,7 +822,7 @@ const ClientView = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900">Select your currency</h2>
-              <button onClick={() => setShowAllCurrencies(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <button onClick={() => setShowAllCurrencies(false)} aria-label="Close currency selector" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <X size={24} className="text-gray-600" />
               </button>
             </div>
@@ -926,8 +926,8 @@ const ClientView = () => {
             </div>
             {expandedImages.length > 1 && (
               <>
-                <button onClick={(e) => {e.stopPropagation(); prevExpandedImage();}} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Previous"><ChevronLeft size={24} /></button>
-                <button onClick={(e) => {e.stopPropagation(); nextExpandedImage();}} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Next"><ChevronRight size={24} /></button>
+                <button onClick={(e) => {e.stopPropagation(); prevExpandedImage();}} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Previous image in gallery"><ChevronLeft size={24} /></button>
+                <button onClick={(e) => {e.stopPropagation(); nextExpandedImage();}} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-3 text-gray-800 hover:bg-opacity-100 shadow-lg z-10" aria-label="Next image in gallery"><ChevronRight size={24} /></button>
               </>
             )}
           </div>
@@ -941,6 +941,7 @@ const ClientView = () => {
             <button
               onClick={() => setShowAllCurrencies(true)}
               disabled={isLoadingRates}
+              aria-label="Change currency"
               className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoadingRates ? (
@@ -972,6 +973,7 @@ const ClientView = () => {
               <button
                 onClick={() => setShowAllCurrencies(true)}
                 disabled={isLoadingRates}
+                aria-label="Change currency"
                 className="flex items-center gap-2 px-3 py-2 border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {isLoadingRates ? (
@@ -1195,8 +1197,8 @@ const ClientView = () => {
                                     {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
                                     {hasMultipleImages && (
                                       <>
-                                        <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronLeft size={20} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronRight size={20} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} aria-label="Previous image" className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronLeft size={20} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} aria-label="Next image" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10"><ChevronRight size={20} /></button>
                                         <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
                                             {property.images.map((_, index) => ( <span key={index} className={`block w-2 h-2 rounded-full transition-colors ${currentIdx === index ? 'bg-white' : 'bg-gray-400'}`}></span> ))}
                                         </div>
@@ -1317,7 +1319,8 @@ const ClientView = () => {
                                                                         e.stopPropagation();
                                                                         updateActivityPax(activity.id, Math.max(1, activity.pax - 1));
                                                                     }}
-                                                                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
+                                                                    aria-label="Decrease number of participants"
+                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
                                                                     disabled={activity.pax <= 1}
                                                                 >
                                                                     <Minus size={16} className={activity.pax <= 1 ? 'text-gray-300' : 'text-gray-700'} />
@@ -1328,7 +1331,8 @@ const ClientView = () => {
                                                                         e.stopPropagation();
                                                                         updateActivityPax(activity.id, activity.pax + 1);
                                                                     }}
-                                                                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
+                                                                    aria-label="Increase number of participants"
+                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300"
                                                                 >
                                                                     <Plus size={16} className="text-gray-700" />
                                                                 </button>
