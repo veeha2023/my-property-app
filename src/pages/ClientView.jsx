@@ -1092,7 +1092,14 @@ const ClientView = () => {
                                 <div className="flex items-center gap-4">
                                   <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
                                   <div>
-                                    <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
+                                      {item.included_in_base !== false ? (
+                                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Included</span>
+                                      ) : (
+                                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Optional</span>
+                                      )}
+                                    </div>
                                     <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
                                   </div>
                                 </div>
