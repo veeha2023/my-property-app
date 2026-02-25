@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Clients can understand and customize their travel quote without needing a video walkthrough — the interface is self-explanatory.
-**Current focus:** Phase 3: Activity Badges & Per-Person Math
+**Current focus:** Phase 4: Contextual Price Labels
 
 ## Current Position
 
-Phase: 3 of 9 (Activity Badges & Per-Person Math)
-Plan: 1 of 1 complete
-Status: Phase 3 complete
-Last activity: 2026-02-23 — Completed 03-01-PLAN.md (Activity Badges & Per-Person Math)
+Phase: 4 of 9 (Contextual Price Labels)
+Plan: 1 of 2 complete
+Status: Phase 4 in progress
+Last activity: 2026-02-25 — Completed 04-01-PLAN.md (Contextual Price Labels — Property Cards)
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 3.3 minutes
-- Total execution time: 0.17 hours
+- Total plans completed: 4
+- Average duration: 3.5 minutes
+- Total execution time: 0.23 hours
 
 **By Phase:**
 
@@ -30,11 +30,13 @@ Progress: [███░░░░░░░] 33%
 | 01 | 1 | 4 min | 4 min |
 | 02 | 1 | 3 min | 3 min |
 | 03 | 1 | 3 min | 3 min |
+| 04 | 1 | 4 min | 4 min |
 
 **Recent Completions:**
 - 01-01: 4 minutes (3 tasks, 3 files)
 - 02-01: 3 minutes (2 tasks, 3 files)
 - 03-01: 3 minutes (3 tasks, 1 file)
+- 04-01: 4 minutes (2 tasks, 2 files)
 
 ## Accumulated Context
 
@@ -56,6 +58,9 @@ Recent decisions affecting current work:
 - [Phase 03-01]: Color-coded contextual labels (gray, amber, green, blue) for visual state scanning
 - [Phase 03-01]: Monospace font for math breakdown to align numbers and improve readability
 - [Phase 03-01]: Comparison format for included activities with pax changes shows before/after side-by-side
+- [Phase 04-01]: Utility returns styling objects (text+className+isBadge) not JSX — keeps separation of concerns
+- [Phase 04-01]: IIFE pattern in JSX for inline label computation — readable and avoids helper state
+- [Phase 04-01]: Removed unused priceColorStyle from property card scope after contextual label adoption
 
 ### Pending Todos
 
@@ -67,10 +72,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-23 (plan execution)
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-02-25 (plan execution)
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-23*
+*Last updated: 2026-02-25*
