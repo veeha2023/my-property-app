@@ -1080,8 +1080,6 @@ const ClientView = () => {
                         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{location} Activities</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {(isFinalized ? activitiesInLocation.filter(a => a.selected !== false) : activitiesInLocation).map(activity => {
-                                const deltaPrice = calculateActivityDelta(activity);
-                                const priceColorStyle = { color: getPriceColor(deltaPrice) };
                                 const costPerPax = parseFloat(activity.cost_per_pax) || 0;
                                 const hasPaxPricing = costPerPax > 0;
                                 const isSelected = activity.selected !== false;
@@ -1189,9 +1187,20 @@ const ClientView = () => {
                                                 return null;
                                               })()}
 
-                                              {/* Price delta (existing display) */}
+                                              {/* Price delta (contextual label) */}
                                               <div className="text-right">
-                                                <span className="text-2xl font-bold" style={priceColorStyle}> {displayPriceWithSign(deltaPrice, activity.currency)} </span>
+                                                {(() => {
+                                                  const label = formatActivityLabel(
+                                                    activity,
+                                                    (amt) => displayPrice(amt, activity.currency),
+                                                    parseCurrencyToNumber
+                                                  );
+                                                  return (
+                                                    <span className={`text-2xl ${label.className}`}>
+                                                      {label.text}
+                                                    </span>
+                                                  );
+                                                })()}
                                               </div>
                                             </div>
                                         </div>
