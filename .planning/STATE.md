@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Clients can understand and customize their travel quote without needing a video walkthrough — the interface is self-explanatory.
-**Current focus:** Phase 5 (next phase after Contextual Price Labels complete)
+**Current focus:** Phase 7 (next phase after Summary Tab Enhancement complete)
 
 ## Current Position
 
-Phase: 5 of 9 (Welcome Banner)
+Phase: 6 of 9 (Summary Tab Enhancement)
 Plan: 1 of 1 complete
-Status: Phase 5 complete
-Last activity: 2026-02-25 — Completed 05-01-PLAN.md (Welcome Banner — dismissible onboarding banner with sessionStorage)
+Status: Phase 6 complete
+Last activity: 2026-02-25 — Completed 06-01-PLAN.md (Summary Tab Enhancement — route visualization and quick stats in Summary tab)
 
-Progress: [██████░░░░] 67%
+Progress: [███████░░░] 78%
 
 ## Performance Metrics
 
@@ -32,6 +32,7 @@ Progress: [██████░░░░] 67%
 | 03 | 1 | 3 min | 3 min |
 | 04 | 2 | 9 min | 4.5 min |
 | 05 | 1 | 4 min | 4 min |
+| 06 | 1 | 3 min | 3 min |
 
 **Recent Completions:**
 - 01-01: 4 minutes (3 tasks, 3 files)
@@ -40,6 +41,7 @@ Progress: [██████░░░░] 67%
 - 04-01: 4 minutes (2 tasks, 2 files)
 - 04-02: 5 minutes (2 tasks, 1 file)
 - 05-01: 4 minutes (1 task, 1 file)
+- 06-01: 3 minutes (3 tasks, 3 files)
 
 ## Accumulated Context
 
@@ -72,6 +74,9 @@ Recent decisions affecting current work:
 - [Phase 04-02]: formatActivityLabel receives parseCurrencyToNumber as callback — keeps utility pure and component-decoupled
 - [Phase 05-01]: sessionStorage over localStorage for welcome banner — survives refresh, reappears on new sessions, no stale data
 - [Phase 05-01]: ClientId in sessionStorage key (`welcome_dismissed_{clientId}`) — prevents cross-client dismissal in shared browsers
+- [Phase 06-01]: Route visualization derives unique locations from selected non-placeholder properties — filters p.isPlaceholder to avoid ghost entries
+- [Phase 06-01]: eslint-disable-next-line for dateRange useMemo — parseDateString/formatDate are pure functions not in useCallback, suppressing warning cleaner than full refactor
+- [Phase 06-01]: Summary tab 'See full breakdown' button wired to existing setShowBreakdownModal(true) — Phase 2 modal already functional
 
 ### Pending Todos
 
@@ -84,7 +89,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25 (plan execution)
-Stopped at: Completed 05-01-PLAN.md
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
 
 ---
