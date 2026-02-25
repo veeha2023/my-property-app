@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
-import { formatContextualLabel } from '../utils/priceLabels.js';
+import { formatContextualLabel, formatActivityLabel } from '../utils/priceLabels.js';
 import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
@@ -1216,7 +1216,6 @@ const ClientView = () => {
                             <div className="space-y-6">
                                 {(isFinalized ? items.filter(i => i.selected) : items).map(item => {
                                     const price = parseCurrencyToNumber(item.price);
-                                    const priceColorStyle = { color: getPriceColor(price) };
                                     return (
                                         <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
                                             {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
@@ -1237,7 +1236,20 @@ const ClientView = () => {
                                                 </div>
                                             </div>
                                             <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
-                                                <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {displayPriceWithSign(price, item.currency)} </span>
+                                                {(() => {
+                                                  const label = formatContextualLabel(
+                                                    price,
+                                                    (amt) => displayPrice(amt, item.currency),
+                                                    'transport'
+                                                  );
+                                                  return label.isBadge ? (
+                                                    <span className={label.className}>{label.text}</span>
+                                                  ) : (
+                                                    <span className={`text-2xl sm:text-3xl ${label.className} whitespace-nowrap`}>
+                                                      {label.text}
+                                                    </span>
+                                                  );
+                                                })()}
                                             </div>
                                         </div>
                                     )
@@ -1262,7 +1274,6 @@ const ClientView = () => {
                                 <div className="space-y-4">
                                     {visibleItems.map(item => {
                                         const currentPrice = calculateFinalFlightPrice(item);
-                                        const priceColorStyle = { color: getPriceColor(currentPrice) };
                                         const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
                                         return (
                                             <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleFlightSelection(item.id)}>
@@ -1295,7 +1306,20 @@ const ClientView = () => {
                                                         </div>
                                                         <div className="flex items-center justify-end flex-1 gap-6">
                                                             <div className="text-right">
-                                                                <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap" style={priceColorStyle}> {displayPriceWithSign(currentPrice, item.currency)} </span>
+                                                                {(() => {
+                                                                  const label = formatContextualLabel(
+                                                                    currentPrice,
+                                                                    (amt) => displayPrice(amt, item.currency),
+                                                                    'flight'
+                                                                  );
+                                                                  return label.isBadge ? (
+                                                                    <span className={label.className}>{label.text}</span>
+                                                                  ) : (
+                                                                    <span className={`text-2xl sm:text-3xl ${label.className} whitespace-nowrap`}>
+                                                                      {label.text}
+                                                                    </span>
+                                                                  );
+                                                                })()}
                                                             </div>
                                                         </div>
                                                     </div>
