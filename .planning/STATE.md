@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Clients can understand and customize their travel quote without needing a video walkthrough — the interface is self-explanatory.
-**Current focus:** Phase 9 complete — all 9 phases of UX Overhaul finished
+**Current focus:** Phase 10 complete — gap closure fixes applied, all v1.0 audit gaps closed
 
 ## Current Position
 
-Phase: 9 of 9 (Agent's Pick Badges)
+Phase: 10 of 10 (Gap Closure Fixes)
 Plan: 1 of 1 complete
-Status: Phase 9 complete — ALL PHASES DONE
-Last activity: 2026-02-26 — Completed 09-01-PLAN.md (Agent's Pick Badges — admin toggle switches for activities/properties, client-facing gold badges)
+Status: Phase 10 complete — ALL PHASES DONE
+Last activity: 2026-02-26 — Completed 10-01-PLAN.md (Gap Closure — modal currency conversion, final total accuracy, MobileBottomBar focus-visible)
 
-Progress: [██████████] 100%
+Progress: [██████████] 100% (Phase 10 complete)
 
 ## Performance Metrics
 
@@ -36,6 +36,7 @@ Progress: [██████████] 100%
 | 07 | 1 | 4 min | 4 min |
 | 08 | 1 | 8 min | 8 min |
 | 09 | 1 | 10 min | 10 min |
+| 10 | 1 | 2 min | 2 min |
 
 **Recent Completions:**
 - 01-01: 4 minutes (3 tasks, 3 files)
@@ -48,6 +49,7 @@ Progress: [██████████] 100%
 - 07-01: 4 minutes (3 tasks, 2 files)
 - 08-01: 8 minutes (2 tasks, 2 files)
 - 09-01: 10 minutes (3 tasks, 3 files)
+- 10-01: 2 minutes (2 tasks, 3 files)
 
 ## Accumulated Context
 
@@ -93,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase 09-01]: Badge positioned top-right corner of card images; selected checkmark remains top-left — no collision
 - [Phase 09-01]: Backward compatibility via JavaScript truthiness — undefined/false recommended field shows no badge, no errors
 - [Phase 09-01]: Activities use "Agent's Pick" label; properties use "Recommended" label per plan spec for differentiated nomenclature
+- [Phase 10-01]: Remove selectedCurrency prop from PriceBreakdownModal — displayPrice callback handles conversion from baseCurrency to selectedCurrency internally
+- [Phase 10-01]: Modal final total uses prop finalQuote (ClientView pre-computed) not internal recalculation — avoids divergence from included-activity pax change deltas
+- [Phase 10-01]: focus-visible:ring-offset-2 added to both MobileBottomBar buttons matching Phase 7 accessibility pattern
 
 ### Pending Todos
 
@@ -105,7 +110,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26 (plan execution)
-Stopped at: Completed 09-01-PLAN.md — ALL 9 PHASES COMPLETE
+Stopped at: Completed 10-01-PLAN.md — ALL 10 PHASES COMPLETE (v1.0 audit gaps closed)
 Resume file: None
 
 ---
