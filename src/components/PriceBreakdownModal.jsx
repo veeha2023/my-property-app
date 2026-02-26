@@ -8,8 +8,9 @@ const PriceBreakdownModal = ({
   baseQuote,
   clientData,
   displayPrice,
-  selectedCurrency,
+  finalQuote: finalQuoteProp,
   parseCurrencyToNumber
+  // selectedCurrency intentionally removed — displayPrice handles conversion internally
 }) => {
   // Close on ESC key
   useEffect(() => {
@@ -141,7 +142,7 @@ const PriceBreakdownModal = ({
                   </p>
                 </div>
                 <div className="text-lg font-bold text-gray-900">
-                  {displayPrice(baseQuote, selectedCurrency)}
+                  {displayPrice(baseQuote)}
                 </div>
               </div>
             </div>
@@ -161,8 +162,8 @@ const PriceBreakdownModal = ({
                             <div>
                               <div className="font-medium text-gray-900">{property.name}</div>
                               <div className="text-gray-600 text-xs">
-                                {delta < 0 ? `Saves ${displayPrice(Math.abs(delta), selectedCurrency)} vs base option` :
-                                 delta > 0 ? `${displayPrice(delta, selectedCurrency)} upgrade` :
+                                {delta < 0 ? `Saves ${displayPrice(Math.abs(delta))} vs base option` :
+                                 delta > 0 ? `${displayPrice(delta)} upgrade` :
                                  'Base option'}
                               </div>
                             </div>
@@ -173,7 +174,7 @@ const PriceBreakdownModal = ({
                           delta > 0 ? 'text-red-600' :
                           'text-gray-600'
                         }`}>
-                          {delta !== 0 ? (delta > 0 ? '+' : '') + displayPrice(Math.abs(delta), selectedCurrency) : '$0'}
+                          {delta !== 0 ? (delta > 0 ? '+' : '') + displayPrice(Math.abs(delta)) : '$0'}
                         </div>
                       </div>
                     );
@@ -186,7 +187,7 @@ const PriceBreakdownModal = ({
                       'text-gray-700'
                     }`}>
                       {calculations.propertyTotal !== 0
-                        ? (calculations.propertyTotal > 0 ? '+' : '') + displayPrice(Math.abs(calculations.propertyTotal), selectedCurrency)
+                        ? (calculations.propertyTotal > 0 ? '+' : '') + displayPrice(Math.abs(calculations.propertyTotal))
                         : '$0'}
                     </span>
                   </div>
@@ -217,8 +218,8 @@ const PriceBreakdownModal = ({
                               <div className="font-medium text-gray-900">{activity.name}</div>
                               {costPerPax > 0 && (
                                 <div className="text-gray-600 text-xs">
-                                  {displayPrice(costPerPax, selectedCurrency)}/person × {pax}
-                                  {flatPrice > 0 && ` + ${displayPrice(flatPrice, selectedCurrency)} fee`}
+                                  {displayPrice(costPerPax)}/person × {pax}
+                                  {flatPrice > 0 && ` + ${displayPrice(flatPrice)} fee`}
                                 </div>
                               )}
                               {costPerPax === 0 && flatPrice > 0 && (
@@ -228,14 +229,14 @@ const PriceBreakdownModal = ({
                           </div>
                         </div>
                         <div className="font-semibold text-red-600 ml-4">
-                          +{displayPrice(activityTotal, selectedCurrency)}
+                          +{displayPrice(activityTotal)}
                         </div>
                       </div>
                     );
                   })}
                   <div className="flex justify-between items-center pt-2 border-t border-gray-100 font-semibold">
                     <span className="text-gray-700">Optional Activities Total</span>
-                    <span className="text-red-600">+{displayPrice(calculations.optionalActivitiesTotal, selectedCurrency)}</span>
+                    <span className="text-red-600">+{displayPrice(calculations.optionalActivitiesTotal)}</span>
                   </div>
                 </>
               ) : (
@@ -265,7 +266,7 @@ const PriceBreakdownModal = ({
                           delta > 0 ? 'text-red-600' :
                           'text-gray-600'
                         }`}>
-                          {delta !== 0 ? (delta > 0 ? '+' : '') + displayPrice(Math.abs(delta), selectedCurrency) : '$0'}
+                          {delta !== 0 ? (delta > 0 ? '+' : '') + displayPrice(Math.abs(delta)) : '$0'}
                         </div>
                       </div>
                     );
@@ -293,7 +294,7 @@ const PriceBreakdownModal = ({
                           priceUsed > 0 ? 'text-red-600' :
                           'text-gray-600'
                         }`}>
-                          {priceUsed !== 0 ? (priceUsed > 0 ? '+' : '') + displayPrice(Math.abs(priceUsed), selectedCurrency) : '$0'}
+                          {priceUsed !== 0 ? (priceUsed > 0 ? '+' : '') + displayPrice(Math.abs(priceUsed)) : '$0'}
                         </div>
                       </div>
                     );
@@ -306,7 +307,7 @@ const PriceBreakdownModal = ({
                         : 'text-gray-700'
                     }`}>
                       {calculations.transportFlightTotal !== 0
-                        ? (calculations.transportFlightTotal > 0 ? '+' : '') + displayPrice(Math.abs(calculations.transportFlightTotal), selectedCurrency)
+                        ? (calculations.transportFlightTotal > 0 ? '+' : '') + displayPrice(Math.abs(calculations.transportFlightTotal))
                         : '$0'}
                     </span>
                   </div>
@@ -321,7 +322,7 @@ const PriceBreakdownModal = ({
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-gray-900">FINAL PRICE</h3>
                 <div className="text-2xl font-bold text-blue-700">
-                  {displayPrice(calculations.finalQuote, selectedCurrency)}
+                  {displayPrice(finalQuoteProp)}
                 </div>
               </div>
             </div>

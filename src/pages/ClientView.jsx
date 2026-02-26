@@ -1587,7 +1587,7 @@ const ClientView = () => {
           baseQuote={baseQuote}
           clientData={clientData}
           displayPrice={displayPrice}
-          selectedCurrency={selectedCurrency}
+          finalQuote={finalQuote}
           parseCurrencyToNumber={parseCurrencyToNumber}
         />
       </div>
