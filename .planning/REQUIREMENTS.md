@@ -112,8 +112,8 @@
 | LAYOUT-03 | Phase 1 | Pending |
 | LAYOUT-04 | Phase 1 | Pending |
 | LAYOUT-05 | Phase 1 | Pending |
-| PRICE-01 | Phase 2 | Pending |
-| PRICE-02 | Phase 2 | Pending |
+| PRICE-01 | Phase 10 | Pending |
+| PRICE-02 | Phase 10 | Pending |
 | PRICE-03 | Phase 2 | Pending |
 | PRICE-04 | Phase 1 | Pending |
 | PRICE-05 | Phase 2 | Pending |
@@ -135,14 +135,14 @@
 | ONBD-04 | Phase 5 | Pending |
 | SUMM-01 | Phase 6 | Pending |
 | SUMM-02 | Phase 6 | Pending |
-| SUMM-03 | Phase 6 | Pending |
+| SUMM-03 | Phase 10 | Pending |
 | SUMM-04 | Phase 6 | Pending |
 | A11Y-01 | Phase 7 | Pending |
 | A11Y-02 | Phase 7 | Pending |
 | A11Y-03 | Phase 7 | Pending |
 | A11Y-04 | Phase 7 | Pending |
 | A11Y-05 | Phase 7 | Pending |
-| A11Y-06 | Phase 7 | Pending |
+| A11Y-06 | Phase 10 | Pending |
 | PERF-01 | Phase 8 | Pending |
 | PERF-02 | Phase 8 | Pending |
 | PERF-03 | Phase 8 | Pending |

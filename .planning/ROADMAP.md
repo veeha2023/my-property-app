@@ -21,6 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 7: Accessibility Fixes** - ARIA roles, keyboard navigation, and proper focus management
 - [ ] **Phase 8: Performance & Loading** - Image lazy loading and skeleton screens
 - [ ] **Phase 9: Agent's Pick** - Recommended activity/property badges with admin toggle
+- [ ] **Phase 10: Gap Closure Fixes** - Fix modal currency/totals, summary badges, and MobileBottomBar a11y
 
 ## Phase Details
 
@@ -159,6 +160,21 @@ Plans:
 Plans:
 - [ ] 09-01-PLAN.md — Add Agent's Pick toggle switches and gold badge rendering
 
+### Phase 10: Gap Closure Fixes
+**Goal**: Close all audit-identified gaps to achieve full v1.0 milestone completion
+**Depends on**: Phase 2, Phase 6, Phase 7
+**Requirements**: PRICE-01, PRICE-02, SUMM-03, A11Y-06
+**Gap Closure:** Closes gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. PriceBreakdownModal displays correctly converted prices when client selects non-base currency
+  2. Modal final total matches sidebar final total exactly, including included-activity pax change deltas
+  3. Summary tab activity cards show Included/Optional badges matching Activities tab behavior
+  4. MobileBottomBar buttons have focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+**Plans**: 1 plan
+
+Plans:
+- [ ] 10-01-PLAN.md — Fix modal currency conversion, modal total divergence, summary badges, and MobileBottomBar focus indicators
+
 ## Progress
 
 **Execution Order:**
@@ -175,6 +191,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Accessibility Fixes | 0/1 | Planning complete | - |
 | 8. Performance & Loading | 0/1 | Planning complete | - |
 | 9. Agent's Pick | 0/1 | Planning complete | - |
+| 10. Gap Closure Fixes | 0/1 | Planning complete | - |
 
 ---
 *Roadmap created: 2026-02-24*
