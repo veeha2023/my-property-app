@@ -7,7 +7,7 @@ import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
-  ChevronDown, ChevronUp, Minus, Plus, Info
+  ChevronDown, ChevronUp, Minus, Plus, Info, Star
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
@@ -1196,6 +1196,15 @@ const ClientView = () => {
                                         ) : ( <div className="w-full h-full flex items-center justify-center text-gray-500">No Image Available</div> )}
                                     </div>
                                     {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
+
+                                    {/* Recommended badge - only show if recommended is true */}
+                                    {property.recommended && (
+                                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
+                                        <Star size={14} className="fill-amber-400 text-amber-600" />
+                                        <span>Recommended</span>
+                                      </div>
+                                    )}
+
                                     {hasMultipleImages && (
                                       <>
                                         <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} aria-label="Previous image" className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:opacity-100"><ChevronLeft size={20} /></button>
@@ -1276,6 +1285,14 @@ const ClientView = () => {
 
                                             {/* Existing selected checkmark (keep this) */}
                                             {isSelected && ( <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg"> <Check size={24} className="text-green-500" /> </div> )}
+
+                                            {/* Agent's Pick badge - only show if recommended is true */}
+                                            {activity.recommended && (
+                                              <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold">
+                                                <Star size={14} className="fill-amber-400 text-amber-600" />
+                                                <span>Agent's Pick</span>
+                                              </div>
+                                            )}
                                         </div>
                                         <div className="p-4 flex flex-col justify-between flex-grow">
                                             <div>
