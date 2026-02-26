@@ -17,6 +17,7 @@ import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
 import ItineraryRouteVisualization from '../components/ItineraryRouteVisualization.jsx';
 import QuickStats from '../components/QuickStats.jsx';
+import LoadingSkeleton from '../components/LoadingSkeleton.jsx';
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -784,7 +785,7 @@ const ClientView = () => {
     return { locationCount, flightCount, vehicleCount, includedActivityCount, optionalActivityCount };
   }, [uniqueLocations, clientData?.flights, clientData?.transportation, clientData?.activities]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans text-xl">Loading client selection...</div>;
+  if (loading) return <LoadingSkeleton />;
   
   // CHANGE: Unified error/disabled link handling
   if (error) {
