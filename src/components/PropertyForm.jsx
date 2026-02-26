@@ -44,6 +44,7 @@ const PropertyForm = ({
     price_type: 'Per Night',
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
     selected: false, description: '', category: 'Luxury',
+    recommended: false, // Recommended property toggle
   });
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
@@ -61,6 +62,7 @@ const PropertyForm = ({
     price_type: 'Per Night',
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
     selected: false, description: '', category: 'Luxury',
+    recommended: false, // Recommended property toggle
   };
 
   const getCurrencySymbol = (currencyCode) => {
@@ -319,6 +321,7 @@ const PropertyForm = ({
       price: property.price === 0 ? '' : property.price,
       bedrooms: property.bedrooms === 0 ? '' : property.bedrooms,
       bathrooms: property.bathrooms === 0 ? '' : property.bathrooms,
+      recommended: property.recommended || false, // Backward compatible default
     });
     setIsAddingNew(false);
     setShowPropertyFormModal(true);
@@ -821,6 +824,27 @@ const PropertyForm = ({
         <label htmlFor="selected" className="ml-2 block text-sm font-medium text-gray-700">
           Selected for Client
         </label>
+      </div>
+
+      {/* Recommended Property Toggle */}
+      <div className="mb-6 flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+        <div className="flex items-center gap-2">
+          <label className="font-semibold text-gray-700">Recommended</label>
+          <span className="text-xs text-gray-600">(Highlight for client)</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setProperty(prev => ({ ...prev, recommended: !prev.recommended }))}
+          className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+            currentProperty.recommended ? 'bg-amber-500' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+              currentProperty.recommended ? 'translate-x-6' : 'translate-x-0'
+            }`}
+          />
+        </button>
       </div>
     </>
   );
