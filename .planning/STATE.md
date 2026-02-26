@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Clients can understand and customize their travel quote without needing a video walkthrough — the interface is self-explanatory.
-**Current focus:** Phase 7 (next phase after Summary Tab Enhancement complete)
+**Current focus:** Phase 8 (performance/loading - next after accessibility fixes complete)
 
 ## Current Position
 
-Phase: 6 of 9 (Summary Tab Enhancement)
+Phase: 7 of 9 (Accessibility Fixes)
 Plan: 1 of 1 complete
-Status: Phase 6 complete
-Last activity: 2026-02-25 — Completed 06-01-PLAN.md (Summary Tab Enhancement — route visualization and quick stats in Summary tab)
+Status: Phase 7 complete
+Last activity: 2026-02-25 — Completed 07-01-PLAN.md (Accessibility Fixes — ARIA roles, aria-labels, focus indicators, aria-live for WCAG 2.1 AA)
 
-Progress: [███████░░░] 78%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
@@ -33,6 +33,7 @@ Progress: [███████░░░] 78%
 | 04 | 2 | 9 min | 4.5 min |
 | 05 | 1 | 4 min | 4 min |
 | 06 | 1 | 3 min | 3 min |
+| 07 | 1 | 4 min | 4 min |
 
 **Recent Completions:**
 - 01-01: 4 minutes (3 tasks, 3 files)
@@ -42,6 +43,7 @@ Progress: [███████░░░] 78%
 - 04-02: 5 minutes (2 tasks, 1 file)
 - 05-01: 4 minutes (1 task, 1 file)
 - 06-01: 3 minutes (3 tasks, 3 files)
+- 07-01: 4 minutes (3 tasks, 2 files)
 
 ## Accumulated Context
 
@@ -77,6 +79,10 @@ Recent decisions affecting current work:
 - [Phase 06-01]: Route visualization derives unique locations from selected non-placeholder properties — filters p.isPlaceholder to avoid ghost entries
 - [Phase 06-01]: eslint-disable-next-line for dateRange useMemo — parseDateString/formatDate are pure functions not in useCallback, suppressing warning cleaner than full refactor
 - [Phase 06-01]: Summary tab 'See full breakdown' button wired to existing setShowBreakdownModal(true) — Phase 2 modal already functional
+- [Phase 07-01]: Tab panels use conditional rendering not aria-hidden — unmounted panels absent from DOM, no aria-hidden needed
+- [Phase 07-01]: focus-visible:ring-white used on dark-bg carousel/modal buttons for contrast against black overlays
+- [Phase 07-01]: aria-live placed on visible final price div directly — simpler than sr-only duplicate, screen readers announce on value change
+- [Phase 07-01]: Pax controls upgraded w-8 h-8 → w-11 h-11 (32px → 44px) for WCAG 2.1 SC 2.5.5 minimum touch target
 
 ### Pending Todos
 
@@ -89,7 +95,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25 (plan execution)
-Stopped at: Completed 06-01-PLAN.md
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
 
 ---
