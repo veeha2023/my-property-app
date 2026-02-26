@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Clients can understand and customize their travel quote without needing a video walkthrough — the interface is self-explanatory.
-**Current focus:** Phase 8 (performance/loading - next after accessibility fixes complete)
+**Current focus:** Phase 9 complete — all 9 phases of UX Overhaul finished
 
 ## Current Position
 
-Phase: 8 of 9 (Performance & Loading)
+Phase: 9 of 9 (Agent's Pick Badges)
 Plan: 1 of 1 complete
-Status: Phase 8 complete
-Last activity: 2026-02-26 — Completed 08-01-PLAN.md (Performance & Loading — image lazy loading, async decoding, LoadingSkeleton component)
+Status: Phase 9 complete — ALL PHASES DONE
+Last activity: 2026-02-26 — Completed 09-01-PLAN.md (Agent's Pick Badges — admin toggle switches for activities/properties, client-facing gold badges)
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 3.8 minutes
-- Total execution time: 0.32 hours
+- Total plans completed: 10
+- Average duration: 4.2 minutes
+- Total execution time: 0.49 hours
 
 **By Phase:**
 
@@ -35,6 +35,7 @@ Progress: [█████████░] 90%
 | 06 | 1 | 3 min | 3 min |
 | 07 | 1 | 4 min | 4 min |
 | 08 | 1 | 8 min | 8 min |
+| 09 | 1 | 10 min | 10 min |
 
 **Recent Completions:**
 - 01-01: 4 minutes (3 tasks, 3 files)
@@ -46,6 +47,7 @@ Progress: [█████████░] 90%
 - 06-01: 3 minutes (3 tasks, 3 files)
 - 07-01: 4 minutes (3 tasks, 2 files)
 - 08-01: 8 minutes (2 tasks, 2 files)
+- 09-01: 10 minutes (3 tasks, 3 files)
 
 ## Accumulated Context
 
@@ -87,6 +89,10 @@ Recent decisions affecting current work:
 - [Phase 07-01]: Pax controls upgraded w-8 h-8 → w-11 h-11 (32px → 44px) for WCAG 2.1 SC 2.5.5 minimum touch target
 - [Phase 08-01]: Property carousel uses conditional loading (index 0 = eager, rest = lazy) — first image loads immediately for LCP, carousel images defer until swiped
 - [Phase 08-01]: LoadingSkeleton replaces blank Loading text using bg-gray-200 animate-pulse with header, tab bar, and 3-card grid layout
+- [Phase 09-01]: Agent's Pick toggle uses amber/gold color scheme matching badge design for admin-client visual consistency
+- [Phase 09-01]: Badge positioned top-right corner of card images; selected checkmark remains top-left — no collision
+- [Phase 09-01]: Backward compatibility via JavaScript truthiness — undefined/false recommended field shows no badge, no errors
+- [Phase 09-01]: Activities use "Agent's Pick" label; properties use "Recommended" label per plan spec for differentiated nomenclature
 
 ### Pending Todos
 
@@ -99,7 +105,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26 (plan execution)
-Stopped at: Completed 08-01-PLAN.md
+Stopped at: Completed 09-01-PLAN.md — ALL 9 PHASES COMPLETE
 Resume file: None
 
 ---
