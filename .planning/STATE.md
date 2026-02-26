@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 
 ## Current Position
 
-Phase: 7 of 9 (Accessibility Fixes)
+Phase: 8 of 9 (Performance & Loading)
 Plan: 1 of 1 complete
-Status: Phase 7 complete
-Last activity: 2026-02-25 — Completed 07-01-PLAN.md (Accessibility Fixes — ARIA roles, aria-labels, focus indicators, aria-live for WCAG 2.1 AA)
+Status: Phase 8 complete
+Last activity: 2026-02-26 — Completed 08-01-PLAN.md (Performance & Loading — image lazy loading, async decoding, LoadingSkeleton component)
 
-Progress: [████████░░] 84%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -34,6 +34,7 @@ Progress: [████████░░] 84%
 | 05 | 1 | 4 min | 4 min |
 | 06 | 1 | 3 min | 3 min |
 | 07 | 1 | 4 min | 4 min |
+| 08 | 1 | 8 min | 8 min |
 
 **Recent Completions:**
 - 01-01: 4 minutes (3 tasks, 3 files)
@@ -44,6 +45,7 @@ Progress: [████████░░] 84%
 - 05-01: 4 minutes (1 task, 1 file)
 - 06-01: 3 minutes (3 tasks, 3 files)
 - 07-01: 4 minutes (3 tasks, 2 files)
+- 08-01: 8 minutes (2 tasks, 2 files)
 
 ## Accumulated Context
 
@@ -83,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 07-01]: focus-visible:ring-white used on dark-bg carousel/modal buttons for contrast against black overlays
 - [Phase 07-01]: aria-live placed on visible final price div directly — simpler than sr-only duplicate, screen readers announce on value change
 - [Phase 07-01]: Pax controls upgraded w-8 h-8 → w-11 h-11 (32px → 44px) for WCAG 2.1 SC 2.5.5 minimum touch target
+- [Phase 08-01]: Property carousel uses conditional loading (index 0 = eager, rest = lazy) — first image loads immediately for LCP, carousel images defer until swiped
+- [Phase 08-01]: LoadingSkeleton replaces blank Loading text using bg-gray-200 animate-pulse with header, tab bar, and 3-card grid layout
 
 ### Pending Todos
 
@@ -94,10 +98,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-25 (plan execution)
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-02-26 (plan execution)
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-25*
+*Last updated: 2026-02-26*
