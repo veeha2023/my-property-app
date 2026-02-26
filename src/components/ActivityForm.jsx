@@ -167,6 +167,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       images: [],
       included_in_base: true, // Default to included in base quote
       selected: true, // Default to selected
+      recommended: false, // Agent's Pick toggle
     });
     setShowDateTime(false); // Default to false for new activities
   };
@@ -500,6 +501,26 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                 Included in Base Quote
             </label>
         </div>
+        {/* Agent's Pick Toggle */}
+        <div className="lg:col-span-3 flex items-center justify-between mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="flex items-center gap-2">
+            <label className="font-semibold text-gray-700">Agent's Pick</label>
+            <span className="text-xs text-gray-600">(Recommend to client)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActivityData({ ...activityData, recommended: !activityData.recommended })}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+              activityData.recommended ? 'bg-amber-500' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                activityData.recommended ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
         <div className="lg:col-span-3">
             <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
             <textarea rows="3" value={imageLinks} onChange={(e) => setImageLinks(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
@@ -625,11 +646,11 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                             </div>
                           )}
                           <div className="absolute top-3 right-3 flex space-x-2">
-                            <button onClick={(e) => { 
-                                e.stopPropagation(); 
-                                setEditingActivity(activity); 
+                            <button onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingActivity({ ...activity, recommended: activity.recommended || false });
                                 setShowDateTime(!!(activity.date || activity.time)); // Show if date or time exists
-                                setAddingToLocation(null); 
+                                setAddingToLocation(null);
                             }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
                             <button onClick={(e) => { e.stopPropagation(); handleDelete(activity.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
                           </div>
