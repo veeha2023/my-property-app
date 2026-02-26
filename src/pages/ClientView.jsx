@@ -920,7 +920,7 @@ const ClientView = () => {
             <div className="flex h-full w-full items-center" style={{ transform: `translateX(calc(-${expandedImageCurrentIndex * 100}% + ${expandedSwipeState.moveX}px))`, transition: expandedSwipeState.isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
               {expandedImages.map((url, index) => (
                 <div key={index} className="w-full h-full flex-shrink-0 flex items-center justify-center p-4">
-                  <img src={url} alt={`Expanded view ${index + 1}`} className="max-w-full max-h-full object-contain rounded-xl pointer-events-none"/>
+                  <img src={url} alt={`Expanded view ${index + 1}`} className="max-w-full max-h-full object-contain rounded-xl pointer-events-none" decoding="async"/>
                 </div>
               ))}
             </div>
@@ -960,7 +960,7 @@ const ClientView = () => {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-200">
             <div className="flex items-center mb-4 md:mb-0">
-              {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" /> ) : ( <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div> )}
+              {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" decoding="async" /> ) : ( <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div> )}
               <div className="text-left">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-1">Veeha Travels</h1>
                 <p className="text-lg md:text-xl font-bold text-gray-900">Your Curated Selections</p>
@@ -1053,7 +1053,7 @@ const ClientView = () => {
                           {selectedProperties.map(item => (
                             <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                               <div className="flex items-center gap-3 sm:gap-4">
-                                <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
+                                <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm" loading="lazy" decoding="async"/>
                                 <div>
                                   <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
                                   <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
@@ -1072,7 +1072,7 @@ const ClientView = () => {
                           {selectedFlights.map(item => (
                             <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                               <div className="flex items-center gap-3 sm:gap-4">
-                                <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-8 sm:h-10 object-contain"/>
+                                <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-8 sm:h-10 object-contain" loading="lazy" decoding="async"/>
                                 <div>
                                   <p className="font-bold text-gray-800 text-sm sm:text-base">{item.airline} ({item.flightNumber})</p>
                                   <p className="text-xs sm:text-sm text-gray-600">{item.from} to {item.to}</p>
@@ -1092,7 +1092,7 @@ const ClientView = () => {
                             return (
                               <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                                 <div className="flex items-center gap-4">
-                                  <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
+                                  <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm" loading="lazy" decoding="async"/>
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
@@ -1119,7 +1119,7 @@ const ClientView = () => {
                           {selectedTransportation.map(item => (
                             <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                               <div className="flex items-center gap-4">
-                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm"/>
+                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm" loading="lazy" decoding="async"/>
                                 <div>
                                   <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
                                   <p className="text-xs sm:text-sm text-gray-600 capitalize">{item.transportType}</p>
@@ -1191,7 +1191,7 @@ const ClientView = () => {
                                   <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl bg-gray-200" onTouchStart={(e) => handleTouchStart(e, property.id)} onTouchMove={(e) => handleTouchMove(e, property.id)} onTouchEnd={() => handleTouchEnd(property.id)} onClick={(e) => openExpandedImage(e, property.id, currentIdx)}>
                                     <div className="flex h-full" style={{ transform: `translateX(calc(-${currentIdx * 100}% + ${currentSwipeState.moveX}px))`, transition: currentSwipeState.isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                                         {property.images && property.images.length > 0 ? (
-                                            property.images.map((url, index) => ( <img key={index} src={url || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={`${property.name} ${index + 1}`} className="w-full h-full object-cover flex-shrink-0 pointer-events-none" onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }} /> ))
+                                            property.images.map((url, index) => ( <img key={index} src={url || "https://placehold.co/800x600/E0E0E0/333333?text=No+Image"} alt={`${property.name} ${index + 1}`} className="w-full h-full object-cover flex-shrink-0 pointer-events-none" loading={index === 0 ? "eager" : "lazy"} decoding="async" onError={(e) => { e.target.src = "https://placehold.co/800x600/E0E0E0/333333?text=Image+Error"; }} /> ))
                                         ) : ( <div className="w-full h-full flex items-center justify-center text-gray-500">No Image Available</div> )}
                                     </div>
                                     {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
@@ -1257,7 +1257,7 @@ const ClientView = () => {
                                 return (
                                     <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleActivitySelection(activity.id)}>
                                         <div className="relative aspect-video">
-                                            {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
+                                            {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
 
                                             {/* Included/Optional badge - positioned bottom-left with backdrop blur */}
                                             <div className="absolute bottom-3 left-3 backdrop-blur-sm rounded-full">
@@ -1401,7 +1401,7 @@ const ClientView = () => {
                                     return (
                                         <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
                                             {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
-                                            <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" />
+                                            <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" loading="lazy" decoding="async" />
                                             <div className="flex-grow">
                                                 <h4 className="font-bold text-lg sm:text-xl text-gray-800">{item.name}</h4>
                                                 <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
@@ -1463,7 +1463,7 @@ const ClientView = () => {
                                                     <div className="flex flex-col sm:flex-row justify-between items-center w-full">
                                                         {item.selected && ( <div className="absolute top-1/2 -translate-y-1/2 left-4 sm:left-6 rounded-full p-1 shadow-md bg-white z-10"> <CheckCircle size={24} className="text-green-500" /> </div> )}
                                                         <div className="flex items-center gap-4 sm:gap-6 flex-1 pl-10 sm:pl-12">
-                                                            <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-12 sm:h-16 w-auto object-contain"/>
+                                                            <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-12 sm:h-16 w-auto object-contain" loading="lazy" decoding="async"/>
                                                             <div className="text-sm">
                                                                 <p className="font-bold text-gray-800 text-base sm:text-lg">{item.airline}</p>
                                                                 <p className="text-gray-500">{item.flightNumber}</p>
