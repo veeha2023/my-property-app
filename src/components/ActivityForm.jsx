@@ -1,6 +1,7 @@
-// src/components/ActivityForm.jsx - Version 4.2 (Display Logic Fix)
+// src/components/ActivityForm.jsx - Version 4.3 (Discount Support)
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download, Tag } from 'lucide-react';
+import { applyDiscount, hasDiscount } from '../utils/discountUtils';
 
 const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [editingActivity, setEditingActivity] = useState(null);
@@ -168,6 +169,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       included_in_base: true, // Default to included in base quote
       selected: true, // Default to selected
       recommended: false, // Agent's Pick toggle
+      discount_type: '',
+      discount_value: 0,
+      discount_label: '',
     });
     setShowDateTime(false); // Default to false for new activities
   };
@@ -180,8 +184,15 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     activityToSave.cost_per_pax = parseFloat(activityToSave.cost_per_pax) || 0;
     activityToSave.flat_price = parseFloat(activityToSave.flat_price) || 0;
 
-    // Calculate and store the base price contribution for this activity
-    activityToSave.base_price = (activityToSave.cost_per_pax * activityToSave.pax) + activityToSave.flat_price;
+    // Parse discount fields
+    activityToSave.discount_value = activityToSave.discount_type ? (parseFloat(activityToSave.discount_value) || 0) : 0;
+    if (!activityToSave.discount_type) {
+      activityToSave.discount_label = '';
+    }
+
+    // Calculate and store the base price contribution (discounted) for this activity
+    const rawBasePrice = (activityToSave.cost_per_pax * activityToSave.pax) + activityToSave.flat_price;
+    activityToSave.base_price = applyDiscount(rawBasePrice, activityToSave.discount_type, activityToSave.discount_value);
 
     // --- BUG FIX ---
     // If the date/time toggle is off, clear the date and time fields before saving
@@ -308,8 +319,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     if (raw.images !== '') existing.images = raw.images.split(';').map(url => url.trim());
                     if (raw.included_in_base !== '') existing.included_in_base = raw.included_in_base.toLowerCase() !== 'false';
                     if (raw.selected !== '') existing.selected = raw.selected.toLowerCase() !== 'false';
-                    // Recalculate base_price
-                    existing.base_price = ((parseFloat(existing.cost_per_pax) || 0) * (parseInt(existing.pax, 10) || 1)) + (parseFloat(existing.flat_price) || 0);
+                    if (raw.discount_type !== undefined && raw.discount_type !== '') existing.discount_type = raw.discount_type;
+                    if (raw.discount_value !== undefined && raw.discount_value !== '') existing.discount_value = parseFloat(raw.discount_value) || 0;
+                    if (raw.discount_label !== undefined && raw.discount_label !== '') existing.discount_label = raw.discount_label;
+                    // Recalculate base_price (with discount)
+                    const rawBP = ((parseFloat(existing.cost_per_pax) || 0) * (parseInt(existing.pax, 10) || 1)) + (parseFloat(existing.flat_price) || 0);
+                    existing.base_price = applyDiscount(rawBP, existing.discount_type, existing.discount_value);
                     updatedActivities[existingIdx] = existing;
                     updatedCount++;
                 } else {
@@ -325,6 +340,10 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     } else {
                         selected = includedInBase;
                     }
+                    const discountType = raw.discount_type || '';
+                    const discountValue = parseFloat(raw.discount_value) || 0;
+                    const discountLabel = raw.discount_label || '';
+                    const discountedBasePrice = applyDiscount(basePrice, discountType, discountValue);
                     brandNewActivities.push({
                         id: `act-csv-${Date.now()}-${index}`,
                         name: raw.name,
@@ -335,11 +354,14 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                         pax,
                         cost_per_pax: costPerPax,
                         flat_price: flatPrice,
-                        base_price: basePrice,
+                        base_price: discountedBasePrice,
                         currency: raw.currency || 'NZD',
                         images: raw.images ? raw.images.split(';').map(url => url.trim()) : [],
                         included_in_base: includedInBase,
                         selected: selected,
+                        discount_type: discountType,
+                        discount_value: discountValue,
+                        discount_label: discountLabel,
                     });
                 }
             });
@@ -360,9 +382,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
 
   const downloadTemplate = () => {
     // --- CSV TEMPLATE UPDATE ---
-    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time";
-    const exampleWithDate = "Skydiving,Queenstown,3,2,140,50,NZD,https://example.com/image1.jpg,true,2025-08-15,10:00";
-    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,25,0,NZD,https://example.com/hike.jpg,false,,";
+    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,discount_type,discount_value,discount_label";
+    const exampleWithDate = "Skydiving,Queenstown,3,2,140,50,NZD,https://example.com/image1.jpg,true,2025-08-15,10:00,percentage,20,Early Bird";
+    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,25,0,NZD,https://example.com/hike.jpg,false,,,,,";
 
     const note = [
         "\n# NOTE: Required headers are: name, location, duration, pax, cost_per_pax, currency, images.",
@@ -371,7 +393,10 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         "# 'date' and 'time' headers are OPTIONAL. You can leave them blank or omit them entirely.",
         "# Please use YYYY-MM-DD format for dates for best compatibility.",
         "# Separate multiple image URLs with a semicolon (;) in the 'images' column.",
-        "# Base price is calculated as: (cost_per_pax × pax) + flat_price"
+        "# Base price is calculated as: (cost_per_pax × pax) + flat_price",
+        "# 'discount_type' - percentage or fixed. Leave blank for no discount.",
+        "# 'discount_value' - e.g. 20 for 20% off, or 50 for $50 off.",
+        "# 'discount_label' - optional label like 'Early Bird' or 'Group Rate'."
     ].join('\n');
 
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${exampleWithDate}\n${exampleWithoutDate}${note}`;
@@ -391,7 +416,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       setError("No activities to export.");
       return;
     }
-    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,selected";
+    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,selected,discount_type,discount_value,discount_label";
     const rows = activities.map(act => {
       const escapeCsvField = (val) => {
         const str = String(val ?? '');
@@ -410,6 +435,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         act.date || '',
         act.time || '',
         act.selected !== false,
+        act.discount_type || '',
+        act.discount_value || 0,
+        escapeCsvField(act.discount_label || ''),
       ].join(',');
     });
     const csvContent = [headers, ...rows].join('\n');
@@ -520,6 +548,70 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
               }`}
             />
           </button>
+        </div>
+        {/* Discount Section */}
+        <div className="lg:col-span-3 p-3 bg-green-50 rounded-lg border border-green-200">
+          <div className="flex items-center gap-2 mb-3">
+            <Tag size={16} className="text-green-600" />
+            <label className="font-semibold text-gray-700">Discount</label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={activityData.discount_type || ''}
+                onChange={(e) => setActivityData({ ...activityData, discount_type: e.target.value, ...(e.target.value === '' ? { discount_value: 0, discount_label: '' } : {}) })}
+                className="block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+              >
+                <option value="">No Discount</option>
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed">Fixed Amount</option>
+              </select>
+            </div>
+            {activityData.discount_type && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {activityData.discount_type === 'percentage' ? 'Percentage Off' : 'Amount Off'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={activityData.discount_type === 'percentage' ? 100 : undefined}
+                    value={activityData.discount_value || ''}
+                    onChange={(e) => setActivityData({ ...activityData, discount_value: e.target.value })}
+                    placeholder={activityData.discount_type === 'percentage' ? 'e.g. 20' : 'e.g. 50'}
+                    className="block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Label (optional)</label>
+                  <input
+                    type="text"
+                    value={activityData.discount_label || ''}
+                    onChange={(e) => setActivityData({ ...activityData, discount_label: e.target.value })}
+                    placeholder="e.g. Early Bird, Group Rate"
+                    className="block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          {activityData.discount_type && (parseFloat(activityData.discount_value) > 0) && (() => {
+            const rawPrice = calculateBasePrice(activityData);
+            const discounted = applyDiscount(rawPrice, activityData.discount_type, parseFloat(activityData.discount_value));
+            return (
+              <div className="mt-2 text-sm text-gray-700">
+                <span className="line-through text-red-400">{getCurrencySymbol(activityData.currency)}{formatNumberWithCommas(rawPrice)}</span>
+                {' → '}
+                <span className="font-semibold text-green-700">{getCurrencySymbol(activityData.currency)}{formatNumberWithCommas(discounted)}</span>
+                <span className="text-gray-500 ml-1">
+                  (saves {getCurrencySymbol(activityData.currency)}{formatNumberWithCommas(rawPrice - discounted)})
+                </span>
+              </div>
+            );
+          })()}
         </div>
         <div className="lg:col-span-3">
             <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
@@ -648,7 +740,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                           <div className="absolute top-3 right-3 flex space-x-2">
                             <button onClick={(e) => {
                                 e.stopPropagation();
-                                setEditingActivity({ ...activity, recommended: activity.recommended || false });
+                                setEditingActivity({ ...activity, recommended: activity.recommended || false, discount_type: activity.discount_type || '', discount_value: activity.discount_value || 0, discount_label: activity.discount_label || '' });
                                 setShowDateTime(!!(activity.date || activity.time)); // Show if date or time exists
                                 setAddingToLocation(null);
                             }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
@@ -676,9 +768,23 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                             </div>
                           </div>
                           <div className="mt-4 text-right">
-                            <span className={`text-2xl font-bold ${priceColor}`}>
-                              {getCurrencySymbol(activity.currency)}{formatNumberWithCommas(basePrice)}
-                            </span>
+                            {hasDiscount(activity) ? (
+                              <>
+                                <span className="text-base text-red-400 line-through mr-2">
+                                  {getCurrencySymbol(activity.currency)}{formatNumberWithCommas(basePrice)}
+                                </span>
+                                <span className={`text-2xl font-bold ${priceColor}`}>
+                                  {getCurrencySymbol(activity.currency)}{formatNumberWithCommas(applyDiscount(basePrice, activity.discount_type, activity.discount_value))}
+                                </span>
+                                <div className="text-xs text-green-600 mt-1">
+                                  {activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% Off` : `${getCurrencySymbol(activity.currency)}${activity.discount_value} Off`)}
+                                </div>
+                              </>
+                            ) : (
+                              <span className={`text-2xl font-bold ${priceColor}`}>
+                                {getCurrencySymbol(activity.currency)}{formatNumberWithCommas(basePrice)}
+                              </span>
+                            )}
                             {isIncluded && <div className="text-xs text-green-600 mt-1">Included in Base</div>}
                           </div>
                         </div>

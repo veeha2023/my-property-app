@@ -12,6 +12,7 @@ import {
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
 import { formatContextualLabel, formatActivityLabel } from '../utils/priceLabels.js';
+import { applyDiscount, hasDiscount } from '../utils/discountUtils';
 import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
@@ -165,8 +166,9 @@ const ClientView = () => {
     const isIncludedInBase = activity.included_in_base !== false;
     const isSelected = activity.selected !== false;
 
-    // Current price calculation
-    const currentPrice = (costPerPax * currentPax) + flatPrice;
+    // Current price calculation (with discount)
+    const rawPrice = (costPerPax * currentPax) + flatPrice;
+    const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
 
     // Delta logic:
     if (isIncludedInBase) {
@@ -189,101 +191,6 @@ const ClientView = () => {
       }
     }
   }, []);
-
-  const getActivityContextLabel = useCallback((activity) => {
-    const isIncludedInBase = activity.included_in_base !== false;
-    const isSelected = activity.selected !== false;
-    const currentPax = parseInt(activity.pax, 10) || 0;
-    const basePax = parseInt(activity.base_pax, 10) || 0;
-    const basePrice = parseFloat(activity.base_price) || 0;
-    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-    const flatPrice = parseFloat(activity.flat_price) || 0;
-    const currentPrice = (costPerPax * currentPax) + flatPrice;
-
-    if (isIncludedInBase) {
-      if (!isSelected) {
-        // Included but deselected
-        return {
-          text: `Removing saves ${displayPrice(basePrice)}`,
-          color: 'text-green-600'
-        };
-      } else if (currentPax !== basePax && basePax > 0) {
-        // Included, selected, pax changed
-        return {
-          text: `Base: ${basePax} people → Now: ${currentPax}`,
-          color: 'text-amber-600'
-        };
-      } else {
-        // Included, selected, same pax
-        return {
-          text: 'Part of your base package — no extra cost',
-          color: 'text-gray-600'
-        };
-      }
-    } else {
-      // Optional activity
-      if (isSelected) {
-        return {
-          text: `Adds ${displayPrice(currentPrice)} to your total`,
-          color: 'text-blue-600'
-        };
-      } else {
-        return {
-          text: `Available for ${displayPrice(currentPrice)} extra`,
-          color: 'text-gray-500'
-        };
-      }
-    }
-  }, [displayPrice]);
-
-  const getActivityMathBreakdown = useCallback((activity) => {
-    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-    const flatPrice = parseFloat(activity.flat_price) || 0;
-    const currentPax = parseInt(activity.pax, 10) || 0;
-    const basePax = parseInt(activity.base_pax, 10) || 0;
-    const basePrice = parseFloat(activity.base_price) || 0;
-    const isIncludedInBase = activity.included_in_base !== false;
-    const isSelected = activity.selected !== false;
-
-    // No math to show if no per-pax pricing
-    if (costPerPax === 0) return null;
-
-    const currentSubtotal = costPerPax * currentPax;
-    const currentTotal = currentSubtotal + flatPrice;
-
-    // For included activities with pax change, show before/after
-    if (isIncludedInBase && isSelected && currentPax !== basePax && basePax > 0) {
-      const baseSubtotal = costPerPax * basePax;
-      const baseTotal = baseSubtotal + flatPrice;
-      const change = currentTotal - baseTotal;
-
-      return {
-        type: 'comparison',
-        lines: [
-          `Base: ${displayPrice(costPerPax)}/person × ${basePax} = ${displayPrice(baseTotal)}`,
-          `Now:  ${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentTotal)}`,
-          `Change: ${change >= 0 ? '+' : ''}${displayPrice(Math.abs(change))}`
-        ]
-      };
-    }
-
-    // Standard per-person calculation
-    const lines = [];
-
-    if (currentPax > 0) {
-      lines.push(`${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentSubtotal)}`);
-    }
-
-    if (flatPrice > 0) {
-      lines.push(`+ ${displayPrice(flatPrice)} fee`);
-    }
-
-    if (lines.length > 1 || flatPrice > 0) {
-      lines.push(`= ${displayPrice(currentTotal)}`);
-    }
-
-    return lines.length > 0 ? { type: 'standard', lines } : null;
-  }, [displayPrice]);
 
   const calculateFinalFlightPrice = useCallback((flight) => {
     const priceSelected = parseFloat(flight.price_if_selected) || 0;
@@ -425,6 +332,107 @@ const ClientView = () => {
   const displayPriceWithSign = useCallback((amount, itemCurrency = null) => {
     const sign = amount >= 0 ? '+' : '-';
     return `${sign}${displayPrice(Math.abs(amount), itemCurrency)}`;
+  }, [displayPrice]);
+
+  const getActivityContextLabel = useCallback((activity) => {
+    const isIncludedInBase = activity.included_in_base !== false;
+    const isSelected = activity.selected !== false;
+    const currentPax = parseInt(activity.pax, 10) || 0;
+    const basePax = parseInt(activity.base_pax, 10) || 0;
+    const basePrice = parseFloat(activity.base_price) || 0;
+    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+    const flatPrice = parseFloat(activity.flat_price) || 0;
+    const rawPrice = (costPerPax * currentPax) + flatPrice;
+    const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
+    const isDiscounted = hasDiscount(activity);
+
+    if (isIncludedInBase) {
+      if (!isSelected) {
+        return {
+          text: `Removing saves ${displayPrice(basePrice)}`,
+          color: 'text-green-600'
+        };
+      } else if (currentPax !== basePax && basePax > 0) {
+        return {
+          text: `Base: ${basePax} people → Now: ${currentPax}`,
+          color: 'text-amber-600'
+        };
+      } else {
+        return {
+          text: 'Part of your base package — no extra cost',
+          color: 'text-gray-600'
+        };
+      }
+    } else {
+      if (isSelected) {
+        if (isDiscounted) {
+          return {
+            text: `Adds ${displayPrice(currentPrice)} to your total (was ${displayPrice(rawPrice)})`,
+            color: 'text-blue-600'
+          };
+        }
+        return {
+          text: `Adds ${displayPrice(currentPrice)} to your total`,
+          color: 'text-blue-600'
+        };
+      } else {
+        if (isDiscounted) {
+          return {
+            text: `Available for ${displayPrice(currentPrice)} (was ${displayPrice(rawPrice)})`,
+            color: 'text-gray-500'
+          };
+        }
+        return {
+          text: `Available for ${displayPrice(currentPrice)} extra`,
+          color: 'text-gray-500'
+        };
+      }
+    }
+  }, [displayPrice]);
+
+  const getActivityMathBreakdown = useCallback((activity) => {
+    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+    const flatPrice = parseFloat(activity.flat_price) || 0;
+    const currentPax = parseInt(activity.pax, 10) || 0;
+    const basePax = parseInt(activity.base_pax, 10) || 0;
+    const isIncludedInBase = activity.included_in_base !== false;
+    const isSelected = activity.selected !== false;
+
+    if (costPerPax === 0) return null;
+
+    const currentSubtotal = costPerPax * currentPax;
+    const currentTotal = currentSubtotal + flatPrice;
+
+    if (isIncludedInBase && isSelected && currentPax !== basePax && basePax > 0) {
+      const baseSubtotal = costPerPax * basePax;
+      const baseTotal = baseSubtotal + flatPrice;
+      const change = currentTotal - baseTotal;
+
+      return {
+        type: 'comparison',
+        lines: [
+          `Base: ${displayPrice(costPerPax)}/person × ${basePax} = ${displayPrice(baseTotal)}`,
+          `Now:  ${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentTotal)}`,
+          `Change: ${change >= 0 ? '+' : ''}${displayPrice(Math.abs(change))}`
+        ]
+      };
+    }
+
+    const lines = [];
+
+    if (currentPax > 0) {
+      lines.push(`${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentSubtotal)}`);
+    }
+
+    if (flatPrice > 0) {
+      lines.push(`+ ${displayPrice(flatPrice)} fee`);
+    }
+
+    if (lines.length > 1 || flatPrice > 0) {
+      lines.push(`= ${displayPrice(currentTotal)}`);
+    }
+
+    return lines.length > 0 ? { type: 'standard', lines } : null;
   }, [displayPrice]);
 
   const handleSaveSelection = useCallback(async () => {
@@ -1052,7 +1060,7 @@ const ClientView = () => {
                         <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Building /> Properties</h3>
                         <div className="space-y-4">
                           {selectedProperties.map(item => (
-                            <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                            <div key={item.id} className="relative flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                               <div className="flex items-center gap-3 sm:gap-4">
                                 <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm" loading="lazy" decoding="async"/>
                                 <div>
@@ -1061,6 +1069,11 @@ const ClientView = () => {
                                 </div>
                               </div>
                               <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
+                              {item.price === 0 ? (
+                                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">Included</span>
+                              ) : (
+                                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">Your Pick</span>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1071,7 +1084,7 @@ const ClientView = () => {
                         <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Plane /> Flights</h3>
                         <div className="space-y-4">
                           {selectedFlights.map(item => (
-                            <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                            <div key={item.id} className="relative flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                               <div className="flex items-center gap-3 sm:gap-4">
                                 <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-8 sm:h-10 object-contain" loading="lazy" decoding="async"/>
                                 <div>
@@ -1080,6 +1093,11 @@ const ClientView = () => {
                                 </div>
                               </div>
                               <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateFinalFlightPrice(item))}}>{displayPriceWithSign(calculateFinalFlightPrice(item), item.currency)}</p>
+                              {calculateFinalFlightPrice(item) === 0 ? (
+                                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">Included</span>
+                              ) : (
+                                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">Your Pick</span>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1091,22 +1109,20 @@ const ClientView = () => {
                         <div className="space-y-4">
                           {selectedActivities.map(item => {
                             return (
-                              <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                              <div key={item.id} className="relative flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                                 <div className="flex items-center gap-4">
                                   <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm" loading="lazy" decoding="async"/>
                                   <div>
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
-                                      {item.included_in_base !== false ? (
-                                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Included</span>
-                                      ) : (
-                                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Optional</span>
-                                      )}
-                                    </div>
+                                    <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
                                     <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
                                   </div>
                                 </div>
                                 <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateActivityDelta(item))}}>{displayPriceWithSign(calculateActivityDelta(item), item.currency)}</p>
+                                {item.included_in_base !== false ? (
+                                  <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">Included</span>
+                                ) : (
+                                  <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">Your Pick</span>
+                                )}
                               </div>
                             );
                           })}
@@ -1118,7 +1134,7 @@ const ClientView = () => {
                         <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
                         <div className="space-y-4">
                           {selectedTransportation.map(item => (
-                            <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                            <div key={item.id} className="relative flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                               <div className="flex items-center gap-4">
                                 <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm" loading="lazy" decoding="async"/>
                                 <div>
@@ -1127,6 +1143,11 @@ const ClientView = () => {
                                 </div>
                               </div>
                               <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(item.price)}}>{displayPriceWithSign(item.price, item.currency)}</p>
+                              {item.price === 0 ? (
+                                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">Included</span>
+                              ) : (
+                                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">Your Pick</span>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1269,8 +1290,8 @@ const ClientView = () => {
                                         <div className="relative aspect-video">
                                             {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
 
-                                            {/* Included/Optional badge - positioned bottom-left with backdrop blur */}
-                                            <div className="absolute bottom-3 left-3 backdrop-blur-sm rounded-full">
+                                            {/* Included/Optional badge + Discount badge - positioned bottom-left with backdrop blur */}
+                                            <div className="absolute bottom-3 left-3 flex items-center gap-1.5 backdrop-blur-sm rounded-full">
                                               {activity.included_in_base !== false ? (
                                                 <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1 text-xs font-semibold">
                                                   <Check size={12} />
@@ -1279,6 +1300,11 @@ const ClientView = () => {
                                               ) : (
                                                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full px-3 py-1 text-xs font-semibold">
                                                   + Optional
+                                                </span>
+                                              )}
+                                              {hasDiscount(activity) && (
+                                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 border border-green-200 rounded-full px-2 py-0.5 text-xs font-semibold">
+                                                  {activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% Off` : `${displayPrice(activity.discount_value, activity.currency)} Off`)}
                                                 </span>
                                               )}
                                             </div>
@@ -1378,7 +1404,7 @@ const ClientView = () => {
                                                 return null;
                                               })()}
 
-                                              {/* Price delta (contextual label) */}
+                                              {/* Price delta (contextual label) with inline discount */}
                                               <div className="text-right">
                                                 {(() => {
                                                   const label = formatActivityLabel(
@@ -1386,6 +1412,27 @@ const ClientView = () => {
                                                     (amt) => displayPrice(amt, activity.currency),
                                                     parseCurrencyToNumber
                                                   );
+                                                  const isDiscounted = hasDiscount(activity);
+                                                  if (isDiscounted) {
+                                                    const costPerPax = parseCurrencyToNumber(activity.cost_per_pax);
+                                                    const flatPrice = parseCurrencyToNumber(activity.flat_price);
+                                                    const pax = activity.pax || 0;
+                                                    const rawTotal = costPerPax * pax + flatPrice;
+                                                    const discountTag = activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% Off` : `${displayPrice(activity.discount_value, activity.currency)} Off`);
+                                                    return (
+                                                      <div className="flex items-baseline justify-end gap-2 flex-wrap">
+                                                        <span className="text-base text-red-400 line-through">
+                                                          {displayPrice(rawTotal, activity.currency)}
+                                                        </span>
+                                                        <span className={`text-2xl ${label.className}`}>
+                                                          {label.text}
+                                                        </span>
+                                                        <span className="text-xs text-green-600 font-medium">
+                                                          ({discountTag})
+                                                        </span>
+                                                      </div>
+                                                    );
+                                                  }
                                                   return (
                                                     <span className={`text-2xl ${label.className}`}>
                                                       {label.text}

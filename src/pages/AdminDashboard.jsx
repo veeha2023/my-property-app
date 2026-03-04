@@ -10,6 +10,7 @@ import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRigh
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
+import { applyDiscount } from '../utils/discountUtils';
 import { useVisibility, useAutoSave } from '../hooks/useVisibility.js';
 
 const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
@@ -63,8 +64,9 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
         const isIncludedInBase = activity.included_in_base !== false;
         const isSelected = activity.selected !== false;
 
-        // Current price calculation
-        const currentPrice = (costPerPax * currentPax) + flatPrice;
+        // Current price calculation (with discount)
+        const rawPrice = (costPerPax * currentPax) + flatPrice;
+        const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
 
         // Delta logic:
         if (isIncludedInBase) {

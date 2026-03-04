@@ -1,6 +1,7 @@
 // src/utils/priceLabels.js — Contextual price label formatting utility
 // Returns styling objects (text + className) for React components to render.
 // Color coding: emerald-600 = savings, amber-600 = upgrades, gray badge = base option.
+import { applyDiscount } from './discountUtils';
 
 /**
  * Formats a price delta into a contextual label with appropriate styling.
@@ -49,7 +50,8 @@ export const formatActivityLabel = (activity, displayPrice, parseCurrencyToNumbe
   const flatPrice = parseCurrencyToNumber(activity.flat_price);
   const basePrice = parseCurrencyToNumber(activity.base_price);
   const pax = activity.pax || 0;
-  const currentPrice = costPerPax * pax + flatPrice;
+  const rawPrice = costPerPax * pax + flatPrice;
+  const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
 
   if (activity.included_in_base) {
     const deltaPrice = currentPrice - basePrice;

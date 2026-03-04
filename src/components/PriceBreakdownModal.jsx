@@ -1,6 +1,7 @@
 // src/components/PriceBreakdownModal.jsx
 import React, { useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
+import { applyDiscount, hasDiscount } from '../utils/discountUtils';
 
 const PriceBreakdownModal = ({
   isOpen,
@@ -61,7 +62,8 @@ const PriceBreakdownModal = ({
       const flatPrice = parseCurrencyToNumber(activity.flat_price);
       const pax = activity.pax || 0;
       const perPersonTotal = costPerPax * pax;
-      const activityTotal = perPersonTotal + flatPrice;
+      const rawTotal = perPersonTotal + flatPrice;
+      const activityTotal = applyDiscount(rawTotal, activity.discount_type, activity.discount_value);
       return sum + activityTotal;
     }, 0);
 
@@ -207,7 +209,9 @@ const PriceBreakdownModal = ({
                     const flatPrice = parseCurrencyToNumber(activity.flat_price);
                     const pax = activity.pax || 0;
                     const perPersonTotal = costPerPax * pax;
-                    const activityTotal = perPersonTotal + flatPrice;
+                    const rawTotal = perPersonTotal + flatPrice;
+                    const isDiscounted = hasDiscount(activity);
+                    const activityTotal = applyDiscount(rawTotal, activity.discount_type, activity.discount_value);
 
                     return (
                       <div key={activity.id} className="flex justify-between items-start text-sm ml-4">
@@ -225,10 +229,20 @@ const PriceBreakdownModal = ({
                               {costPerPax === 0 && flatPrice > 0 && (
                                 <div className="text-gray-600 text-xs">Flat rate</div>
                               )}
+                              {isDiscounted && (
+                                <div className="text-green-600 text-xs">
+                                  {activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% off` : `${displayPrice(activity.discount_value)} off`)}
+                                  {' — saves '}
+                                  {displayPrice(rawTotal - activityTotal)}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
-                        <div className="font-semibold text-red-600 ml-4">
+                        <div className="font-semibold text-red-600 ml-4 text-right">
+                          {isDiscounted && (
+                            <div className="text-xs text-red-400 line-through">{displayPrice(rawTotal)}</div>
+                          )}
                           +{displayPrice(activityTotal)}
                         </div>
                       </div>
