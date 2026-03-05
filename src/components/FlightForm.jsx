@@ -84,12 +84,6 @@ const FlightForm = ({ flights, setFlights }) => {
     }
   };
 
-  const calculateFinalPrice = (flight) => {
-    const priceSelected = parseFloat(flight.price_if_selected) || 0;
-    const priceNotSelected = parseFloat(flight.price_if_not_selected) || 0;
-    return flight.selected ? priceSelected : priceNotSelected;
-  };
-
   const getPriceColor = (price) => {
     if (price < 0) return 'text-green-600';
     if (price > 0) return 'text-red-600';
@@ -126,8 +120,7 @@ const FlightForm = ({ flights, setFlights }) => {
       arrivalDate: '',
       arrivalTime: '14:00',
       duration: '',
-      price_if_selected: 0,
-      price_if_not_selected: 0,
+      price: 0,
       currency: 'NZD',
       baggage: {
         checkInKgs: 23,
@@ -145,8 +138,7 @@ const FlightForm = ({ flights, setFlights }) => {
     const flightToSave = editingFlight || newFlight;
     if (!flightToSave) return;
     
-    flightToSave.price_if_selected = parseFloat(flightToSave.price_if_selected) || 0;
-    flightToSave.price_if_not_selected = parseFloat(flightToSave.price_if_not_selected) || 0;
+    flightToSave.price = parseFloat(flightToSave.price) || 0;
     flightToSave.duration = calculateDuration(flightToSave.departureDate, flightToSave.departureTime, flightToSave.arrivalDate, flightToSave.arrivalTime);
 
     const updatedFlights = editingFlight
@@ -196,7 +188,7 @@ const FlightForm = ({ flights, setFlights }) => {
                 return;
             }
             const headers = lines[0].split(',').map(h => h.trim());
-            const requiredHeaders = ['flightType', 'airline', 'airlineLogoUrl', 'flightNumber', 'from', 'to', 'departureDate', 'departureTime', 'arrivalDate', 'arrivalTime', 'price_if_selected', 'price_if_not_selected', 'currency', 'baggage_checkInKgs', 'baggage_checkInPieces', 'baggage_cabinKgs', 'baggage_cabinPieces'];
+            const requiredHeaders = ['flightType', 'airline', 'airlineLogoUrl', 'flightNumber', 'from', 'to', 'departureDate', 'departureTime', 'arrivalDate', 'arrivalTime', 'price', 'currency', 'baggage_checkInKgs', 'baggage_checkInPieces', 'baggage_cabinKgs', 'baggage_cabinPieces'];
 
             if (!requiredHeaders.every(h => headers.includes(h))) {
                 setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
@@ -225,8 +217,7 @@ const FlightForm = ({ flights, setFlights }) => {
                     arrivalDate: parseDateString(flight.arrivalDate),
                     arrivalTime: flight.arrivalTime,
                     duration: '',
-                    price_if_selected: parseFloat(flight.price_if_selected) || 0,
-                    price_if_not_selected: parseFloat(flight.price_if_not_selected) || 0,
+                    price: parseFloat(flight.price) || 0,
                     currency: flight.currency || 'NZD',
                     baggage: {
                         checkInKgs: parseInt(flight.baggage_checkInKgs, 10) || 0,
@@ -251,8 +242,8 @@ const FlightForm = ({ flights, setFlights }) => {
   };
 
   const downloadTemplate = () => {
-    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price_if_selected,price_if_not_selected,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces,recommended";
-    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,0,-350,NZD,23,1,7,1,FALSE";
+    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces,recommended";
+    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,-350,NZD,23,1,7,1,FALSE";
     const note = "\n# NOTE: Please use YYYY-MM-DD format for dates. Separate multiple image URLs with a semicolon (;). flightType can be 'domestic' or 'international'.";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
@@ -291,8 +282,7 @@ const FlightForm = ({ flights, setFlights }) => {
         <div><label className="block text-sm font-medium text-gray-700">Cabin (Pieces)</label><input type="number" value={data.baggage.cabinPieces} onChange={(e) => setData({...data, baggage: {...data.baggage, cabinPieces: e.target.value}})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
         
         <div className="md:col-span-3 font-semibold text-gray-800 pt-2 border-t mt-2">Pricing</div>
-        <div><label className="block text-sm font-medium text-gray-700">Price if Selected</label><input type="number" step="0.01" value={data.price_if_selected} onChange={(e) => setData({...data, price_if_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
-        <div><label className="block text-sm font-medium text-gray-700">Price if Not Selected</label><input type="number" step="0.01" value={data.price_if_not_selected} onChange={(e) => setData({...data, price_if_not_selected: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
+        <div><label className="block text-sm font-medium text-gray-700">Price (Differential)</label><input type="number" step="0.01" value={data.price} onChange={(e) => setData({...data, price: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., 150 or -350" /></div>
         <div><label className="block text-sm font-medium text-gray-700">Currency</label><select value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
           {getCurrencyOptions().map(option => (
             <option key={option.value} value={option.value}>
@@ -342,7 +332,7 @@ const FlightForm = ({ flights, setFlights }) => {
   );
   
   const renderItemRow = (item) => {
-    const currentPrice = calculateFinalPrice(item);
+    const currentPrice = parseFloat(item.price) || 0;
     const priceColor = getPriceColor(currentPrice);
     const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
 

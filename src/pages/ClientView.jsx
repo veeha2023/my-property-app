@@ -193,9 +193,7 @@ const ClientView = () => {
   }, []);
 
   const calculateFinalFlightPrice = useCallback((flight) => {
-    const priceSelected = parseFloat(flight.price_if_selected) || 0;
-    const priceNotSelected = parseFloat(flight.price_if_not_selected) || 0;
-    return flight.selected ? priceSelected : priceNotSelected;
+    return flight.selected ? (parseFloat(flight.price) || 0) : 0;
   }, []);
 
   const getPriceColor = (price) => {
@@ -232,7 +230,7 @@ const ClientView = () => {
         fullClientData.properties = (fullClientData.properties || []).map(p => ({ ...p, price: parseCurrencyToNumber(p.price) }));
         fullClientData.activities = (fullClientData.activities || []).map(a => ({ ...a, price_if_selected: parseCurrencyToNumber(a.price_if_selected), price_if_not_selected: parseCurrencyToNumber(a.price_if_not_selected) }));
         fullClientData.transportation = (fullClientData.transportation || []).map(t => ({ ...t, price: parseCurrencyToNumber(t.price), excessAmount: parseCurrencyToNumber(t.excessAmount) }));
-        fullClientData.flights = (fullClientData.flights || []).map(f => ({ ...f, price_if_selected: parseCurrencyToNumber(f.price_if_selected), price_if_not_selected: parseCurrencyToNumber(f.price_if_not_selected) }));
+        fullClientData.flights = (fullClientData.flights || []).map(f => ({ ...f, price: parseCurrencyToNumber(f.price) }));
 
         setClientData(fullClientData);
         setClientName(responseData.clientName || 'Client Selection');

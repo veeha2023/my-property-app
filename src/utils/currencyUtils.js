@@ -214,8 +214,6 @@ export const convertItemsCurrency = async (items, fromCurrency, toCurrency, conv
     ...item,
     currency: toCurrency,
     price: convertCurrency(item.price || 0, fromCurrency, toCurrency, rates),
-    price_if_selected: convertCurrency(item.price_if_selected || 0, fromCurrency, toCurrency, rates),
-    price_if_not_selected: convertCurrency(item.price_if_not_selected || 0, fromCurrency, toCurrency, rates)
   }));
 };
 

@@ -91,9 +91,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
     }, []);
 
     const calculateFinalFlightPrice = useCallback((flight) => {
-        const priceSelected = parseFloat(flight.price_if_selected) || 0;
-        const priceNotSelected = parseFloat(flight.price_if_not_selected) || 0;
-        return flight.selected ? priceSelected : priceNotSelected;
+        return flight.selected ? (parseFloat(flight.price) || 0) : 0;
     }, []);
 
     const selectedProperties = useMemo(() => clientData?.properties?.filter(p => p.selected && !p.isPlaceholder) || [], [clientData]);
@@ -488,7 +486,7 @@ const AdminDashboard = () => {
         included_in_base: a.included_in_base !== false,
     }));
     const existingTransportation = Array.isArray(data.transportation) ? data.transportation : [];
-    const existingFlights = (data.flights || []).map(f => ({ ...f, price_if_selected: parseFloat(f.price_if_selected) || 0, price_if_not_selected: parseFloat(f.price_if_not_selected) || 0 }));
+    const existingFlights = (data.flights || []).map(f => ({ ...f, price: parseFloat(f.price) || 0 }));
 
     const allLocations = new Set();
     existingProperties.forEach(p => { if (p.location) allLocations.add(p.location.trim()); });

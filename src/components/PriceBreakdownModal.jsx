@@ -81,18 +81,10 @@ const PriceBreakdownModal = ({
     const flightTotal = flights
       .filter(f => f.selected)
       .reduce((sum, flight) => {
-        const priceSelected = parseCurrencyToNumber(flight.price_if_selected) || 0;
-        return sum + priceSelected;
+        return sum + (parseCurrencyToNumber(flight.price) || 0);
       }, 0);
 
-    const flightNotSelectedTotal = flights
-      .filter(f => !f.selected)
-      .reduce((sum, flight) => {
-        const priceNotSelected = parseCurrencyToNumber(flight.price_if_not_selected) || 0;
-        return sum + priceNotSelected;
-      }, 0);
-
-    const transportFlightTotal = transportTotal + flightTotal + flightNotSelectedTotal;
+    const transportFlightTotal = transportTotal + flightTotal;
     const transportAndFlightsHaveChanges = transportFlightTotal !== 0;
 
     // Final quote
@@ -110,12 +102,7 @@ const PriceBreakdownModal = ({
       finalQuote,
       properties: properties.filter(p => p.selected && parseCurrencyToNumber(p.price) !== 0),
       transportation: transportation.filter(t => t.selected && parseCurrencyToNumber(t.price) !== 0),
-      flights: flights.filter(f => {
-        const price = f.selected
-          ? parseCurrencyToNumber(f.price_if_selected)
-          : parseCurrencyToNumber(f.price_if_not_selected);
-        return price !== 0;
-      })
+      flights: flights.filter(f => f.selected && parseCurrencyToNumber(f.price) !== 0)
     };
   }, [clientData, baseQuote, parseCurrencyToNumber]);
 
@@ -332,15 +319,8 @@ const PriceBreakdownModal = ({
                       </div>
                     );
                   })}
-                  {calculations.flights.filter(flight => {
-                    const price = flight.selected
-                      ? parseCurrencyToNumber(flight.price_if_selected)
-                      : parseCurrencyToNumber(flight.price_if_not_selected);
-                    return price !== 0;
-                  }).map(flight => {
-                    const priceUsed = flight.selected
-                      ? parseCurrencyToNumber(flight.price_if_selected)
-                      : parseCurrencyToNumber(flight.price_if_not_selected);
+                  {calculations.flights.map(flight => {
+                    const priceUsed = parseCurrencyToNumber(flight.price) || 0;
 
                     return (
                       <div key={flight.id} className="flex justify-between items-start text-sm ml-4">
@@ -348,9 +328,9 @@ const PriceBreakdownModal = ({
                           <div className="flex items-start gap-2">
                             <span className="text-green-600 mt-0.5">✓</span>
                             <div>
-                              <div className="font-medium text-gray-900">{flight.name || 'Flight'}</div>
+                              <div className="font-medium text-gray-900">{flight.airline || flight.name || 'Flight'} {flight.flightNumber && `(${flight.flightNumber})`}</div>
                               <div className="text-gray-600 text-xs">
-                                {flight.selected ? 'Premium class' : 'Economy class'}
+                                {flight.from} → {flight.to}
                               </div>
                             </div>
                           </div>
