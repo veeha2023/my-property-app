@@ -413,11 +413,23 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     reader.readAsText(file);
   };
 
+  // CSV column order: common fields first, then grouped by transport type
+  const csvHeaders = [
+    // Common
+    'transportType','name','price','currency','images','selected','recommended',
+    // Car
+    'type','pickupLocation','pickupDate','pickupTime','dropoffLocation','dropoffDate','dropoffTime','insurance','excessAmount','driversIncluded',
+    // Ferry / Bus
+    'boardingFrom','boardingDate','boardingTime','departingTo','departingDate','departingTime','duration','baggageAllowance',
+    // Driver
+    'carType','location','pickupFrom','dropoffTo'
+  ].join(',');
+
   const downloadTemplate = () => {
-    const headers = "transportType,name,price,currency,images,selected,recommended,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
-    const example = `"car","Luxury Sedan","150","NZD","https://example.com/car1.jpg;https://example.com/car2.jpg","TRUE","FALSE","Sedan","Auckland Airport","2025-10-20","10:00","Queenstown Airport","2025-10-25","14:00","Full","500","1","","","","","","","","","","","","",""`;
+    const example = `"car","Luxury Sedan","150","NZD","https://example.com/car1.jpg;https://example.com/car2.jpg","TRUE","FALSE","Sedan","Auckland Airport","2025-10-20","10:00","Queenstown Airport","2025-10-25","14:00","Full","500","1","","","","","","","","","","","",""`;
     const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;). transportType can be 'car', 'ferry', 'bus', or 'driver'. Use YYYY-MM-DD format for dates.";
-    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
+    const note2 = "\n# COLUMNS: Common (1-7) | Car-specific (8-17) | Ferry/Bus-specific (18-25) | Driver-specific (26-29). Leave type-irrelevant columns empty.";
+    const csvContent = `data:text/csv;charset=utf-8,${csvHeaders}\n${example}${note}${note2}`;
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -433,10 +445,9 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
       return;
     }
 
-    const headers = "transportType,name,price,currency,images,selected,recommended,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
-
     const csvRows = transportation.map(item => {
       const row = [
+        // Common
         item.transportType || '',
         item.name || '',
         item.price || 0,
@@ -444,7 +455,8 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         (item.images || []).join(';'),
         item.selected ? 'TRUE' : 'FALSE',
         item.recommended ? 'TRUE' : 'FALSE',
-        item.type || item.carType || '',
+        // Car
+        item.type || '',
         item.pickupLocation || '',
         item.pickupDate || '',
         item.pickupTime || '',
@@ -454,6 +466,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         item.insurance || '',
         item.excessAmount || 0,
         item.driversIncluded || 1,
+        // Ferry / Bus
         item.boardingFrom || '',
         item.boardingDate || '',
         item.boardingTime || '',
@@ -462,6 +475,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         item.departingTime || '',
         item.duration || '',
         item.baggageAllowance || '',
+        // Driver
         item.carType || '',
         item.location || '',
         item.pickupFrom || '',
@@ -470,7 +484,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
       return row.map(field => `"${field}"`).join(',');
     });
 
-    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${csvRows.join('\n')}`;
+    const csvContent = `data:text/csv;charset=utf-8,${csvHeaders}\n${csvRows.join('\n')}`;
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
