@@ -359,8 +359,8 @@ const ClientView = () => {
         };
       } else {
         return {
-          text: 'Part of your base package — no extra cost',
-          color: 'text-gray-600'
+          text: 'Part of your package',
+          color: 'text-emerald-600'
         };
       }
     } else {
@@ -399,6 +399,13 @@ const ClientView = () => {
     const isSelected = activity.selected !== false;
 
     if (costPerPax === 0) return null;
+
+    // Hide per-person math on included activities when deselected or at base pax
+    if (isIncludedInBase) {
+      if (!isSelected) return null;
+      const paxUnchanged = currentPax === basePax || basePax === 0;
+      if (paxUnchanged) return null;
+    }
 
     const currentSubtotal = costPerPax * currentPax;
     const currentTotal = currentSubtotal + flatPrice;
@@ -1218,11 +1225,11 @@ const ClientView = () => {
                                     </div>
                                     {property.selected && <div className="absolute top-3 left-3 rounded-full p-2 shadow-md" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={16} /></div>}
 
-                                    {/* Recommended badge - only show if recommended is true */}
+                                    {/* Agent's Pick badge - only show if recommended is true */}
                                     {property.recommended && (
                                       <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
                                         <Star size={14} className="fill-amber-400 text-amber-600" />
-                                        <span>Recommended</span>
+                                        <span>Agent's Pick</span>
                                       </div>
                                     )}
 
@@ -1255,7 +1262,10 @@ const ClientView = () => {
                                             return label.isBadge ? (
                                               <span className={label.className}>{label.text}</span>
                                             ) : (
-                                              <span className={`text-xl ${label.className}`}>{label.text}</span>
+                                              <span className={label.className}>
+                                                <span className="text-xl">{label.price || label.text}</span>
+                                                {label.suffix && <span className="text-sm font-medium ml-1">{label.suffix}</span>}
+                                              </span>
                                             );
                                           })()}
                                         </div>
@@ -1293,18 +1303,19 @@ const ClientView = () => {
                                             {/* Included/Optional badge + Discount badge - positioned bottom-left with backdrop blur */}
                                             <div className="absolute bottom-3 left-3 flex items-center gap-1.5 backdrop-blur-sm rounded-full">
                                               {activity.included_in_base !== false ? (
-                                                <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1 text-xs font-semibold">
-                                                  <Check size={12} />
-                                                  Included
-                                                </span>
+                                                isSelected ? (
+                                                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1 text-xs font-semibold">
+                                                    <Check size={12} />
+                                                    Included in package
+                                                  </span>
+                                                ) : (
+                                                  <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-full px-3 py-1 text-xs font-semibold">
+                                                    Removed from package
+                                                  </span>
+                                                )
                                               ) : (
                                                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full px-3 py-1 text-xs font-semibold">
                                                   + Optional
-                                                </span>
-                                              )}
-                                              {hasDiscount(activity) && (
-                                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 border border-green-200 rounded-full px-2 py-0.5 text-xs font-semibold">
-                                                  {activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% Off` : `${displayPrice(activity.discount_value, activity.currency)} Off`)}
                                                 </span>
                                               )}
                                             </div>
@@ -1312,20 +1323,34 @@ const ClientView = () => {
                                             {/* Existing selected checkmark (keep this) */}
                                             {isSelected && ( <div className="absolute top-3 left-3 bg-white rounded-full p-1 shadow-lg"> <Check size={24} className="text-green-500" /> </div> )}
 
-                                            {/* Agent's Pick badge - only show if recommended is true */}
-                                            {activity.recommended && (
-                                              <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold">
-                                                <Star size={14} className="fill-amber-400 text-amber-600" />
-                                                <span>Agent's Pick</span>
-                                              </div>
-                                            )}
+                                            {/* Top-right badges: Agent's Pick + Discount */}
+                                            <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
+                                              {activity.recommended && (
+                                                <div className="flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold">
+                                                  <Star size={14} className="fill-amber-400 text-amber-600" />
+                                                  <span>Agent's Pick</span>
+                                                </div>
+                                              )}
+                                              {hasDiscount(activity) && (
+                                                <span className="inline-flex items-center bg-emerald-600 text-white rounded-full px-3 py-1.5 text-sm font-bold shadow-md">
+                                                  {activity.discount_type === 'percentage' ? `Save ${activity.discount_value}%` : `Save ${displayPrice(activity.discount_value, activity.currency)}`}
+                                                </span>
+                                              )}
+                                            </div>
                                         </div>
                                         <div className="p-4 flex flex-col justify-between flex-grow">
                                             <div>
                                                 <h4 className="font-bold text-lg text-gray-800 truncate mb-2">{activity.name}</h4>
 
-                                                {/* Contextual one-liner */}
+                                                {/* Contextual one-liner — only for states with unique info */}
                                                 {(() => {
+                                                  const isIncAct = activity.included_in_base !== false;
+                                                  const isSelAct = activity.selected !== false;
+                                                  const bPax = parseInt(activity.base_pax, 10) || 0;
+                                                  const cPax = parseInt(activity.pax, 10) || 0;
+                                                  const paxChanged = isSelAct && bPax > 0 && cPax !== bPax;
+                                                  // Show for: included activities with pax change, all optional activities
+                                                  if (isIncAct && !paxChanged) return null;
                                                   const label = getActivityContextLabel(activity);
                                                   return (
                                                     <p className={`text-sm ${label.color} mb-3 italic`}>
@@ -1413,28 +1438,59 @@ const ClientView = () => {
                                                     parseCurrencyToNumber
                                                   );
                                                   const isDiscounted = hasDiscount(activity);
-                                                  if (isDiscounted) {
-                                                    const costPerPax = parseCurrencyToNumber(activity.cost_per_pax);
-                                                    const flatPrice = parseCurrencyToNumber(activity.flat_price);
-                                                    const pax = activity.pax || 0;
-                                                    const rawTotal = costPerPax * pax + flatPrice;
-                                                    const discountTag = activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% Off` : `${displayPrice(activity.discount_value, activity.currency)} Off`);
+                                                  const isIncluded = activity.included_in_base !== false;
+                                                  const isActSelected = activity.selected !== false;
+                                                  const cpPaxCheck = parseCurrencyToNumber(activity.cost_per_pax);
+                                                  const fPriceCheck = parseCurrencyToNumber(activity.flat_price);
+                                                  const paxCheck = activity.pax || 0;
+                                                  const rawPriceCheck = cpPaxCheck * paxCheck + fPriceCheck;
+                                                  const currentPriceCheck = isDiscounted ? applyDiscount(rawPriceCheck, activity.discount_type, activity.discount_value) : rawPriceCheck;
+                                                  const basePriceCheck = parseCurrencyToNumber(activity.base_price);
+                                                  const isAtBasePrice = isActSelected && Math.abs(currentPriceCheck - basePriceCheck) < 0.01;
+
+                                                  // Included + selected + no price change: image badge says it all
+                                                  if (isIncluded && isAtBasePrice && !isDiscounted) {
+                                                    return null;
+                                                  }
+
+                                                  // Optional + not selected + no discount: show actual price
+                                                  if (!isIncluded && !isActSelected && !isDiscounted) {
                                                     return (
-                                                      <div className="flex items-baseline justify-end gap-2 flex-wrap">
-                                                        <span className="text-base text-red-400 line-through">
-                                                          {displayPrice(rawTotal, activity.currency)}
-                                                        </span>
-                                                        <span className={`text-2xl ${label.className}`}>
-                                                          {label.text}
-                                                        </span>
-                                                        <span className="text-xs text-green-600 font-medium">
-                                                          ({discountTag})
-                                                        </span>
-                                                      </div>
+                                                      <span className={label.className}>
+                                                        {label.text}
+                                                      </span>
                                                     );
                                                   }
+
+                                                  // Discounted activities: compact state-aware layout
+                                                  if (isDiscounted) {
+                                                    const cpPax = parseCurrencyToNumber(activity.cost_per_pax);
+                                                    const fPrice = parseCurrencyToNumber(activity.flat_price);
+                                                    const pax = activity.pax || 0;
+                                                    const rawTotal = cpPax * pax + fPrice;
+                                                    const discountedTotal = applyDiscount(rawTotal, activity.discount_type, activity.discount_value);
+                                                    if (!isActSelected) {
+                                                      // Not selected: show discounted price as main price
+                                                      return (
+                                                        <div className="text-right">
+                                                          <span className="text-xs text-red-400 line-through mr-1.5">{displayPrice(rawTotal, activity.currency)}</span>
+                                                          <span className="text-gray-700 font-semibold">{displayPrice(discountedTotal, activity.currency)}</span>
+                                                        </div>
+                                                      );
+                                                    } else {
+                                                      // Selected: show +discountedPrice with strikethrough
+                                                      return (
+                                                        <div className="text-right">
+                                                          <span className="text-xs text-red-400 line-through mr-1.5">{displayPrice(rawTotal, activity.currency)}</span>
+                                                          <span className={label.className}>{label.text}</span>
+                                                        </div>
+                                                      );
+                                                    }
+                                                  }
+
+                                                  // No discount: show label consistently
                                                   return (
-                                                    <span className={`text-2xl ${label.className}`}>
+                                                    <span className={`${label.className}`}>
                                                       {label.text}
                                                     </span>
                                                   );
@@ -1466,6 +1522,12 @@ const ClientView = () => {
                                     return (
                                         <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
                                             {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
+                                            {item.recommended && (
+                                              <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
+                                                <Star size={14} className="fill-amber-400 text-amber-600" />
+                                                <span>Agent's Pick</span>
+                                              </div>
+                                            )}
                                             <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" loading="lazy" decoding="async" />
                                             <div className="flex-grow">
                                                 <h4 className="font-bold text-lg sm:text-xl text-gray-800">{item.name}</h4>
@@ -1492,8 +1554,9 @@ const ClientView = () => {
                                                   return label.isBadge ? (
                                                     <span className={label.className}>{label.text}</span>
                                                   ) : (
-                                                    <span className={`text-2xl sm:text-3xl ${label.className} whitespace-nowrap`}>
-                                                      {label.text}
+                                                    <span className={`${label.className} whitespace-nowrap`}>
+                                                      <span className="text-2xl sm:text-3xl">{label.price || label.text}</span>
+                                                      {label.suffix && <span className="text-sm font-medium ml-1">{label.suffix}</span>}
                                                     </span>
                                                   );
                                                 })()}
@@ -1527,6 +1590,12 @@ const ClientView = () => {
                                                 <div className="flex flex-col w-full">
                                                     <div className="flex flex-col sm:flex-row justify-between items-center w-full">
                                                         {item.selected && ( <div className="absolute top-1/2 -translate-y-1/2 left-4 sm:left-6 rounded-full p-1 shadow-md bg-white z-10"> <CheckCircle size={24} className="text-green-500" /> </div> )}
+                                                        {item.recommended && (
+                                                          <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
+                                                            <Star size={14} className="fill-amber-400 text-amber-600" />
+                                                            <span>Agent's Pick</span>
+                                                          </div>
+                                                        )}
                                                         <div className="flex items-center gap-4 sm:gap-6 flex-1 pl-10 sm:pl-12">
                                                             <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-12 sm:h-16 w-auto object-contain" loading="lazy" decoding="async"/>
                                                             <div className="text-sm">
@@ -1562,8 +1631,9 @@ const ClientView = () => {
                                                                   return label.isBadge ? (
                                                                     <span className={label.className}>{label.text}</span>
                                                                   ) : (
-                                                                    <span className={`text-2xl sm:text-3xl ${label.className} whitespace-nowrap`}>
-                                                                      {label.text}
+                                                                    <span className={`${label.className} whitespace-nowrap`}>
+                                                                      <span className="text-2xl sm:text-3xl">{label.price || label.text}</span>
+                                                                      {label.suffix && <span className="text-sm font-medium ml-1">{label.suffix}</span>}
                                                                     </span>
                                                                   );
                                                                 })()}

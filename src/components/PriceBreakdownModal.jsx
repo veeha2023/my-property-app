@@ -44,8 +44,14 @@ const PriceBreakdownModal = ({
     const transportation = clientData?.transportation || [];
     const flights = clientData?.flights || [];
 
-    // Count included activities
-    const includedActivityCount = activities.filter(a => a.included_in_base).length;
+    // Count included activities (only those still selected)
+    const includedActivityCount = activities.filter(a => a.included_in_base && a.selected !== false).length;
+
+    // Removed included activities (deselected by client)
+    const removedIncludedActivities = activities.filter(a => a.included_in_base && a.selected === false);
+    const removedIncludedTotal = removedIncludedActivities.reduce((sum, a) => {
+      return sum - (parseCurrencyToNumber(a.base_price) || 0);
+    }, 0);
 
     // Property total
     const propertyTotal = properties
@@ -90,19 +96,26 @@ const PriceBreakdownModal = ({
     const transportAndFlightsHaveChanges = transportFlightTotal !== 0;
 
     // Final quote
-    const finalQuote = baseQuote + propertyTotal + optionalActivitiesTotal + transportFlightTotal;
+    const finalQuote = baseQuote + propertyTotal + optionalActivitiesTotal + transportFlightTotal + removedIncludedTotal;
 
     return {
       includedActivityCount,
+      removedIncludedActivities,
+      removedIncludedTotal,
       propertyTotal,
       optionalActivities,
       optionalActivitiesTotal,
       transportFlightTotal,
       transportAndFlightsHaveChanges,
       finalQuote,
-      properties: properties.filter(p => p.selected),
-      transportation: transportation.filter(t => t.selected),
-      flights
+      properties: properties.filter(p => p.selected && parseCurrencyToNumber(p.price) !== 0),
+      transportation: transportation.filter(t => t.selected && parseCurrencyToNumber(t.price) !== 0),
+      flights: flights.filter(f => {
+        const price = f.selected
+          ? parseCurrencyToNumber(f.price_if_selected)
+          : parseCurrencyToNumber(f.price_if_not_selected);
+        return price !== 0;
+      })
     };
   }, [clientData, baseQuote, parseCurrencyToNumber]);
 
@@ -149,6 +162,40 @@ const PriceBreakdownModal = ({
               </div>
             </div>
 
+            {/* Included Activities Removed Section */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900 text-base">INCLUDED ACTIVITIES REMOVED</h3>
+              {calculations.removedIncludedActivities.length > 0 ? (
+                <>
+                  {calculations.removedIncludedActivities.map(activity => {
+                    const basePrice = parseCurrencyToNumber(activity.base_price) || 0;
+                    return (
+                      <div key={activity.id} className="flex justify-between items-start text-sm ml-4">
+                        <div className="flex-1">
+                          <div className="flex items-start gap-2">
+                            <span className="text-rose-500 mt-0.5">−</span>
+                            <div>
+                              <div className="font-medium text-gray-900">{activity.name}</div>
+                              <div className="text-gray-600 text-xs">Removed from package</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="font-semibold text-green-600 ml-4">
+                          −{displayPrice(basePrice)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-100 font-semibold">
+                    <span className="text-gray-700">Removed Activities Total</span>
+                    <span className="text-green-600">−{displayPrice(Math.abs(calculations.removedIncludedTotal))}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-gray-600 ml-4">All included activities kept</div>
+              )}
+            </div>
+
             {/* Property Changes Section */}
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 text-base">PROPERTY CHANGES</h3>
@@ -164,9 +211,9 @@ const PriceBreakdownModal = ({
                             <div>
                               <div className="font-medium text-gray-900">{property.name}</div>
                               <div className="text-gray-600 text-xs">
-                                {delta < 0 ? `Saves ${displayPrice(Math.abs(delta))} vs base option` :
+                                {delta < 0 ? `Saves ${displayPrice(Math.abs(delta))} vs package option` :
                                  delta > 0 ? `${displayPrice(delta)} upgrade` :
-                                 'Base option'}
+                                 'Included in package'}
                               </div>
                             </div>
                           </div>
@@ -195,7 +242,7 @@ const PriceBreakdownModal = ({
                   </div>
                 </>
               ) : (
-                <div className="text-sm text-gray-600 ml-4">Base options selected</div>
+                <div className="text-sm text-gray-600 ml-4">Package options selected</div>
               )}
             </div>
 
@@ -231,7 +278,7 @@ const PriceBreakdownModal = ({
                               )}
                               {isDiscounted && (
                                 <div className="text-green-600 text-xs">
-                                  {activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% off` : `${displayPrice(activity.discount_value)} off`)}
+                                  {activity.discount_type === 'percentage' ? `${activity.discount_value}% off` : `${displayPrice(activity.discount_value)} off`}
                                   {' — saves '}
                                   {displayPrice(rawTotal - activityTotal)}
                                 </div>
@@ -285,7 +332,12 @@ const PriceBreakdownModal = ({
                       </div>
                     );
                   })}
-                  {calculations.flights.map(flight => {
+                  {calculations.flights.filter(flight => {
+                    const price = flight.selected
+                      ? parseCurrencyToNumber(flight.price_if_selected)
+                      : parseCurrencyToNumber(flight.price_if_not_selected);
+                    return price !== 0;
+                  }).map(flight => {
                     const priceUsed = flight.selected
                       ? parseCurrencyToNumber(flight.price_if_selected)
                       : parseCurrencyToNumber(flight.price_if_not_selected);
@@ -327,7 +379,7 @@ const PriceBreakdownModal = ({
                   </div>
                 </>
               ) : (
-                <div className="text-sm text-gray-600 ml-4">Base options selected</div>
+                <div className="text-sm text-gray-600 ml-4">Package options selected</div>
               )}
             </div>
 

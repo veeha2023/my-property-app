@@ -17,6 +17,8 @@ export const formatContextualLabel = (deltaAmount, displayPrice, context = 'prop
   if (amount < 0) {
     // Negative delta = savings
     return {
+      price: displayPrice(Math.abs(amount)),
+      suffix: 'Savings',
       text: `Saves ${displayPrice(Math.abs(amount))}`,
       className: 'text-emerald-600 font-semibold',
       isBadge: false
@@ -24,6 +26,8 @@ export const formatContextualLabel = (deltaAmount, displayPrice, context = 'prop
   } else if (amount > 0) {
     // Positive delta = upgrade cost
     return {
+      price: `+${displayPrice(amount)}`,
+      suffix: 'upgrade',
       text: `+${displayPrice(amount)} upgrade`,
       className: 'text-amber-600 font-semibold',
       isBadge: false
@@ -31,8 +35,8 @@ export const formatContextualLabel = (deltaAmount, displayPrice, context = 'prop
   } else {
     // Zero delta = base option
     return {
-      text: 'Base option',
-      className: 'inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-gray-100 text-gray-600',
+      text: 'Included in package',
+      className: 'inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-emerald-50 text-emerald-700',
       isBadge: true
     };
   }
@@ -59,7 +63,9 @@ export const formatActivityLabel = (activity, displayPrice, parseCurrencyToNumbe
     if (!activity.selected) {
       // Deselected included activity = saves the base price
       return {
-        text: `Save ${displayPrice(Math.abs(basePrice))}`,
+        price: displayPrice(Math.abs(basePrice)),
+        suffix: 'Savings',
+        text: `${displayPrice(Math.abs(basePrice))} Savings`,
         className: 'text-emerald-600 font-semibold',
         isBadge: false
       };
@@ -73,14 +79,18 @@ export const formatActivityLabel = (activity, displayPrice, parseCurrencyToNumbe
     } else if (deltaPrice > 0) {
       // Selected with pax increase
       return {
-        text: `+${displayPrice(deltaPrice)} upgrade`,
+        price: displayPrice(deltaPrice),
+        suffix: 'Extra',
+        text: `${displayPrice(deltaPrice)} Extra`,
         className: 'text-amber-600 font-semibold',
         isBadge: false
       };
     } else {
       // Selected with pax decrease
       return {
-        text: `Saves ${displayPrice(Math.abs(deltaPrice))}`,
+        price: displayPrice(Math.abs(deltaPrice)),
+        suffix: 'Savings',
+        text: `${displayPrice(Math.abs(deltaPrice))} Savings`,
         className: 'text-emerald-600 font-semibold',
         isBadge: false
       };
@@ -96,7 +106,9 @@ export const formatActivityLabel = (activity, displayPrice, parseCurrencyToNumbe
     } else {
       // Selected optional activity shows the cost
       return {
-        text: `+${displayPrice(currentPrice)}`,
+        price: `+${displayPrice(currentPrice)}`,
+        suffix: 'Extra',
+        text: `+${displayPrice(currentPrice)} Extra`,
         className: 'text-amber-600 font-semibold',
         isBadge: false
       };

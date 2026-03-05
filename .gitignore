@@ -24,3 +24,4 @@ yarn-error.log*
 
 # Tailwind CSS
 src/tailwind.css
+.vercel

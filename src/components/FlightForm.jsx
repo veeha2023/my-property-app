@@ -1,6 +1,6 @@
 // src/components/FlightForm.jsx - Version 1.5 (Enhanced Pricing Model)
 import React, { useState, useMemo, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, Plane, Briefcase, CheckCircle, Upload } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Plane, Briefcase, CheckCircle, Upload, Star } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
 
 const FlightForm = ({ flights, setFlights }) => {
@@ -136,6 +136,7 @@ const FlightForm = ({ flights, setFlights }) => {
         cabinPieces: 1,
       },
       selected: true,
+      recommended: false,
     });
     setShowTypeSelection(false);
   };
@@ -234,6 +235,7 @@ const FlightForm = ({ flights, setFlights }) => {
                         cabinPieces: parseInt(flight.baggage_cabinPieces, 10) || 0,
                     },
                     selected: true,
+                    recommended: flight.recommended?.toUpperCase() === 'TRUE',
                 };
             }).filter(Boolean);
 
@@ -249,8 +251,8 @@ const FlightForm = ({ flights, setFlights }) => {
   };
 
   const downloadTemplate = () => {
-    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price_if_selected,price_if_not_selected,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces";
-    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,0,-350,NZD,23,1,7,1";
+    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price_if_selected,price_if_not_selected,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces,recommended";
+    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,0,-350,NZD,23,1,7,1,FALSE";
     const note = "\n# NOTE: Please use YYYY-MM-DD format for dates. Separate multiple image URLs with a semicolon (;). flightType can be 'domestic' or 'international'.";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
@@ -309,6 +311,25 @@ const FlightForm = ({ flights, setFlights }) => {
             <label htmlFor="selected_by_default_flight" className="ml-2 block text-sm font-medium text-gray-700">
                 Selected by default for client
             </label>
+        </div>
+        <div className="lg:col-span-3 flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="flex items-center gap-2">
+            <label className="font-semibold text-gray-700">Agent's Pick</label>
+            <span className="text-xs text-gray-600">(Recommend to client)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setData({ ...data, recommended: !data.recommended })}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+              data.recommended ? 'bg-amber-500' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                data.recommended ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
       <div className="flex items-center justify-end space-x-3 mt-6">
@@ -383,6 +404,22 @@ const FlightForm = ({ flights, setFlights }) => {
                 <p className="font-semibold text-gray-500">Baggage Allowance:</p>
                 <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Check-in: {item.baggage.checkInKgs}kg ({item.baggage.checkInPieces} pc)</div>
                 <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Cabin: {item.baggage.cabinKgs}kg ({item.baggage.cabinPieces} pc)</div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const updated = (flights || []).map(f => f.id === item.id ? { ...f, recommended: !f.recommended } : f);
+                    setFlights(updated);
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    item.recommended
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                      : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                  }`}
+                  title={item.recommended ? "Remove Agent's Pick" : "Set as Agent's Pick"}
+                >
+                  <Star size={14} className={item.recommended ? 'fill-amber-400 text-amber-600' : ''} />
+                  <span>Agent's Pick</span>
+                </button>
             </div>
         </div>
       </div>
@@ -415,6 +452,15 @@ const FlightForm = ({ flights, setFlights }) => {
                 <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
                     <Plus size={18} className="mr-2" /> Add New Flight
                 </button>
+                {flights && flights.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { if (window.confirm(`Delete all ${flights.length} flights?`)) setFlights([]); }}
+                    className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center transition-transform hover:scale-105"
+                  >
+                    <Trash2 size={18} className="mr-2" /> Delete All
+                  </button>
+                )}
             </div>
         </div>
         <div className="text-right mb-4">

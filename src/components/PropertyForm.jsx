@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  Star,
 } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
 
@@ -217,6 +218,7 @@ const PropertyForm = ({
               description: propertyData.description,
               category: propertyData.category || 'Luxury',
               isPlaceholder: false,
+              recommended: propertyData.recommended?.toUpperCase() === 'TRUE',
           });
         });
 
@@ -249,8 +251,8 @@ const PropertyForm = ({
   };
 
   const downloadTemplate = () => {
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category";
-    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","A stunning villa with lake views, perfect for a getaway.","Luxury"`;
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category,recommended";
+    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","A stunning villa with lake views, perfect for a getaway.","Luxury","FALSE"`;
     const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;) or newlines. If using newlines, the entire cell must be enclosed in double quotes (\").";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
@@ -268,7 +270,7 @@ const PropertyForm = ({
       return;
     }
 
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category";
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category,recommended";
 
     const csvRows = properties.map(property => {
       const row = [
@@ -285,7 +287,8 @@ const PropertyForm = ({
         property.homeImageIndex || 0,
         property.selected ? 'TRUE' : 'FALSE',
         property.description || '',
-        property.category || 'Luxury'
+        property.category || 'Luxury',
+        property.recommended ? 'TRUE' : 'FALSE'
       ];
       return row.map(field => `"${field}"`).join(',');
     });
@@ -829,8 +832,8 @@ const PropertyForm = ({
       {/* Recommended Property Toggle */}
       <div className="mb-6 flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
         <div className="flex items-center gap-2">
-          <label className="font-semibold text-gray-700">Recommended</label>
-          <span className="text-xs text-gray-600">(Highlight for client)</span>
+          <label className="font-semibold text-gray-700">Agent's Pick</label>
+          <span className="text-xs text-gray-600">(Recommend to client)</span>
         </div>
         <button
           type="button"
@@ -886,6 +889,15 @@ const PropertyForm = ({
                 <Download size={16} />
                 <span>Download Template</span>
               </button>
+              {properties && properties.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { if (window.confirm(`Delete all ${properties.length} properties?`)) setProperties([]); }}
+                  className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center transition-transform hover:scale-105"
+                >
+                  <Trash2 size={18} className="mr-2" /> Delete All
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1167,6 +1179,27 @@ const PropertyForm = ({
                               <p className="text-gray-600 text-sm mb-3">
                                 {property.description}
                               </p>
+
+                              {adminMode && (
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const updated = properties.map(p => p.id === property.id ? { ...p, recommended: !p.recommended } : p);
+                                      setProperties(updated);
+                                    }}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                      property.recommended
+                                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                        : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                                    }`}
+                                    title={property.recommended ? "Remove Agent's Pick" : "Set as Agent's Pick"}
+                                  >
+                                    <Star size={14} className={property.recommended ? 'fill-amber-400 text-amber-600' : ''} />
+                                    <span>Agent's Pick</span>
+                                  </button>
+                                </div>
+                              )}
 
                               <div className="flex justify-between items-end mt-4">
                                 <div className="flex items-center text-gray-700 text-sm space-x-3">

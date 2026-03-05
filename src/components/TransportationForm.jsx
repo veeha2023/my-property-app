@@ -1,6 +1,6 @@
 // src/components/TransportationForm.jsx - Version 2.7 (Image Link Input Fix)
 import React, { useState, useMemo, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, Car, Calendar, MapPin, ShieldCheck, Users, Link2, Ship, Bus, CheckCircle, Upload, Download } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Car, Calendar, MapPin, ShieldCheck, Users, Link2, Ship, Bus, CheckCircle, Upload, Download, Star } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
 
 const TransportationForm = ({ transportation, setTransportation, itineraryLegs }) => {
@@ -141,6 +141,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
       currency: 'NZD',
       images: [],
       selected: false,
+      recommended: false,
     };
 
     switch (type) {
@@ -323,6 +324,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
             currency: transportData.currency || 'NZD',
             images: transportData.images ? transportData.images.split(/[;\r\n]+/).map(url => url.trim()).filter(Boolean) : [],
             selected: transportData.selected ? transportData.selected.toUpperCase() === 'TRUE' : false,
+            recommended: transportData.recommended?.toUpperCase() === 'TRUE',
           };
 
           // Add type-specific fields
@@ -412,8 +414,8 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   };
 
   const downloadTemplate = () => {
-    const headers = "transportType,name,price,currency,images,selected,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
-    const example = `"car","Luxury Sedan","150","NZD","https://example.com/car1.jpg;https://example.com/car2.jpg","TRUE","Sedan","Auckland Airport","2025-10-20","10:00","Queenstown Airport","2025-10-25","14:00","Full","500","1","","","","","","","","","","","","",""`;
+    const headers = "transportType,name,price,currency,images,selected,recommended,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
+    const example = `"car","Luxury Sedan","150","NZD","https://example.com/car1.jpg;https://example.com/car2.jpg","TRUE","FALSE","Sedan","Auckland Airport","2025-10-20","10:00","Queenstown Airport","2025-10-25","14:00","Full","500","1","","","","","","","","","","","","",""`;
     const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;). transportType can be 'car', 'ferry', 'bus', or 'driver'. Use YYYY-MM-DD format for dates.";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
@@ -431,8 +433,8 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
       return;
     }
 
-    const headers = "transportType,name,price,currency,images,selected,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
-    
+    const headers = "transportType,name,price,currency,images,selected,recommended,type,pickupLocation,pickupDate,pickupTime,dropoffLocation,dropoffDate,dropoffTime,insurance,excessAmount,driversIncluded,boardingFrom,boardingDate,boardingTime,departingTo,departingDate,departingTime,duration,baggageAllowance,carType,location,pickupFrom,dropoffTo";
+
     const csvRows = transportation.map(item => {
       const row = [
         item.transportType || '',
@@ -441,6 +443,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         item.currency || 'NZD',
         (item.images || []).join(';'),
         item.selected ? 'TRUE' : 'FALSE',
+        item.recommended ? 'TRUE' : 'FALSE',
         item.type || item.carType || '',
         item.pickupLocation || '',
         item.pickupDate || '',
@@ -584,6 +587,25 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
                   </option>
                 ))}
               </select></div>
+              <div className="lg:col-span-3 flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex items-center gap-2">
+                  <label className="font-semibold text-gray-700">Agent's Pick</label>
+                  <span className="text-xs text-gray-600">(Recommend to client)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setData({ ...data, recommended: !data.recommended })}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+                    data.recommended ? 'bg-amber-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                      data.recommended ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
               <div className="lg:col-span-3">
                   <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
                   <textarea rows="3" value={imageLinks} onChange={(e) => setImageLinks(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
@@ -651,10 +673,26 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
             </>}
           </div>
         </div>
-        <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
+        <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0 flex flex-col items-end gap-2">
           <span className={`text-3xl font-bold whitespace-nowrap ${priceColor}`}>
             {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(price))}`}
           </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const updated = (transportation || []).map(t => t.id === item.id ? { ...t, recommended: !t.recommended } : t);
+              setTransportation(updated);
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+              item.recommended
+                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+            }`}
+            title={item.recommended ? "Remove Agent's Pick" : "Set as Agent's Pick"}
+          >
+            <Star size={14} className={item.recommended ? 'fill-amber-400 text-amber-600' : ''} />
+            <span>Agent's Pick</span>
+          </button>
         </div>
         <div className="absolute top-4 right-4 flex space-x-2">
             <button
@@ -732,6 +770,15 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
                 <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
                     <Plus size={18} className="mr-2" /> Add New Transportation
                 </button>
+                {transportation && transportation.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { if (window.confirm(`Delete all ${transportation.length} transportation items?`)) setTransportation([]); }}
+                    className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center transition-transform hover:scale-105"
+                  >
+                    <Trash2 size={18} className="mr-2" /> Delete All
+                  </button>
+                )}
             </div>
         </div>
         <div className="text-right mb-4">

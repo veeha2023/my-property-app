@@ -1,6 +1,6 @@
 // src/components/ActivityForm.jsx - Version 4.3 (Discount Support)
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download, Tag } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download, Tag, Star } from 'lucide-react';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
 
 const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
@@ -171,7 +171,6 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       recommended: false, // Agent's Pick toggle
       discount_type: '',
       discount_value: 0,
-      discount_label: '',
     });
     setShowDateTime(false); // Default to false for new activities
   };
@@ -187,7 +186,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     // Parse discount fields
     activityToSave.discount_value = activityToSave.discount_type ? (parseFloat(activityToSave.discount_value) || 0) : 0;
     if (!activityToSave.discount_type) {
-      activityToSave.discount_label = '';
+      delete activityToSave.discount_label;
     }
 
     // Calculate and store the base price contribution (discounted) for this activity
@@ -321,7 +320,6 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     if (raw.selected !== '') existing.selected = raw.selected.toLowerCase() !== 'false';
                     if (raw.discount_type !== undefined && raw.discount_type !== '') existing.discount_type = raw.discount_type;
                     if (raw.discount_value !== undefined && raw.discount_value !== '') existing.discount_value = parseFloat(raw.discount_value) || 0;
-                    if (raw.discount_label !== undefined && raw.discount_label !== '') existing.discount_label = raw.discount_label;
                     // Recalculate base_price (with discount)
                     const rawBP = ((parseFloat(existing.cost_per_pax) || 0) * (parseInt(existing.pax, 10) || 1)) + (parseFloat(existing.flat_price) || 0);
                     existing.base_price = applyDiscount(rawBP, existing.discount_type, existing.discount_value);
@@ -342,7 +340,6 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     }
                     const discountType = raw.discount_type || '';
                     const discountValue = parseFloat(raw.discount_value) || 0;
-                    const discountLabel = raw.discount_label || '';
                     const discountedBasePrice = applyDiscount(basePrice, discountType, discountValue);
                     brandNewActivities.push({
                         id: `act-csv-${Date.now()}-${index}`,
@@ -361,7 +358,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                         selected: selected,
                         discount_type: discountType,
                         discount_value: discountValue,
-                        discount_label: discountLabel,
+                        recommended: raw.recommended?.toUpperCase() === 'TRUE',
                     });
                 }
             });
@@ -382,9 +379,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
 
   const downloadTemplate = () => {
     // --- CSV TEMPLATE UPDATE ---
-    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,discount_type,discount_value,discount_label";
-    const exampleWithDate = "Skydiving,Queenstown,3,2,140,50,NZD,https://example.com/image1.jpg,true,2025-08-15,10:00,percentage,20,Early Bird";
-    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,25,0,NZD,https://example.com/hike.jpg,false,,,,,";
+    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,discount_type,discount_value,recommended";
+    const exampleWithDate = "Skydiving,Queenstown,3,2,140,50,NZD,https://example.com/image1.jpg,true,2025-08-15,10:00,percentage,20,FALSE";
+    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,25,0,NZD,https://example.com/hike.jpg,false,,,,,FALSE";
 
     const note = [
         "\n# NOTE: Required headers are: name, location, duration, pax, cost_per_pax, currency, images.",
@@ -396,7 +393,8 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         "# Base price is calculated as: (cost_per_pax × pax) + flat_price",
         "# 'discount_type' - percentage or fixed. Leave blank for no discount.",
         "# 'discount_value' - e.g. 20 for 20% off, or 50 for $50 off.",
-        "# 'discount_label' - optional label like 'Early Bird' or 'Group Rate'."
+        "# Discount label is auto-generated from type and value.",
+        "# 'recommended' - TRUE to mark as Agent's Pick. Defaults to FALSE."
     ].join('\n');
 
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${exampleWithDate}\n${exampleWithoutDate}${note}`;
@@ -416,7 +414,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       setError("No activities to export.");
       return;
     }
-    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,selected,discount_type,discount_value,discount_label";
+    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,selected,discount_type,discount_value,recommended";
     const rows = activities.map(act => {
       const escapeCsvField = (val) => {
         const str = String(val ?? '');
@@ -437,7 +435,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         act.selected !== false,
         act.discount_type || '',
         act.discount_value || 0,
-        escapeCsvField(act.discount_label || ''),
+        act.recommended ? 'TRUE' : 'FALSE',
       ].join(',');
     });
     const csvContent = [headers, ...rows].join('\n');
@@ -555,12 +553,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             <Tag size={16} className="text-green-600" />
             <label className="font-semibold text-gray-700">Discount</label>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
               <select
                 value={activityData.discount_type || ''}
-                onChange={(e) => setActivityData({ ...activityData, discount_type: e.target.value, ...(e.target.value === '' ? { discount_value: 0, discount_label: '' } : {}) })}
+                onChange={(e) => setActivityData({ ...activityData, discount_type: e.target.value, ...(e.target.value === '' ? { discount_value: 0 } : {}) })}
                 className="block w-full p-2 border border-gray-300 rounded-md shadow-sm"
               >
                 <option value="">No Discount</option>
@@ -582,16 +580,6 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     value={activityData.discount_value || ''}
                     onChange={(e) => setActivityData({ ...activityData, discount_value: e.target.value })}
                     placeholder={activityData.discount_type === 'percentage' ? 'e.g. 20' : 'e.g. 50'}
-                    className="block w-full p-2 border border-gray-300 rounded-md shadow-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Label (optional)</label>
-                  <input
-                    type="text"
-                    value={activityData.discount_label || ''}
-                    onChange={(e) => setActivityData({ ...activityData, discount_label: e.target.value })}
-                    placeholder="e.g. Early Bird, Group Rate"
                     className="block w-full p-2 border border-gray-300 rounded-md shadow-sm"
                   />
                 </div>
@@ -657,6 +645,15 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     accept=".csv"
                     onChange={handleFileUpload}
                 />
+                {activities && activities.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { if (window.confirm(`Delete all ${activities.length} activities?`)) setActivities([]); }}
+                    className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center transition-transform hover:scale-105"
+                  >
+                    <Trash2 size={18} className="mr-2" /> Delete All
+                  </button>
+                )}
                 <button onClick={exportActivitiesToCSV} className="bg-gray-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800 flex items-center transition-transform hover:scale-105">
                     <Download size={18} className="mr-2" /> Export to CSV
                 </button>
@@ -740,7 +737,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                           <div className="absolute top-3 right-3 flex space-x-2">
                             <button onClick={(e) => {
                                 e.stopPropagation();
-                                setEditingActivity({ ...activity, recommended: activity.recommended || false, discount_type: activity.discount_type || '', discount_value: activity.discount_value || 0, discount_label: activity.discount_label || '' });
+                                setEditingActivity({ ...activity, recommended: activity.recommended || false, discount_type: activity.discount_type || '', discount_value: activity.discount_value || 0 });
                                 setShowDateTime(!!(activity.date || activity.time)); // Show if date or time exists
                                 setAddingToLocation(null);
                             }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
@@ -777,7 +774,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                                   {getCurrencySymbol(activity.currency)}{formatNumberWithCommas(applyDiscount(basePrice, activity.discount_type, activity.discount_value))}
                                 </span>
                                 <div className="text-xs text-green-600 mt-1">
-                                  {activity.discount_label || (activity.discount_type === 'percentage' ? `${activity.discount_value}% Off` : `${getCurrencySymbol(activity.currency)}${activity.discount_value} Off`)}
+                                  {activity.discount_type === 'percentage' ? `${activity.discount_value}% Off` : `${getCurrencySymbol(activity.currency)}${activity.discount_value} Off`}
                                 </div>
                               </>
                             ) : (
@@ -786,6 +783,24 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                               </span>
                             )}
                             {isIncluded && <div className="text-xs text-green-600 mt-1">Included in Base</div>}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex justify-start">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const updated = activities.map(a => a.id === activity.id ? { ...a, recommended: !a.recommended } : a);
+                                setActivities(updated);
+                              }}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                activity.recommended
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                              }`}
+                              title={activity.recommended ? "Remove Agent's Pick" : "Set as Agent's Pick"}
+                            >
+                              <Star size={14} className={activity.recommended ? 'fill-amber-400 text-amber-600' : ''} />
+                              <span>Agent's Pick</span>
+                            </button>
                           </div>
                         </div>
                       </div>
