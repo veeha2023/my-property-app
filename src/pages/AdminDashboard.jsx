@@ -976,7 +976,10 @@ const AdminDashboard = () => {
   const handleOpenEditClientModal = useCallback((client) => {
     setSelectedClient(client);
     setEditingClientName(client.client_name);
-    const currentData = initializeClientData(client.client_properties);
+    // Use live clientData if this client is already selected (avoids stale sidebar list values)
+    const currentData = (clientData && selectedClient && selectedClient.id === client.id)
+        ? clientData
+        : initializeClientData(client.client_properties);
     setEditingClientQuote(currentData.quote);
     setEditingClientCurrency(currentData.currency || 'NZD');
     setEditingConversionDate(currentData.conversion_rate_date || new Date().toISOString().split('T')[0]);
@@ -986,7 +989,7 @@ const AdminDashboard = () => {
         setShareLink('');
     }
     setShowEditClientModal(true);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clientData, selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdateClientDetails = async (e) => {
     e.preventDefault();
