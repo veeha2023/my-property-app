@@ -7,7 +7,8 @@ import {
   Calendar, MapPin, Check, X, ChevronLeft, ChevronRight,
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
-  ChevronDown, ChevronUp, Minus, Plus, Info, Star
+  ChevronDown, ChevronUp, Minus, Plus, Info, Star,
+  Instagram
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
@@ -19,6 +20,20 @@ import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
 import ItineraryRouteVisualization from '../components/ItineraryRouteVisualization.jsx';
 import QuickStats from '../components/QuickStats.jsx';
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx';
+
+const WhatsAppIcon = ({ size = 18, className = '' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    className={className}
+  >
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.464 3.488" />
+  </svg>
+);
 
 const PlaceholderContent = ({ title }) => (
   <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-lg">
@@ -54,6 +69,7 @@ const ClientView = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [globalLogoUrl, setGlobalLogoUrl] = useState(null);
+  const [b2b, setB2b] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
 
   const [currentImageIndex, setCurrentImageIndex] = useState({});
@@ -224,7 +240,7 @@ const ClientView = () => {
             throw new Error("This itinerary link is no longer active. Please contact your travel agent for assistance.");
         }
 
-        const baseData = { properties: [], activities: [], flights: [], transportation: [], quote: 0, currency: 'NZD' };
+        const baseData = { properties: [], activities: [], flights: [], transportation: [], quote: 0, currency: 'NZD', b2b: null };
         const fullClientData = { ...baseData, ...responseData.data };
 
         fullClientData.properties = (fullClientData.properties || []).map(p => ({ ...p, price: parseCurrencyToNumber(p.price) }));
@@ -235,6 +251,7 @@ const ClientView = () => {
         setClientData(fullClientData);
         setClientName(responseData.clientName || 'Client Selection');
         setGlobalLogoUrl(responseData.globalLogoUrl);
+        setB2b(fullClientData.b2b || null);
 
         // Set base currency and conversion date from client data
         const clientBaseCurrency = fullClientData.currency || 'NZD';
@@ -974,11 +991,37 @@ const ClientView = () => {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-200">
             <div className="flex items-center mb-4 md:mb-0">
-              {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" decoding="async" /> ) : ( <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div> )}
-              <div className="text-left">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-1">Veeha Travels</h1>
-                <p className="text-lg md:text-xl font-bold text-gray-900">Your Curated Selections</p>
-                <p className="text-base md:text-lg text-gray-700 mt-2">Viewing: {clientName}</p>
+              {b2b?.enabled ? (
+                b2b.logo ? (
+                  <div className="shrink-0 mr-4 sm:mr-5 h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 rounded-xl bg-gradient-to-br from-gray-800 via-gray-900 to-black shadow-md flex items-center justify-center p-1 sm:p-1.5">
+                    <img
+                      src={b2b.logo}
+                      alt={b2b.businessName || 'Company Logo'}
+                      className="max-h-full max-w-full object-contain"
+                      decoding="async"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="shrink-0 mr-4 sm:mr-5 h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 rounded-xl bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white flex items-center justify-center text-3xl sm:text-4xl font-bold shadow-md"
+                  >
+                    {b2b.businessName?.trim().charAt(0).toUpperCase() || '?'}
+                  </div>
+                )
+              ) : (
+                globalLogoUrl ? (
+                  <img src={globalLogoUrl} alt="Company Logo" className="h-14 max-h-32 w-auto max-w-full object-contain rounded-lg mr-4" decoding="async" />
+                ) : (
+                  <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs mr-4">Logo</div>
+                )
+              )}
+              <div className="text-left min-w-0">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-1 break-words">
+                  {b2b?.enabled ? (b2b.businessName || 'Travel Quote') : 'Veeha Travels'}
+                </h1>
+                <p className="text-base sm:text-lg md:text-xl font-bold text-gray-900">Your Curated Selections</p>
+                <p className="text-sm sm:text-base md:text-lg text-gray-700 mt-2 break-words">Viewing: {clientName}</p>
               </div>
             </div>
 
@@ -1243,7 +1286,7 @@ const ClientView = () => {
                                   </div>
                                   <div className="p-4 space-y-2">
                                     <h3 className="font-semibold text-lg text-gray-900 leading-tight">{property.name}</h3>
-                                    <p className="text-gray-600 text-sm mb-3 min-h-[40px]">{property.description}</p>
+                                    <p className="text-gray-600 text-sm mb-3 min-h-[40px]">{property.room_type}</p>
                                     <div className="flex items-center text-sm text-gray-600 gap-3">
                                       {(property.bedrooms > 0) && <div className="flex items-center"><BedDouble size={16} className="mr-1 text-gray-500" /><span>{property.bedrooms} Bed{property.bedrooms > 1 ? 's' : ''}</span></div>}
                                       {property.bathrooms > 0 && <div className="flex items-center"><Bath size={16} className="mr-1 text-gray-500" /><span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span></div>}
@@ -1654,6 +1697,43 @@ const ClientView = () => {
                 )}
             </div>
         )}
+
+            {b2b?.enabled && (b2b.instagram || b2b.whatsapp) && (
+              <div className="mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 p-5 sm:p-6 text-center">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1.5">
+                  Get in touch with {b2b.businessName || 'us'}
+                </h2>
+                <p className="text-sm sm:text-base text-gray-600 mb-5">
+                  We're here to answer any questions about your trip.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                  {b2b.instagram && (
+                    <a
+                      href={`https://instagram.com/${b2b.instagram}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open ${b2b.businessName || 'us'} on Instagram`}
+                      className="flex-1 inline-flex items-center justify-center gap-2.5 min-h-[48px] px-4 py-2.5 rounded-lg bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500 text-white text-sm sm:text-base font-semibold shadow-sm hover:shadow-md hover:opacity-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+                    >
+                      <Instagram size={20} className="shrink-0" />
+                      <span className="truncate">@{b2b.instagram}</span>
+                    </a>
+                  )}
+                  {b2b.whatsapp && (
+                    <a
+                      href={`https://wa.me/${b2b.whatsapp}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Chat with ${b2b.businessName || 'us'} on WhatsApp`}
+                      className="flex-1 inline-flex items-center justify-center gap-2.5 min-h-[48px] px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base font-semibold shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
+                    >
+                      <WhatsAppIcon size={20} className="shrink-0" />
+                      <span className="truncate">+{b2b.whatsapp}</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
           </div>
 

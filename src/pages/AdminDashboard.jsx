@@ -6,7 +6,7 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users, Lock, Unlock } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users, Lock, Unlock, UploadCloud } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
@@ -353,6 +353,11 @@ const AdminDashboard = () => {
   const [editingClientQuote, setEditingClientQuote] = useState(0);
   const [editingClientCurrency, setEditingClientCurrency] = useState('NZD');
   const [editingConversionDate, setEditingConversionDate] = useState('');
+  const [editingB2bEnabled, setEditingB2bEnabled] = useState(false);
+  const [editingB2bBusinessName, setEditingB2bBusinessName] = useState('');
+  const [editingB2bLogo, setEditingB2bLogo] = useState('');
+  const [editingB2bInstagram, setEditingB2bInstagram] = useState('');
+  const [editingB2bWhatsapp, setEditingB2bWhatsapp] = useState('');
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [, setShowSettingsModal] = useState(false);
@@ -473,6 +478,7 @@ const AdminDashboard = () => {
       transportation: [],
       quote: 0,
       currency: 'NZD',
+      b2b: { enabled: false, businessName: '', logo: '', instagram: '', whatsapp: '' },
     };
 
     const data = typeof clientPropertiesData === 'object' && clientPropertiesData !== null ? clientPropertiesData : {};
@@ -983,6 +989,12 @@ const AdminDashboard = () => {
     setEditingClientQuote(currentData.quote);
     setEditingClientCurrency(currentData.currency || 'NZD');
     setEditingConversionDate(currentData.conversion_rate_date || new Date().toISOString().split('T')[0]);
+    const b2b = currentData.b2b || {};
+    setEditingB2bEnabled(!!b2b.enabled);
+    setEditingB2bBusinessName(b2b.businessName || '');
+    setEditingB2bLogo(b2b.logo || '');
+    setEditingB2bInstagram(b2b.instagram || '');
+    setEditingB2bWhatsapp(b2b.whatsapp || '');
     if (client.share_token) {
         setShareLink(`${window.location.origin}/client/${client.id}?token=${client.share_token}`);
     } else {
@@ -1026,6 +1038,13 @@ const AdminDashboard = () => {
             activities: updatedActivities,
             transportation: updatedTransportation,
             flights: updatedFlights,
+            b2b: {
+                enabled: editingB2bEnabled,
+                businessName: editingB2bBusinessName.trim(),
+                logo: editingB2bLogo,
+                instagram: editingB2bInstagram.replace(/^@/, '').trim(),
+                whatsapp: editingB2bWhatsapp.replace(/\D/g, ''),
+            },
         };
         const { error: updateClientError } = await supabase
             .from('clients')
@@ -1139,7 +1158,7 @@ const AdminDashboard = () => {
 
       {showEditClientModal && selectedClient && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800 max-h-[90vh] overflow-y-auto">
                 <button onClick={() => setShowEditClientModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-800" aria-label="Close modal"><X size={24} /></button>
                 <h2 className="text-2xl font-bold text-yellow-400 mb-6">Edit Client: {selectedClient.client_name}</h2>
                 <form onSubmit={handleUpdateClientDetails} className="space-y-4">
@@ -1178,6 +1197,141 @@ const AdminDashboard = () => {
                             required
                         />
                         <p className="text-xs text-gray-500 mt-1">Exchange rates will be locked to this date for client currency conversion</p>
+                    </div>
+                    <div className="border-t border-gray-200 pt-4 mt-2 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800">B2B White-Label Branding</p>
+                                <p className="text-xs text-gray-500">Hide Veeha branding and show this client's own business identity instead.</p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={editingB2bEnabled}
+                                onClick={() => setEditingB2bEnabled(v => !v)}
+                                className={`relative inline-flex shrink-0 w-11 h-6 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2 ${editingB2bEnabled ? 'bg-yellow-400' : 'bg-gray-300'}`}
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className={`pointer-events-none inline-block w-5 h-5 rounded-full bg-white shadow transform motion-safe:transition-transform mt-0.5 ${editingB2bEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
+                                />
+                            </button>
+                        </div>
+                        {editingB2bEnabled && (
+                            <div className="space-y-3 pt-2">
+                                <div>
+                                    <label htmlFor="editingB2bBusinessName" className="block text-sm font-medium text-gray-800">
+                                        Business Name
+                                        <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="editingB2bBusinessName"
+                                        value={editingB2bBusinessName}
+                                        onChange={(e) => setEditingB2bBusinessName(e.target.value)}
+                                        maxLength={60}
+                                        placeholder="Acme Travels"
+                                        required={editingB2bEnabled}
+                                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-800">Business Logo</label>
+                                    {editingB2bLogo ? (
+                                        <div className="mt-1 flex items-center gap-3 p-2 border border-gray-200 rounded-md bg-gray-50">
+                                            <img src={editingB2bLogo} alt="Logo preview" className="h-10 w-10 object-contain rounded bg-white border border-gray-200" />
+                                            <span className="flex-1 text-sm text-gray-700">Logo uploaded</span>
+                                            <label className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded focus-within:ring-2 focus-within:ring-yellow-400 focus-within:ring-offset-2">
+                                                Replace
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="sr-only"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        if (file.size > 500 * 1024) {
+                                                            setError('Logo file too large. Please upload an image under 500 KB.');
+                                                            e.target.value = '';
+                                                            return;
+                                                        }
+                                                        try {
+                                                            const dataUrl = await fileToBase64(file);
+                                                            setEditingB2bLogo(dataUrl);
+                                                            setError(null);
+                                                        } catch (err) {
+                                                            setError('Failed to read logo file: ' + err.message);
+                                                        }
+                                                        e.target.value = '';
+                                                    }}
+                                                />
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingB2bLogo('')}
+                                                aria-label="Remove logo"
+                                                className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <label className="mt-1 flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-yellow-400 hover:bg-yellow-50 cursor-pointer transition-colors">
+                                            <UploadCloud size={20} />
+                                            <span>Click to upload PNG/JPG (max 500 KB)</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="sr-only"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    if (file.size > 500 * 1024) {
+                                                        setError('Logo file too large. Please upload an image under 500 KB.');
+                                                        e.target.value = '';
+                                                        return;
+                                                    }
+                                                    try {
+                                                        const dataUrl = await fileToBase64(file);
+                                                        setEditingB2bLogo(dataUrl);
+                                                        setError(null);
+                                                    } catch (err) {
+                                                        setError('Failed to read logo file: ' + err.message);
+                                                    }
+                                                    e.target.value = '';
+                                                }}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                                <div>
+                                    <label htmlFor="editingB2bInstagram" className="block text-sm font-medium text-gray-800">Instagram Handle</label>
+                                    <div className="mt-1 flex rounded-md border border-gray-300 focus-within:ring-2 focus-within:ring-yellow-400 focus-within:border-yellow-400 overflow-hidden">
+                                        <span className="px-3 py-2 bg-gray-50 text-gray-500 text-sm border-r border-gray-300">@</span>
+                                        <input
+                                            type="text"
+                                            id="editingB2bInstagram"
+                                            value={editingB2bInstagram}
+                                            onChange={(e) => setEditingB2bInstagram(e.target.value)}
+                                            placeholder="acmetravels"
+                                            className="flex-1 p-2 bg-white text-gray-800 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label htmlFor="editingB2bWhatsapp" className="block text-sm font-medium text-gray-800">WhatsApp Number</label>
+                                    <input
+                                        type="tel"
+                                        id="editingB2bWhatsapp"
+                                        value={editingB2bWhatsapp}
+                                        onChange={(e) => setEditingB2bWhatsapp(e.target.value)}
+                                        placeholder="e.g. 919876543210"
+                                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white text-gray-800 focus:ring-yellow-400 focus:border-yellow-400"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Country code + number, digits only (no + sign). Example: 919876543210</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200" disabled={loading}>
                         {loading ? 'Updating...' : 'Update Details'}
