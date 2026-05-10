@@ -755,6 +755,25 @@ const ClientView = () => {
     return Array.from(locationSet);
   }, [clientData?.properties]);
 
+  // Per-stay rows for the itinerary table (one row per selected property, sorted by check-in)
+  const itineraryStays = useMemo(() => {
+    if (!clientData?.properties) return [];
+    return clientData.properties
+      .filter(p => p.selected && !p.isPlaceholder)
+      .map(p => {
+        const checkInIso = parseDateString(p.checkIn);
+        return {
+          location: p.location || '—',
+          checkIn: formatDate(p.checkIn),
+          checkOut: formatDate(p.checkOut),
+          nights: calculateNights(p.checkIn, p.checkOut),
+          sortKey: checkInIso ? new Date(checkInIso + 'T00:00:00').getTime() : 0,
+        };
+      })
+      .sort((a, b) => a.sortKey - b.sortKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientData?.properties]);
+
   // Calculate total nights across all selected properties
   const totalNights = useMemo(() => {
     if (!clientData?.properties) return 0;
@@ -1081,7 +1100,7 @@ const ClientView = () => {
             <div role="tabpanel" id="summary-panel" aria-labelledby="summary-tab" className="space-y-6">
               {/* Route Visualization */}
               <ItineraryRouteVisualization
-                locations={uniqueLocations}
+                stays={itineraryStays}
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
                 totalNights={totalNights}
@@ -1706,17 +1725,17 @@ const ClientView = () => {
                 <p className="text-sm sm:text-base text-gray-600 mb-5">
                   We're here to answer any questions about your trip.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                <div className="flex items-center justify-center gap-4">
                   {b2b.instagram && (
                     <a
                       href={`https://instagram.com/${b2b.instagram}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={`Open ${b2b.businessName || 'us'} on Instagram`}
-                      className="flex-1 inline-flex items-center justify-center gap-2.5 min-h-[48px] px-4 py-2.5 rounded-lg bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500 text-white text-sm sm:text-base font-semibold shadow-sm hover:shadow-md hover:opacity-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+                      aria-label={`Open ${b2b.businessName || 'us'} on Instagram (@${b2b.instagram})`}
+                      title={`@${b2b.instagram}`}
+                      className="group relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-pink-500 to-purple-600 text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
                     >
-                      <Instagram size={20} className="shrink-0" />
-                      <span className="truncate">@{b2b.instagram}</span>
+                      <Instagram size={26} strokeWidth={2} className="shrink-0" />
                     </a>
                   )}
                   {b2b.whatsapp && (
@@ -1724,11 +1743,11 @@ const ClientView = () => {
                       href={`https://wa.me/${b2b.whatsapp}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={`Chat with ${b2b.businessName || 'us'} on WhatsApp`}
-                      className="flex-1 inline-flex items-center justify-center gap-2.5 min-h-[48px] px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base font-semibold shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
+                      aria-label={`Chat with ${b2b.businessName || 'us'} on WhatsApp (+${b2b.whatsapp})`}
+                      title={`+${b2b.whatsapp}`}
+                      className="group relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#25D366] text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 hover:bg-[#1DA851] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
                     >
-                      <WhatsAppIcon size={20} className="shrink-0" />
-                      <span className="truncate">+{b2b.whatsapp}</span>
+                      <WhatsAppIcon size={26} className="shrink-0" />
                     </a>
                   )}
                 </div>
