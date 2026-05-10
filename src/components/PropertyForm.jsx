@@ -44,7 +44,7 @@ const PropertyForm = ({
     price: '',
     price_type: 'Per Night',
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
-    selected: false, description: '', category: 'Luxury',
+    selected: false, room_type: '', category: 'Luxury',
     recommended: false, // Recommended property toggle
   });
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -62,7 +62,7 @@ const PropertyForm = ({
     price: '',
     price_type: 'Per Night',
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
-    selected: false, description: '', category: 'Luxury',
+    selected: false, room_type: '', category: 'Luxury',
     recommended: false, // Recommended property toggle
   };
 
@@ -179,7 +179,7 @@ const PropertyForm = ({
         const requiredHeaders = [
           'name', 'location', 'checkIn', 'checkOut', 'currency', 'price',
           'price_type', 'bedrooms', 'bathrooms', 'images', 'homeImageIndex',
-          'selected', 'description', 'category'
+          'selected', 'room_type', 'category'
         ];
         
         if (!requiredHeaders.every(h => headers.includes(h))) {
@@ -215,7 +215,7 @@ const PropertyForm = ({
               images: propertyData.images ? propertyData.images.split(/[;\r\n]+/).map(url => url.trim()).filter(Boolean) : [],
               homeImageIndex: parseInt(propertyData.homeImageIndex, 10) || 0,
               selected: propertyData.selected ? propertyData.selected.toUpperCase() === 'TRUE' : false,
-              description: propertyData.description,
+              room_type: propertyData.room_type,
               category: propertyData.category || 'Luxury',
               isPlaceholder: false,
               recommended: propertyData.recommended?.toUpperCase() === 'TRUE',
@@ -251,8 +251,8 @@ const PropertyForm = ({
   };
 
   const downloadTemplate = () => {
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category,recommended";
-    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","A stunning villa with lake views, perfect for a getaway.","Luxury","FALSE"`;
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended";
+    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","Deluxe Suite","Luxury","FALSE"`;
     const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;) or newlines. If using newlines, the entire cell must be enclosed in double quotes (\").";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
@@ -270,7 +270,7 @@ const PropertyForm = ({
       return;
     }
 
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,description,category,recommended";
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended";
 
     const csvRows = properties.map(property => {
       const row = [
@@ -286,7 +286,7 @@ const PropertyForm = ({
         (property.images || []).join(';'),
         property.homeImageIndex || 0,
         property.selected ? 'TRUE' : 'FALSE',
-        property.description || '',
+        property.room_type || '',
         property.category || 'Luxury',
         property.recommended ? 'TRUE' : 'FALSE'
       ];
@@ -756,11 +756,11 @@ const PropertyForm = ({
         </div>
       </div>
       <div className="mb-6">
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+        <label htmlFor="room_type" className="block text-sm font-medium text-gray-700">Room Type</label>
         <textarea
-          id="description"
-          value={currentProperty.description}
-          onChange={(e) => setProperty(prev => ({ ...prev, description: e.target.value }))}
+          id="room_type"
+          value={currentProperty.room_type}
+          onChange={(e) => setProperty(prev => ({ ...prev, room_type: e.target.value }))}
           rows="4"
           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
         />
@@ -1177,7 +1177,7 @@ const PropertyForm = ({
                                 {property.location}
                               </p>
                               <p className="text-gray-600 text-sm mb-3">
-                                {property.description}
+                                {property.room_type}
                               </p>
 
                               {adminMode && (
