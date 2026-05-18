@@ -105,3 +105,30 @@ export const parseDateFlexible = (value) => {
   // 6. Unrecognized -> raw, untouched
   return s;
 };
+
+// Returns a normalized 24h HH:MM when parseable, otherwise the raw string.
+export const parseTimeFlexible = (value) => {
+  if (value === null || value === undefined) return '';
+  const s = String(value).trim();
+  if (!s) return '';
+
+  let m = s.match(/^(\d{1,2}):(\d{2})$/); // 24h H:MM / HH:MM
+  if (m) {
+    const h = Math.min(23, parseInt(m[1], 10));
+    return `${String(h).padStart(2, '0')}:${m[2]}`;
+  }
+
+  m = s.toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/); // 12h
+  if (m) {
+    let h = parseInt(m[1], 10) % 12;
+    if (m[3] === 'pm') h += 12;
+    return `${String(h).padStart(2, '0')}:${m[2] || '00'}`;
+  }
+
+  m = s.match(/^(\d{2})(\d{2})$/); // compact HHMM
+  if (m && parseInt(m[1], 10) < 24 && parseInt(m[2], 10) < 60) {
+    return `${m[1]}:${m[2]}`;
+  }
+
+  return s; // unrecognized -> raw
+};

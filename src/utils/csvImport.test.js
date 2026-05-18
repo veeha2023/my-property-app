@@ -1,4 +1,4 @@
-import { parseCSV, parseDateFlexible } from './csvImport';
+import { parseCSV, parseDateFlexible, parseTimeFlexible } from './csvImport';
 
 describe('parseCSV', () => {
   test('splits simple rows and cells, trims values', () => {
@@ -68,5 +68,30 @@ describe('parseDateFlexible', () => {
   });
   test('3-digit year falls through to raw', () => {
     expect(parseDateFlexible('15 May 202')).toBe('15 May 202');
+  });
+});
+
+describe('parseTimeFlexible', () => {
+  test('24h H:MM / HH:MM normalized, padded', () => {
+    expect(parseTimeFlexible('9:00')).toBe('09:00');
+    expect(parseTimeFlexible('21:30')).toBe('21:30');
+  });
+  test('12h am/pm forms', () => {
+    expect(parseTimeFlexible('9am')).toBe('09:00');
+    expect(parseTimeFlexible('9 AM')).toBe('09:00');
+    expect(parseTimeFlexible('9:30 pm')).toBe('21:30');
+    expect(parseTimeFlexible('12am')).toBe('00:00');
+    expect(parseTimeFlexible('12pm')).toBe('12:00');
+  });
+  test('HHMM compact form', () => {
+    expect(parseTimeFlexible('0900')).toBe('09:00');
+    expect(parseTimeFlexible('2130')).toBe('21:30');
+  });
+  test('unrecognized text returned raw', () => {
+    expect(parseTimeFlexible('morning')).toBe('morning');
+  });
+  test('empty / null -> empty string', () => {
+    expect(parseTimeFlexible('')).toBe('');
+    expect(parseTimeFlexible(null)).toBe('');
   });
 });
