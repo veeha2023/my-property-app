@@ -1,4 +1,4 @@
-import { parseCSV, parseDateFlexible, parseTimeFlexible, parseNumberFlexible } from './csvImport';
+import { parseCSV, parseDateFlexible, parseTimeFlexible, parseNumberFlexible, formatDateSafe, formatTimeSafe } from './csvImport';
 
 describe('parseCSV', () => {
   test('splits simple rows and cells, trims values', () => {
@@ -133,5 +133,33 @@ describe('parseNumberFlexible', () => {
   });
   test('undefined returns fallback', () => {
     expect(parseNumberFlexible(undefined, 1)).toBe(1);
+  });
+});
+
+describe('formatDateSafe', () => {
+  test('formats a real date exactly like the legacy formatDate', () => {
+    expect(formatDateSafe('2026-05-18')).toBe('18 May 2026');
+    expect(formatDateSafe('5/3/2026')).toBe('5 Mar 2026');
+  });
+  test('echoes raw text instead of "Invalid Date"', () => {
+    expect(formatDateSafe('sometime in spring')).toBe('sometime in spring');
+  });
+  test('empty -> N/A (legacy parity)', () => {
+    expect(formatDateSafe('')).toBe('N/A');
+    expect(formatDateSafe(null)).toBe('N/A');
+  });
+});
+
+describe('formatTimeSafe', () => {
+  test('formats real time exactly like the legacy formatTime', () => {
+    expect(formatTimeSafe('09:00')).toBe('9:00 AM');
+    expect(formatTimeSafe('21:30')).toBe('9:30 PM');
+    expect(formatTimeSafe('9am')).toBe('9:00 AM');
+  });
+  test('echoes raw text instead of "Invalid Time"', () => {
+    expect(formatTimeSafe('morning')).toBe('morning');
+  });
+  test('empty -> N/A (legacy parity)', () => {
+    expect(formatTimeSafe('')).toBe('N/A');
   });
 });

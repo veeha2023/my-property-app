@@ -149,3 +149,35 @@ export const parseNumberFlexible = (value, fallback = 0) => {
   const n = parseFloat(cleaned);
   return Number.isNaN(n) ? fallback : n;
 };
+
+// Pretty-prints a real date (identical output to the legacy formatDate);
+// for anything that can't be normalized, returns the raw value as-is.
+export const formatDateSafe = (value) => {
+  if (!value) return 'N/A';
+  const norm = parseDateFlexible(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(norm)) {
+    const d = new Date(norm + 'T00:00:00');
+    if (!Number.isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric',
+      }).format(d);
+    }
+  }
+  return String(value);
+};
+
+// Pretty-prints a real time (identical output to the legacy formatTime);
+// for anything that can't be normalized, returns the raw value as-is.
+export const formatTimeSafe = (value) => {
+  if (!value) return 'N/A';
+  const norm = parseTimeFlexible(value);
+  const m = norm.match(/^(\d{1,2}):(\d{2})$/);
+  if (m) {
+    const d = new Date();
+    d.setHours(parseInt(m[1], 10), parseInt(m[2], 10));
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric', minute: 'numeric', hour12: true,
+    }).format(d);
+  }
+  return String(value);
+};
