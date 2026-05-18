@@ -261,7 +261,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
                 dropoffTime: parseTimeFlexible(transportData.dropoffTime || ''),
                 insurance: transportData.insurance || 'Basic',
                 excessAmount: parseNumberFlexible(transportData.excessAmount, 0),
-                driversIncluded: (parseNumberFlexible(transportData.driversIncluded, 1) || 1)
+                driversIncluded: (Math.floor(parseNumberFlexible(transportData.driversIncluded, 1)) || 1)
               };
               break;
             case 'ferry':
