@@ -140,6 +140,7 @@ describe('formatDateSafe', () => {
   test('formats a real date exactly like the legacy formatDate', () => {
     expect(formatDateSafe('2026-05-18')).toBe('18 May 2026');
     expect(formatDateSafe('5/3/2026')).toBe('5 Mar 2026');
+    expect(formatDateSafe('2025-12-05')).toBe('5 Dec 2025');
   });
   test('echoes raw text instead of "Invalid Date"', () => {
     expect(formatDateSafe('sometime in spring')).toBe('sometime in spring');
@@ -159,7 +160,8 @@ describe('formatTimeSafe', () => {
   test('echoes raw text instead of "Invalid Time"', () => {
     expect(formatTimeSafe('morning')).toBe('morning');
   });
-  test('empty -> N/A (legacy parity)', () => {
+  test('empty / null -> N/A (legacy parity)', () => {
     expect(formatTimeSafe('')).toBe('N/A');
+    expect(formatTimeSafe(null)).toBe('N/A');
   });
 });
