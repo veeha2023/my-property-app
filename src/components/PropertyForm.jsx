@@ -938,7 +938,7 @@ const PropertyForm = ({
                     <p className="text-sm text-gray-600">
                       <Calendar size={14} className="inline mr-1 text-gray-500" />
                       {itineraryDetails?.checkIn && itineraryDetails?.checkOut ?
-                        `${formatDateSafe(itineraryDetails.checkIn)} - ${formatDateSafe(itineraryDetails.checkOut)} · ${calculateNights(itineraryDetails.checkIn, itineraryDetails.checkOut)} nights`
+                        `${formatDateSafe(itineraryDetails.checkIn, { locale: 'en-NZ', year: '2-digit' })} - ${formatDateSafe(itineraryDetails.checkOut, { locale: 'en-NZ', year: '2-digit' })} · ${calculateNights(itineraryDetails.checkIn, itineraryDetails.checkOut)} nights`
                         : 'Dates N/A'}
                     </p>
                   </div>

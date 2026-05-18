@@ -152,15 +152,17 @@ export const parseNumberFlexible = (value, fallback = 0) => {
 
 // Pretty-prints a real date (identical output to the legacy formatDate);
 // for anything that can't be normalized, returns the raw value as-is.
-export const formatDateSafe = (value) => {
+// Optional second arg overrides locale/day/month/year (default: en-GB, 4-digit year — unchanged for existing callers).
+export const formatDateSafe = (
+  value,
+  { locale = 'en-GB', day = 'numeric', month = 'short', year = 'numeric' } = {}
+) => {
   if (!value) return 'N/A';
   const norm = parseDateFlexible(value);
   if (/^\d{4}-\d{2}-\d{2}$/.test(norm)) {
     const d = new Date(norm + 'T00:00:00');
     if (!Number.isNaN(d.getTime())) {
-      return new Intl.DateTimeFormat('en-GB', {
-        day: 'numeric', month: 'short', year: 'numeric',
-      }).format(d);
+      return new Intl.DateTimeFormat(locale, { day, month, year }).format(d);
     }
   }
   return String(value);

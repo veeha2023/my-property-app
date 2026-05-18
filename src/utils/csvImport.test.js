@@ -149,6 +149,14 @@ describe('formatDateSafe', () => {
     expect(formatDateSafe('')).toBe('N/A');
     expect(formatDateSafe(null)).toBe('N/A');
   });
+  test('respects optional format options (locale + 2-digit year)', () => {
+    expect(
+      formatDateSafe('2026-05-18', { locale: 'en-NZ', year: '2-digit' })
+    ).toBe('18 May 26');
+  });
+  test('default options unchanged when second arg omitted', () => {
+    expect(formatDateSafe('2026-05-18')).toBe('18 May 2026');
+  });
 });
 
 describe('formatTimeSafe', () => {
