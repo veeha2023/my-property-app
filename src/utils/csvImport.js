@@ -1,6 +1,11 @@
 // Shared CSV import + safe display helpers.
 // Single source of truth for all four forms.
 
+/**
+ * Parse CSV text into rows of trimmed string cells.
+ * Quote-aware: handles quoted commas, escaped "" quotes, CRLF, and newlines inside quoted fields.
+ * @param {string} text @returns {string[][]}
+ */
 export const parseCSV = (text) => {
   const rows = [];
   let currentLine = '';
@@ -11,6 +16,7 @@ export const parseCSV = (text) => {
     currentLine += char;
 
     if (char === '"') {
+      // NOTE: this naive toggle does not collapse escaped "" pairs; a "" immediately before an embedded newline inside a quoted field can mis-split the row. Acceptable: does not occur in this app's CSV templates. Preserved verbatim from PropertyForm.
       inQuotes = !inQuotes;
     }
 

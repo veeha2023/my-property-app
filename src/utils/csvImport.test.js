@@ -26,4 +26,8 @@ describe('parseCSV', () => {
       ['line1\nline2', 'x'],
     ]);
   });
+
+  test('trims whitespace even inside quoted fields (intentional app behavior)', () => {
+    expect(parseCSV('a\n"  hello  "')).toEqual([['a'], ['hello']]);
+  });
 });
