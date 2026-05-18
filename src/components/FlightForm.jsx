@@ -2,6 +2,14 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Plane, Briefcase, CheckCircle, Upload, Star } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
+import {
+  parseCSV,
+  parseDateFlexible,
+  parseTimeFlexible,
+  parseNumberFlexible,
+  formatDateSafe,
+  formatTimeSafe,
+} from '../utils/csvImport';
 
 const FlightForm = ({ flights, setFlights }) => {
   const [editingFlight, setEditingFlight] = useState(null);
@@ -28,41 +36,6 @@ const FlightForm = ({ flights, setFlights }) => {
     return symbols[currencyCode] || currencyCode || 'NZ$';
   };
 
-  const parseDateString = (dateString) => {
-    if (!dateString) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-      return dateString;
-    }
-    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (parts) {
-      const day = parts[1].padStart(2, '0');
-      const month = parts[2].padStart(2, '0');
-      const year = parts[3];
-      return `${year}-${month}-${day}`;
-    }
-    return dateString;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      const parsedDateStr = parseDateString(dateString);
-      const date = new Date(parsedDateStr + 'T00:00:00');
-      if (isNaN(date.getTime())) return 'Invalid Date';
-      return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
-    } catch { return 'Invalid Date'; }
-  };
-
-  const formatTime = (timeString) => {
-    if (!timeString) return 'N/A';
-    try {
-      const [hours, minutes] = timeString.split(':');
-      const date = new Date();
-      date.setHours(hours, minutes);
-      return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(date);
-    } catch { return 'Invalid Time'; }
-  };
-  
   const calculateDuration = (departureDate, departureTime, arrivalDate, arrivalTime) => {
     if (!departureDate || !departureTime || !arrivalDate || !arrivalTime) {
       return '';
@@ -182,52 +155,48 @@ const FlightForm = ({ flights, setFlights }) => {
     reader.onload = (e) => {
         try {
             const text = e.target.result;
-            const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
-            if (lines.length < 2) {
-                setError("CSV file must contain a header row and at least one data row.");
-                return;
+            const allRows = parseCSV(text).filter((r) => r.some((c) => c !== ''));
+            if (allRows.length < 2) {
+              setError('CSV file must contain a header row and at least one data row.');
+              return;
             }
-            const headers = lines[0].split(',').map(h => h.trim());
+            const headers = allRows[0];
             const requiredHeaders = ['flightType', 'airline', 'airlineLogoUrl', 'flightNumber', 'from', 'to', 'departureDate', 'departureTime', 'arrivalDate', 'arrivalTime', 'price', 'currency', 'baggage_checkInKgs', 'baggage_checkInPieces', 'baggage_cabinKgs', 'baggage_cabinPieces'];
-
-            if (!requiredHeaders.every(h => headers.includes(h))) {
-                setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
-                return;
+            if (!requiredHeaders.every((h) => headers.includes(h))) {
+              setError(`CSV must include the following headers: ${requiredHeaders.join(', ')}`);
+              return;
             }
 
-            const newFlightsFromCSV = lines.slice(1).map((line, index) => {
-                const data = line.split(',');
-                if (data.length < headers.length) return null;
+            const newFlightsFromCSV = allRows.slice(1).map((cells, index) => {
+              const flight = {};
+              headers.forEach((header, i) => {
+                flight[header] = cells[i] !== undefined ? cells[i] : '';
+              });
 
-                const flight = {};
-                headers.forEach((header, i) => {
-                    flight[header] = data[i].trim();
-                });
-
-                return {
-                    id: `flight-csv-${Date.now()}-${index}`,
-                    flightType: flight.flightType || 'domestic',
-                    airline: flight.airline,
-                    airlineLogoUrl: flight.airlineLogoUrl,
-                    flightNumber: flight.flightNumber,
-                    from: flight.from,
-                    to: flight.to,
-                    departureDate: parseDateString(flight.departureDate),
-                    departureTime: flight.departureTime,
-                    arrivalDate: parseDateString(flight.arrivalDate),
-                    arrivalTime: flight.arrivalTime,
-                    duration: '',
-                    price: parseFloat(flight.price) || 0,
-                    currency: flight.currency || 'NZD',
-                    baggage: {
-                        checkInKgs: parseInt(flight.baggage_checkInKgs, 10) || 0,
-                        checkInPieces: parseInt(flight.baggage_checkInPieces, 10) || 0,
-                        cabinKgs: parseInt(flight.baggage_cabinKgs, 10) || 0,
-                        cabinPieces: parseInt(flight.baggage_cabinPieces, 10) || 0,
-                    },
-                    selected: true,
-                    recommended: flight.recommended?.toUpperCase() === 'TRUE',
-                };
+              return {
+                id: `flight-csv-${Date.now()}-${index}`,
+                flightType: flight.flightType || 'domestic',
+                airline: flight.airline,
+                airlineLogoUrl: flight.airlineLogoUrl,
+                flightNumber: flight.flightNumber,
+                from: flight.from,
+                to: flight.to,
+                departureDate: parseDateFlexible(flight.departureDate),
+                departureTime: parseTimeFlexible(flight.departureTime),
+                arrivalDate: parseDateFlexible(flight.arrivalDate),
+                arrivalTime: parseTimeFlexible(flight.arrivalTime),
+                duration: '',
+                price: parseNumberFlexible(flight.price, 0),
+                currency: flight.currency || 'NZD',
+                baggage: {
+                  checkInKgs: parseNumberFlexible(flight.baggage_checkInKgs, 0),
+                  checkInPieces: parseNumberFlexible(flight.baggage_checkInPieces, 0),
+                  cabinKgs: parseNumberFlexible(flight.baggage_cabinKgs, 0),
+                  cabinPieces: parseNumberFlexible(flight.baggage_cabinPieces, 0),
+                },
+                selected: true,
+                recommended: flight.recommended?.toUpperCase() === 'TRUE',
+              };
             }).filter(Boolean);
 
             setFlights([...flights, ...newFlightsFromCSV]);
@@ -359,9 +328,9 @@ const FlightForm = ({ flights, setFlights }) => {
                 
                 <div className="flex items-center justify-center flex-grow-[2] text-center">
                     <div className="text-right">
-                        <p className="text-3xl font-bold">{formatTime(item.departureTime)}</p>
+                        <p className="text-3xl font-bold">{formatTimeSafe(item.departureTime)}</p>
                         <p className="text-xl font-semibold text-gray-700">{item.from}</p>
-                        <p className="text-xs text-gray-500">{formatDate(item.departureDate)}</p>
+                        <p className="text-xs text-gray-500">{formatDateSafe(item.departureDate)}</p>
                     </div>
                     <div className="mx-8 text-center">
                         <p className="text-sm text-gray-500">{duration}</p>
@@ -371,9 +340,9 @@ const FlightForm = ({ flights, setFlights }) => {
                         <p className="text-xs text-green-600 font-semibold">Direct</p>
                     </div>
                     <div className="text-left">
-                        <p className="text-3xl font-bold">{formatTime(item.arrivalTime)}</p>
+                        <p className="text-3xl font-bold">{formatTimeSafe(item.arrivalTime)}</p>
                         <p className="text-xl font-semibold text-gray-700">{item.to}</p>
-                        <p className="text-xs text-gray-500">{formatDate(item.arrivalDate)}</p>
+                        <p className="text-xs text-gray-500">{formatDateSafe(item.arrivalDate)}</p>
                     </div>
                 </div>
 
