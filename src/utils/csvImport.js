@@ -137,3 +137,14 @@ export const parseTimeFlexible = (value) => {
 
   return s; // unrecognized -> raw
 };
+
+// Strips currency symbols/spaces and thousands separators, then parses.
+// Falls back to `fallback` for empty/non-numeric input.
+export const parseNumberFlexible = (value, fallback = 0) => {
+  if (value === null || value === undefined) return fallback;
+  const s = String(value).trim();
+  if (!s) return fallback;
+  const cleaned = s.replace(/[^\d.,-]/g, '').replace(/,/g, '');
+  const n = parseFloat(cleaned);
+  return Number.isNaN(n) ? fallback : n;
+};

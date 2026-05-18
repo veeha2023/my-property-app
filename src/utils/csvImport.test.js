@@ -1,4 +1,4 @@
-import { parseCSV, parseDateFlexible, parseTimeFlexible } from './csvImport';
+import { parseCSV, parseDateFlexible, parseTimeFlexible, parseNumberFlexible } from './csvImport';
 
 describe('parseCSV', () => {
   test('splits simple rows and cells, trims values', () => {
@@ -104,5 +104,28 @@ describe('parseTimeFlexible', () => {
   });
   test('undefined -> empty string', () => {
     expect(parseTimeFlexible(undefined)).toBe('');
+  });
+});
+
+describe('parseNumberFlexible', () => {
+  test('plain numbers (legacy parity)', () => {
+    expect(parseNumberFlexible('42', 0)).toBe(42);
+    expect(parseNumberFlexible('0', 0)).toBe(0);
+    expect(parseNumberFlexible('-350', 0)).toBe(-350);
+  });
+  test('thousands separators stripped', () => {
+    expect(parseNumberFlexible('1,200', 0)).toBe(1200);
+  });
+  test('currency symbols stripped', () => {
+    expect(parseNumberFlexible('$1,200.50', 0)).toBe(1200.5);
+    expect(parseNumberFlexible('NZ$ 980', 0)).toBe(980);
+  });
+  test('non-numeric / empty returns the provided fallback', () => {
+    expect(parseNumberFlexible('TBD', 0)).toBe(0);
+    expect(parseNumberFlexible('', 1)).toBe(1);
+    expect(parseNumberFlexible(null, 1)).toBe(1);
+  });
+  test('already a number passes through', () => {
+    expect(parseNumberFlexible(7, 0)).toBe(7);
   });
 });
