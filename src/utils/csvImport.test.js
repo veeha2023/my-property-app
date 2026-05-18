@@ -110,7 +110,7 @@ describe('parseTimeFlexible', () => {
 describe('parseNumberFlexible', () => {
   test('plain numbers (legacy parity)', () => {
     expect(parseNumberFlexible('42', 0)).toBe(42);
-    expect(parseNumberFlexible('0', 0)).toBe(0);
+    expect(parseNumberFlexible('0', 99)).toBe(0);
     expect(parseNumberFlexible('-350', 0)).toBe(-350);
   });
   test('thousands separators stripped', () => {
@@ -127,5 +127,11 @@ describe('parseNumberFlexible', () => {
   });
   test('already a number passes through', () => {
     expect(parseNumberFlexible(7, 0)).toBe(7);
+  });
+  test('negative value with thousands separator (delta price)', () => {
+    expect(parseNumberFlexible('-1,200', 0)).toBe(-1200);
+  });
+  test('undefined returns fallback', () => {
+    expect(parseNumberFlexible(undefined, 1)).toBe(1);
   });
 });

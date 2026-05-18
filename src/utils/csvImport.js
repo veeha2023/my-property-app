@@ -140,6 +140,7 @@ export const parseTimeFlexible = (value) => {
 
 // Strips currency symbols/spaces and thousands separators, then parses.
 // Falls back to `fallback` for empty/non-numeric input.
+// Note: does not interpret scientific notation (e.g. "1e5") or European decimal commas; app inputs are NZD with dot-decimal.
 export const parseNumberFlexible = (value, fallback = 0) => {
   if (value === null || value === undefined) return fallback;
   const s = String(value).trim();
