@@ -21,6 +21,12 @@ import {
   Star,
 } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
+import {
+  parseCSV,
+  parseDateFlexible,
+  parseNumberFlexible,
+  formatDateSafe,
+} from '../utils/csvImport';
 
 const PropertyForm = ({
   properties,
@@ -86,75 +92,6 @@ const PropertyForm = ({
     setCurrentImageIndex(initialImageIndices);
   }, [properties]);
 
-  const parseDateString = (dateString) => {
-    if (!dateString) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-      return dateString;
-    }
-    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (parts) {
-      const day = parts[1].padStart(2, '0');
-      const month = parts[2].padStart(2, '0');
-      const year = parts[3];
-      return `${year}-${month}-${day}`;
-    }
-    return dateString;
-  };
-  
-  const parseCSV = (text) => {
-    const rows = [];
-    let currentLine = '';
-    let inQuotes = false;
-  
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      currentLine += char;
-  
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      }
-  
-      if ((char === '\n' || char === '\r') && !inQuotes) {
-        if (currentLine.trim()) {
-          rows.push(currentLine.trim());
-        }
-        currentLine = '';
-        if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
-          i++; // Skip the \n in a \r\n sequence
-        }
-      }
-    }
-  
-    if (currentLine.trim()) {
-      rows.push(currentLine.trim());
-    }
-  
-    const parseLine = (line) => {
-      const values = [];
-      let currentVal = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            currentVal += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ',' && !inQuotes) {
-          values.push(currentVal);
-          currentVal = '';
-        } else {
-          currentVal += char;
-        }
-      }
-      values.push(currentVal);
-      return values.map(v => v.trim());
-    };
-  
-    return rows.map(parseLine);
-  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -205,15 +142,15 @@ const PropertyForm = ({
               id: `prop-csv-${Date.now()}-${index}`,
               name: propertyData.name,
               location: propertyData.location,
-              checkIn: parseDateString(propertyData.checkIn),
-              checkOut: parseDateString(propertyData.checkOut),
+              checkIn: parseDateFlexible(propertyData.checkIn),
+              checkOut: parseDateFlexible(propertyData.checkOut),
               currency: propertyData.currency || 'NZD',
-              price: parseFloat(propertyData.price) || 0,
+              price: parseNumberFlexible(propertyData.price, 0),
               price_type: propertyData.price_type || 'Per Night',
-              bedrooms: parseInt(propertyData.bedrooms, 10) || 0,
-              bathrooms: parseFloat(propertyData.bathrooms) || 0,
+              bedrooms: parseNumberFlexible(propertyData.bedrooms, 0),
+              bathrooms: parseNumberFlexible(propertyData.bathrooms, 0),
               images: propertyData.images ? propertyData.images.split(/[;\r\n]+/).map(url => url.trim()).filter(Boolean) : [],
-              homeImageIndex: parseInt(propertyData.homeImageIndex, 10) || 0,
+              homeImageIndex: parseNumberFlexible(propertyData.homeImageIndex, 0),
               selected: propertyData.selected ? propertyData.selected.toUpperCase() === 'TRUE' : false,
               room_type: propertyData.room_type,
               category: propertyData.category || 'Luxury',
@@ -521,23 +458,6 @@ const PropertyForm = ({
     };
   }, [expandedImage, nextExpandedImage, prevExpandedImage, closeExpandedImage]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString + 'T00:00:00');
-      if (isNaN(date.getTime())) {
-        return 'Invalid Date';
-      }
-      return new Intl.DateTimeFormat('en-NZ', {
-        day: 'numeric',
-        month: 'short',
-        year: '2-digit'
-      }).format(date);
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return 'Error';
-    }
-  };
 
   const calculateNights = (checkIn, checkOut) => {
     if (!checkIn || !checkOut) return 0;
@@ -1018,7 +938,7 @@ const PropertyForm = ({
                     <p className="text-sm text-gray-600">
                       <Calendar size={14} className="inline mr-1 text-gray-500" />
                       {itineraryDetails?.checkIn && itineraryDetails?.checkOut ?
-                        `${formatDate(itineraryDetails.checkIn)} - ${formatDate(itineraryDetails.checkOut)} · ${calculateNights(itineraryDetails.checkIn, itineraryDetails.checkOut)} nights`
+                        `${formatDateSafe(itineraryDetails.checkIn)} - ${formatDateSafe(itineraryDetails.checkOut)} · ${calculateNights(itineraryDetails.checkIn, itineraryDetails.checkOut)} nights`
                         : 'Dates N/A'}
                     </p>
                   </div>
