@@ -91,29 +91,17 @@ export const parseDateFlexible = (value) => {
 
   // 5. Month-name forms
   const low = s.toLowerCase().replace(/,/g, '');
-  m = low.match(/^(\d{1,2})\s+([a-z]{3,})\s+(\d{2,4})$/); // 15 may 2026
+  m = low.match(/^(\d{1,2})\s+([a-z]{3,})\s+(\d{2}|\d{4})$/); // 15 may 2026
   if (m && MONTHS[m[2].slice(0, 3)]) {
     const yr = m[3].length === 2 ? `20${m[3]}` : m[3];
     return `${yr}-${MONTHS[m[2].slice(0, 3)]}-${m[1].padStart(2, '0')}`;
   }
-  m = low.match(/^([a-z]{3,})\s+(\d{1,2})\s+(\d{2,4})$/); // may 15 2026
+  m = low.match(/^([a-z]{3,})\s+(\d{1,2})\s+(\d{2}|\d{4})$/); // may 15 2026
   if (m && MONTHS[m[1].slice(0, 3)]) {
     const yr = m[3].length === 2 ? `20${m[3]}` : m[3];
     return `${yr}-${MONTHS[m[1].slice(0, 3)]}-${m[2].padStart(2, '0')}`;
   }
 
-  // 6. Last resort: only attempt Date.parse on text that contains letters
-  //    (a written date), never on bare numbers — keeps output predictable.
-  if (/[a-z]/i.test(s)) {
-    const t = Date.parse(s);
-    if (!Number.isNaN(t)) {
-      const d = new Date(t);
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${d.getFullYear()}-${mm}-${dd}`;
-    }
-  }
-
-  // 7. Unrecognized -> raw, untouched
+  // 6. Unrecognized -> raw, untouched
   return s;
 };

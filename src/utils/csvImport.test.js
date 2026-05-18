@@ -1,4 +1,4 @@
-import { parseCSV } from './csvImport';
+import { parseCSV, parseDateFlexible } from './csvImport';
 
 describe('parseCSV', () => {
   test('splits simple rows and cells, trims values', () => {
@@ -32,8 +32,6 @@ describe('parseCSV', () => {
   });
 });
 
-import { parseDateFlexible } from './csvImport';
-
 describe('parseDateFlexible', () => {
   test('passes through ISO YYYY-MM-DD unchanged (legacy parity)', () => {
     expect(parseDateFlexible('2026-05-18')).toBe('2026-05-18');
@@ -62,5 +60,13 @@ describe('parseDateFlexible', () => {
     expect(parseDateFlexible('')).toBe('');
     expect(parseDateFlexible(null)).toBe('');
     expect(parseDateFlexible(undefined)).toBe('');
+  });
+  test('incomplete written dates are kept raw, never invented', () => {
+    expect(parseDateFlexible('March 2025')).toBe('March 2025');
+    expect(parseDateFlexible('Jan 5')).toBe('Jan 5');
+    expect(parseDateFlexible('Dec 25')).toBe('Dec 25');
+  });
+  test('3-digit year falls through to raw', () => {
+    expect(parseDateFlexible('15 May 202')).toBe('15 May 202');
   });
 });
