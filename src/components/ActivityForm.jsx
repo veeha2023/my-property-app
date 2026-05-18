@@ -109,7 +109,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       return {
         location,
         activities: groupActivities,
-        sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate,
+        sortDate,
         itineraryLeg, // Include the itinerary leg data
       };
     });
@@ -269,7 +269,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     // Update existing: only overwrite fields that have non-empty values in the CSV
                     const existing = { ...updatedActivities[existingIdx] };
                     if (raw.duration !== '') existing.duration = parseNumberFlexible(raw.duration, 0);
-                    if (raw.pax !== '') existing.pax = parseNumberFlexible(raw.pax, 1);
+                    if (raw.pax !== '') existing.pax = (parseNumberFlexible(raw.pax, 1) || 1);
                     if (raw.cost_per_pax !== '') existing.cost_per_pax = parseNumberFlexible(raw.cost_per_pax, 0);
                     if (raw.flat_price !== '') existing.flat_price = parseNumberFlexible(raw.flat_price, 0);
                     if (raw.currency !== '') existing.currency = raw.currency;
@@ -287,7 +287,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     updatedCount++;
                 } else {
                     // New activity (original behavior)
-                    const pax = parseNumberFlexible(raw.pax, 1);
+                    const pax = (parseNumberFlexible(raw.pax, 1) || 1);
                     const costPerPax = parseNumberFlexible(raw.cost_per_pax, 0);
                     const flatPrice = parseNumberFlexible(raw.flat_price, 0);
                     const basePrice = (costPerPax * pax) + flatPrice;
