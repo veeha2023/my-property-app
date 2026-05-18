@@ -94,4 +94,15 @@ describe('parseTimeFlexible', () => {
     expect(parseTimeFlexible('')).toBe('');
     expect(parseTimeFlexible(null)).toBe('');
   });
+  test('invalid time components are returned raw, never clamped/wrapped', () => {
+    expect(parseTimeFlexible('24:00')).toBe('24:00');
+    expect(parseTimeFlexible('25:30')).toBe('25:30');
+    expect(parseTimeFlexible('9:60')).toBe('9:60');
+    expect(parseTimeFlexible('12:99')).toBe('12:99');
+    expect(parseTimeFlexible('13am')).toBe('13am');
+    expect(parseTimeFlexible('0am')).toBe('0am');
+  });
+  test('undefined -> empty string', () => {
+    expect(parseTimeFlexible(undefined)).toBe('');
+  });
 });

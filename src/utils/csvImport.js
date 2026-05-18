@@ -114,13 +114,18 @@ export const parseTimeFlexible = (value) => {
 
   let m = s.match(/^(\d{1,2}):(\d{2})$/); // 24h H:MM / HH:MM
   if (m) {
-    const h = Math.min(23, parseInt(m[1], 10));
+    const h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (h > 23 || min > 59) return s; // invalid -> raw
     return `${String(h).padStart(2, '0')}:${m[2]}`;
   }
 
   m = s.toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/); // 12h
   if (m) {
-    let h = parseInt(m[1], 10) % 12;
+    const rawH = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    if (rawH < 1 || rawH > 12 || min > 59) return s; // invalid -> raw
+    let h = rawH % 12;
     if (m[3] === 'pm') h += 12;
     return `${String(h).padStart(2, '0')}:${m[2] || '00'}`;
   }
