@@ -2,6 +2,14 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Car, Calendar, MapPin, ShieldCheck, Users, Link2, Ship, Bus, CheckCircle, Upload, Download, Star } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
+import {
+  parseCSV,
+  parseDateFlexible,
+  parseTimeFlexible,
+  parseNumberFlexible,
+  formatDateSafe,
+  formatTimeSafe,
+} from '../utils/csvImport';
 
 const TransportationForm = ({ transportation, setTransportation, itineraryLegs }) => {
   const [editingItem, setEditingItem] = useState(null);
@@ -29,39 +37,6 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   const getCurrencySymbol = (currencyCode) => {
     const symbols = { NZD: 'NZ$', USD: '$', EUR: '€', INR: '₹' };
     return symbols[currencyCode] || currencyCode || 'NZ$';
-  };
-
-  const parseDateString = (dateString) => {
-    if (!dateString) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
-    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (parts) {
-      const day = parts[1].padStart(2, '0');
-      const month = parts[2].padStart(2, '0');
-      const year = parts[3];
-      return `${year}-${month}-${day}`;
-    }
-    return dateString;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      const parsedDateStr = parseDateString(dateString);
-      const date = new Date(parsedDateStr + 'T00:00:00');
-      if (isNaN(date.getTime())) return 'Invalid Date';
-      return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
-    } catch { return 'Invalid Date'; }
-  };
-
-  const formatTime = (timeString) => {
-    if (!timeString) return 'N/A';
-    try {
-      const [hours, minutes] = timeString.split(':');
-      const date = new Date();
-      date.setHours(hours, minutes);
-      return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(date);
-    } catch { return 'Invalid Time'; }
   };
 
   const getPriceColor = (price) => {
@@ -100,25 +75,25 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
         const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
 
-        const dateTimeA = new Date(`${parseDateString(getDate(a))}T${getTime(a)}`);
-        const dateTimeB = new Date(`${parseDateString(getDate(b))}T${getTime(b)}`);
+        const rawA = new Date(`${parseDateFlexible(getDate(a))}T${getTime(a) || '00:00'}`).getTime();
+        const rawB = new Date(`${parseDateFlexible(getDate(b))}T${getTime(b) || '00:00'}`).getTime();
+        const dateTimeA = Number.isNaN(rawA) ? Infinity : rawA;
+        const dateTimeB = Number.isNaN(rawB) ? Infinity : rawB;
 
-        if (isNaN(dateTimeA.getTime())) return 1;
-        if (isNaN(dateTimeB.getTime())) return -1;
-
-        return dateTimeA.getTime() - dateTimeB.getTime();
+        return dateTimeA - dateTimeB;
       });
 
       // Determine earliest date for group sorting
       const getDate = (item) => item.pickupDate || item.boardingDate || item.date;
       const getTime = (item) => item.pickupTime || item.boardingTime || item.time || '00:00';
       const firstItem = groupItems[0];
-      const sortDate = new Date(`${parseDateString(getDate(firstItem))}T${getTime(firstItem)}`);
+      let sortDate = new Date(`${parseDateFlexible(getDate(firstItem))}T${getTime(firstItem)}`);
+      if (Number.isNaN(sortDate.getTime())) sortDate = new Date(8640000000000000);
 
       return {
         pickupPoint,
         items: groupItems,
-        sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate
+        sortDate
       };
     });
 
@@ -217,61 +192,6 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   };
 
   // --- CSV FUNCTIONS ---
-  const parseCSV = (text) => {
-    const rows = [];
-    let currentLine = '';
-    let inQuotes = false;
-  
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      currentLine += char;
-  
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      }
-  
-      if ((char === '\n' || char === '\r') && !inQuotes) {
-        if (currentLine.trim()) {
-          rows.push(currentLine.trim());
-        }
-        currentLine = '';
-        if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
-          i++; // Skip the \n in a \r\n sequence
-        }
-      }
-    }
-  
-    if (currentLine.trim()) {
-      rows.push(currentLine.trim());
-    }
-  
-    const parseLine = (line) => {
-      const values = [];
-      let currentVal = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            currentVal += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ',' && !inQuotes) {
-          values.push(currentVal);
-          currentVal = '';
-        } else {
-          currentVal += char;
-        }
-      }
-      values.push(currentVal);
-      return values.map(v => v.trim());
-    };
-  
-    return rows.map(parseLine);
-  };
-
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -320,7 +240,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
             id: `transport-csv-${Date.now()}-${index}`,
             transportType: transportData.transportType || 'car',
             name: transportData.name || '',
-            price: parseFloat(transportData.price) || 0,
+            price: parseNumberFlexible(transportData.price, 0),
             currency: transportData.currency || 'NZD',
             images: transportData.images ? transportData.images.split(/[;\r\n]+/).map(url => url.trim()).filter(Boolean) : [],
             selected: transportData.selected ? transportData.selected.toUpperCase() === 'TRUE' : false,
@@ -330,55 +250,55 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
           // Add type-specific fields
           switch (transportData.transportType) {
             case 'car':
-              baseItem = { 
-                ...baseItem, 
+              baseItem = {
+                ...baseItem,
                 type: transportData.type || 'Sedan',
                 pickupLocation: transportData.pickupLocation || '',
-                pickupDate: parseDateString(transportData.pickupDate || ''),
-                pickupTime: transportData.pickupTime || '10:00',
+                pickupDate: parseDateFlexible(transportData.pickupDate || ''),
+                pickupTime: parseTimeFlexible(transportData.pickupTime || ''),
                 dropoffLocation: transportData.dropoffLocation || '',
-                dropoffDate: parseDateString(transportData.dropoffDate || ''),
-                dropoffTime: transportData.dropoffTime || '10:00',
+                dropoffDate: parseDateFlexible(transportData.dropoffDate || ''),
+                dropoffTime: parseTimeFlexible(transportData.dropoffTime || ''),
                 insurance: transportData.insurance || 'Basic',
-                excessAmount: parseFloat(transportData.excessAmount) || 0,
-                driversIncluded: parseInt(transportData.driversIncluded, 10) || 1
+                excessAmount: parseNumberFlexible(transportData.excessAmount, 0),
+                driversIncluded: (Math.floor(parseNumberFlexible(transportData.driversIncluded, 1)) || 1)
               };
               break;
             case 'ferry':
-              baseItem = { 
-                ...baseItem, 
+              baseItem = {
+                ...baseItem,
                 boardingFrom: transportData.boardingFrom || '',
-                boardingDate: parseDateString(transportData.boardingDate || ''),
-                boardingTime: transportData.boardingTime || '09:00',
+                boardingDate: parseDateFlexible(transportData.boardingDate || ''),
+                boardingTime: parseTimeFlexible(transportData.boardingTime || ''),
                 departingTo: transportData.departingTo || '',
-                departingDate: parseDateString(transportData.departingDate || ''),
-                departingTime: transportData.departingTime || '12:00',
+                departingDate: parseDateFlexible(transportData.departingDate || ''),
+                departingTime: parseTimeFlexible(transportData.departingTime || ''),
                 duration: transportData.duration || '',
                 baggageAllowance: transportData.baggageAllowance || ''
               };
               break;
             case 'bus':
-              baseItem = { 
-                ...baseItem, 
+              baseItem = {
+                ...baseItem,
                 boardingFrom: transportData.boardingFrom || '',
-                boardingDate: parseDateString(transportData.boardingDate || ''),
-                boardingTime: transportData.boardingTime || '08:00',
+                boardingDate: parseDateFlexible(transportData.boardingDate || ''),
+                boardingTime: parseTimeFlexible(transportData.boardingTime || ''),
                 departingTo: transportData.departingTo || '',
-                departingDate: parseDateString(transportData.departingDate || ''),
-                departingTime: transportData.departingTime || '17:00',
+                departingDate: parseDateFlexible(transportData.departingDate || ''),
+                departingTime: parseTimeFlexible(transportData.departingTime || ''),
                 duration: transportData.duration || '',
                 baggageAllowance: transportData.baggageAllowance || ''
               };
               break;
             case 'driver':
-              baseItem = { 
-                ...baseItem, 
+              baseItem = {
+                ...baseItem,
                 carType: transportData.carType || 'Sedan',
                 location: transportData.location || '',
                 pickupFrom: transportData.pickupFrom || 'Hotel',
                 dropoffTo: transportData.dropoffTo || '',
-                pickupDate: parseDateString(transportData.pickupDate || ''),
-                pickupTime: transportData.pickupTime || '09:00',
+                pickupDate: parseDateFlexible(transportData.pickupDate || ''),
+                pickupTime: parseTimeFlexible(transportData.pickupTime || ''),
                 duration: transportData.duration || ''
               };
               break;
@@ -666,23 +586,23 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
             {item.transportType === 'car' && <>
               <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.pickupDate)} at {formatTimeSafe(item.pickupTime)}</div>
               <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate)} at {formatTime(item.dropoffTime)}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.dropoffDate)} at {formatTimeSafe(item.dropoffTime)}</div>
               <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>
               <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>
             </>}
             {(item.transportType === 'ferry' || item.transportType === 'bus') && <>
               <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>From:</strong> &nbsp;{item.boardingFrom}</div>
               <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>To:</strong> &nbsp;{item.departingTo}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.boardingDate)} at {formatTime(item.boardingTime)}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.boardingDate)} at {formatTimeSafe(item.boardingTime)}</div>
               <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
               <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>
             </>}
             {item.transportType === 'driver' && <>
               <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupFrom} ({item.location})</div>
               <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffTo}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate)} at {formatTime(item.pickupTime)}</div>
+              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.pickupDate)} at {formatTimeSafe(item.pickupTime)}</div>
               <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
             </>}
           </div>

@@ -2,6 +2,14 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download, Tag, Star } from 'lucide-react';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
+import {
+  parseCSV,
+  parseDateFlexible,
+  parseTimeFlexible,
+  parseNumberFlexible,
+  formatDateSafe,
+  formatTimeSafe,
+} from '../utils/csvImport';
 
 const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [editingActivity, setEditingActivity] = useState(null);
@@ -30,46 +38,6 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     }
   };
   
-  const parseDateString = (dateString) => {
-    if (!dateString) return '';
-    // Check for YYYY-MM-DD format (preferred)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-      return dateString;
-    }
-    // Check for DD/MM/YYYY format
-    const parts = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (parts) {
-      const day = parts[1].padStart(2, '0');
-      const month = parts[2].padStart(2, '0');
-      const year = parts[3];
-      // Convert to YYYY-MM-DD which is reliably parsed by new Date()
-      return `${year}-${month}-${day}`;
-    }
-    // Return original string if format is not recognized, allowing new Date() to attempt parsing
-    return dateString;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'; // This will now only be called if dateString exists
-    try {
-      // Use the robust parser before creating a Date object
-      const parsedDateStr = parseDateString(dateString);
-      const date = new Date(parsedDateStr + 'T00:00:00'); // Add time part to avoid timezone issues
-      if (isNaN(date.getTime())) return 'Invalid Date';
-      return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
-    } catch { return 'Invalid Date'; }
-  };
-
-  const formatTime = (timeString) => {
-    if (!timeString) return 'N/A'; // This will now only be called if timeString exists
-    try {
-      const [hours, minutes] = timeString.split(':');
-      const date = new Date();
-      date.setHours(hours, minutes);
-      return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(date);
-    } catch { return 'Invalid Time'; }
-  };
-
   const calculateBasePrice = (activity) => {
     const costPerPax = parseFloat(activity.cost_per_pax) || 0;
     const flatPrice = parseFloat(activity.flat_price) || 0;
@@ -115,11 +83,11 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
 
       // Sort activities by date/time
       groupActivities.sort((a, b) => {
-        const dateA = new Date(parseDateString(a.date) + 'T' + (a.time || '00:00'));
-        const dateB = new Date(parseDateString(b.date) + 'T' + (b.time || '00:00'));
-        if (isNaN(dateA.getTime())) return 1;
-        if (isNaN(dateB.getTime())) return -1;
-        return dateA.getTime() - dateB.getTime();
+        const tA = new Date(parseDateFlexible(a.date) + 'T' + (a.time || '00:00')).getTime();
+        const tB = new Date(parseDateFlexible(b.date) + 'T' + (b.time || '00:00')).getTime();
+        const dateA = Number.isNaN(tA) ? Infinity : tA;
+        const dateB = Number.isNaN(tB) ? Infinity : tB;
+        return dateA - dateB;
       });
 
       // Find the corresponding itinerary leg for sorting
@@ -128,10 +96,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       // Use itinerary leg's check-in date for sorting, or earliest activity date
       let sortDate;
       if (itineraryLeg && itineraryLeg.checkIn) {
-        sortDate = new Date(parseDateString(itineraryLeg.checkIn) + 'T00:00:00');
+        sortDate = new Date(parseDateFlexible(itineraryLeg.checkIn) + 'T00:00:00');
+        if (Number.isNaN(sortDate.getTime())) sortDate = new Date(8640000000000000);
       } else if (groupActivities.length > 0) {
         const earliestActivity = groupActivities[0];
-        sortDate = new Date(parseDateString(earliestActivity.date) + 'T' + (earliestActivity.time || '00:00'));
+        sortDate = new Date(parseDateFlexible(earliestActivity.date) + 'T' + (earliestActivity.time || '00:00'));
+        if (Number.isNaN(sortDate.getTime())) sortDate = new Date(8640000000000000);
       } else {
         sortDate = new Date(0);
       }
@@ -139,7 +109,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       return {
         location,
         activities: groupActivities,
-        sortDate: isNaN(sortDate.getTime()) ? new Date(0) : sortDate,
+        sortDate,
         itineraryLeg, // Include the itinerary leg data
       };
     });
@@ -259,39 +229,29 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     reader.onload = (e) => {
         try {
             const text = e.target.result;
-            const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '' && !line.startsWith('#'));
-            if (lines.length < 2) {
-                setError("CSV file must contain a header row and at least one data row.");
-                return;
+            const allRows = parseCSV(text).filter(
+              (r) => r.some((c) => c !== '') && !String(r[0]).startsWith('#')
+            );
+            if (allRows.length < 2) {
+              setError('CSV file must contain a header row and at least one data row.');
+              return;
             }
-            const headers = lines[0].split(',').map(h => h.trim());
-            
-            // --- CSV HEADER UPDATE ---
+            const headers = allRows[0];
+
             const coreHeaders = ['name', 'location', 'duration', 'pax', 'cost_per_pax', 'currency', 'images'];
-            const missingHeaders = coreHeaders.filter(h => !headers.includes(h));
-            
+            const missingHeaders = coreHeaders.filter((h) => !headers.includes(h));
             if (missingHeaders.length > 0) {
-                setError(`CSV is missing required headers: ${missingHeaders.join(', ')}`);
-                return;
+              setError(`CSV is missing required headers: ${missingHeaders.join(', ')}`);
+              return;
             }
-            // --- END CSV HEADER UPDATE ---
 
-            // Parse CSV rows into raw activity objects
-            const parsedRows = lines.slice(1).map((line, index) => {
-                const data = line.split(',');
-                while (data.length < headers.length) {
-                    data.push('');
-                }
-
-                const activity = {};
-                headers.forEach((header, i) => {
-                    activity[header] = data[i] ? data[i].trim() : '';
-                });
-
-                if (!activity.name || !activity.location) {
-                    return null;
-                }
-                return { raw: activity, index };
+            const parsedRows = allRows.slice(1).map((cells, index) => {
+              const activity = {};
+              headers.forEach((header, i) => {
+                activity[header] = cells[i] !== undefined ? cells[i] : '';
+              });
+              if (!activity.name || !activity.location) return null;
+              return { raw: activity, index };
             }).filter(Boolean);
 
             // Separate into updates vs new activities by matching name+location
@@ -308,18 +268,18 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                 if (existingIdx !== -1) {
                     // Update existing: only overwrite fields that have non-empty values in the CSV
                     const existing = { ...updatedActivities[existingIdx] };
-                    if (raw.duration !== '') existing.duration = parseFloat(raw.duration) || 0;
-                    if (raw.pax !== '') existing.pax = parseInt(raw.pax, 10) || 1;
-                    if (raw.cost_per_pax !== '') existing.cost_per_pax = parseFloat(raw.cost_per_pax) || 0;
-                    if (raw.flat_price !== '') existing.flat_price = parseFloat(raw.flat_price) || 0;
+                    if (raw.duration !== '') existing.duration = parseNumberFlexible(raw.duration, 0);
+                    if (raw.pax !== '') existing.pax = (parseNumberFlexible(raw.pax, 1) || 1);
+                    if (raw.cost_per_pax !== '') existing.cost_per_pax = parseNumberFlexible(raw.cost_per_pax, 0);
+                    if (raw.flat_price !== '') existing.flat_price = parseNumberFlexible(raw.flat_price, 0);
                     if (raw.currency !== '') existing.currency = raw.currency;
-                    if (raw.date !== '') existing.date = parseDateString(raw.date);
-                    if (raw.time !== '') existing.time = raw.time;
+                    if (raw.date !== '') existing.date = parseDateFlexible(raw.date);
+                    if (raw.time !== '') existing.time = parseTimeFlexible(raw.time);
                     if (raw.images !== '') existing.images = raw.images.split(';').map(url => url.trim());
                     if (raw.included_in_base !== '') existing.included_in_base = raw.included_in_base.toLowerCase() !== 'false';
                     if (raw.selected !== '') existing.selected = raw.selected.toLowerCase() !== 'false';
                     if (raw.discount_type !== undefined && raw.discount_type !== '') existing.discount_type = raw.discount_type;
-                    if (raw.discount_value !== undefined && raw.discount_value !== '') existing.discount_value = parseFloat(raw.discount_value) || 0;
+                    if (raw.discount_value !== undefined && raw.discount_value !== '') existing.discount_value = parseNumberFlexible(raw.discount_value, 0);
                     // Recalculate base_price (with discount)
                     const rawBP = ((parseFloat(existing.cost_per_pax) || 0) * (parseInt(existing.pax, 10) || 1)) + (parseFloat(existing.flat_price) || 0);
                     existing.base_price = applyDiscount(rawBP, existing.discount_type, existing.discount_value);
@@ -327,9 +287,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     updatedCount++;
                 } else {
                     // New activity (original behavior)
-                    const pax = parseInt(raw.pax, 10) || 1;
-                    const costPerPax = parseFloat(raw.cost_per_pax) || 0;
-                    const flatPrice = parseFloat(raw.flat_price) || 0;
+                    const pax = (parseNumberFlexible(raw.pax, 1) || 1);
+                    const costPerPax = parseNumberFlexible(raw.cost_per_pax, 0);
+                    const flatPrice = parseNumberFlexible(raw.flat_price, 0);
                     const basePrice = (costPerPax * pax) + flatPrice;
                     const includedInBase = raw.included_in_base?.toLowerCase() !== 'false';
                     let selected;
@@ -339,15 +299,15 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                         selected = includedInBase;
                     }
                     const discountType = raw.discount_type || '';
-                    const discountValue = parseFloat(raw.discount_value) || 0;
+                    const discountValue = parseNumberFlexible(raw.discount_value, 0);
                     const discountedBasePrice = applyDiscount(basePrice, discountType, discountValue);
                     brandNewActivities.push({
                         id: `act-csv-${Date.now()}-${index}`,
                         name: raw.name,
-                        date: raw.date ? parseDateString(raw.date) : '',
-                        time: raw.time || '',
+                        date: raw.date ? parseDateFlexible(raw.date) : '',
+                        time: parseTimeFlexible(raw.time),
                         location: raw.location,
-                        duration: parseFloat(raw.duration) || 0,
+                        duration: parseNumberFlexible(raw.duration, 0),
                         pax,
                         cost_per_pax: costPerPax,
                         flat_price: flatPrice,
@@ -678,10 +638,10 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                   {itineraryLeg && itineraryLeg.checkIn && itineraryLeg.checkOut && (
                     <p className="text-sm text-gray-600 mt-1 flex items-center">
                       <Calendar size={14} className="mr-1" />
-                      {formatDate(itineraryLeg.checkIn)} - {formatDate(itineraryLeg.checkOut)}
+                      {formatDateSafe(itineraryLeg.checkIn)} - {formatDateSafe(itineraryLeg.checkOut)}
                       {itineraryLeg.checkIn && itineraryLeg.checkOut && (
                         <span className="ml-2">
-                          ({Math.max(0, Math.ceil((new Date(parseDateString(itineraryLeg.checkOut)) - new Date(parseDateString(itineraryLeg.checkIn))) / (1000 * 60 * 60 * 24)))} nights)
+                          ({Math.max(0, Math.ceil((new Date(parseDateFlexible(itineraryLeg.checkOut)) - new Date(parseDateFlexible(itineraryLeg.checkIn))) / (1000 * 60 * 60 * 24)))} nights)
                         </span>
                       )}
                     </p>
@@ -752,11 +712,11 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                               {/* --- DISPLAY LOGIC FIX --- */}
                               {/* Only show date if activity.date is not an empty string */}
                               {activity.date && (
-                                <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> <span>{formatDate(activity.date)}</span></div>
+                                <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> <span>{formatDateSafe(activity.date)}</span></div>
                               )}
                               {/* Only show time if activity.time is not an empty string */}
                               {activity.time && (
-                                <div className="flex items-center"><Clock size={16} className="mr-2 text-gray-400" /> <span>{formatTime(activity.time)}</span></div>
+                                <div className="flex items-center"><Clock size={16} className="mr-2 text-gray-400" /> <span>{formatTimeSafe(activity.time)}</span></div>
                               )}
                               {/* --- END DISPLAY LOGIC FIX --- */}
 
