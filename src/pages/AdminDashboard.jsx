@@ -358,6 +358,9 @@ const AdminDashboard = () => {
   const [editingB2bLogo, setEditingB2bLogo] = useState('');
   const [editingB2bInstagram, setEditingB2bInstagram] = useState('');
   const [editingB2bWhatsapp, setEditingB2bWhatsapp] = useState('');
+  const [b2bProfiles, setB2bProfiles] = useState([]);
+  const [selectedB2bProfileId, setSelectedB2bProfileId] = useState('');
+  const [savingB2bProfile, setSavingB2bProfile] = useState(false);
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [, setShowSettingsModal] = useState(false);
@@ -919,11 +922,94 @@ const AdminDashboard = () => {
 
   const fetchGlobalSettings = useCallback(async () => {
     try {
-      const { data, error: fetchError } = await supabase.from('clients').select('client_name, custom_logo_url').eq('id', GLOBAL_SETTINGS_ID).single();
+      const { data, error: fetchError } = await supabase.from('clients').select('client_name, custom_logo_url, client_properties').eq('id', GLOBAL_SETTINGS_ID).single();
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-      else if (data) { setCompanyName(data.client_name || 'Veeha Travels'); setGlobalLogoUrl(data.custom_logo_url || null); }
+      else if (data) {
+        setCompanyName(data.client_name || 'Veeha Travels');
+        setGlobalLogoUrl(data.custom_logo_url || null);
+        const cp = data.client_properties;
+        const profiles = (cp && !Array.isArray(cp) && Array.isArray(cp.b2bProfiles)) ? cp.b2bProfiles : [];
+        setB2bProfiles(profiles);
+      }
     } catch (err) { console.error("Unexpected error fetching global settings:", err.message); }
   }, []);
+
+  // Persist the B2B profile library into the global-settings row's
+  // client_properties JSONB (read-modify-write to preserve other keys).
+  const persistB2bProfiles = async (nextProfiles) => {
+    const { data: gs, error: gsError } = await supabase
+      .from('clients')
+      .select('client_properties')
+      .eq('id', GLOBAL_SETTINGS_ID)
+      .single();
+    if (gsError && gsError.code !== 'PGRST116') throw gsError;
+    const cp = (gs && gs.client_properties && !Array.isArray(gs.client_properties) && typeof gs.client_properties === 'object')
+      ? gs.client_properties
+      : {};
+    const nextCp = { ...cp, b2bProfiles: nextProfiles };
+    const { error: upsertError } = await supabase
+      .from('clients')
+      .update({ client_properties: nextCp, last_updated: new Date().toISOString() })
+      .eq('id', GLOBAL_SETTINGS_ID);
+    if (upsertError) throw upsertError;
+    setB2bProfiles(nextProfiles);
+  };
+
+  // Populate the B2B form fields from a saved profile.
+  const handleApplyB2bProfile = (profileId) => {
+    setSelectedB2bProfileId(profileId);
+    if (!profileId) return;
+    const profile = b2bProfiles.find(p => p.id === profileId);
+    if (!profile) return;
+    setEditingB2bBusinessName(profile.businessName || '');
+    setEditingB2bLogo(profile.logo || '');
+    setEditingB2bInstagram(profile.instagram || '');
+    setEditingB2bWhatsapp(profile.whatsapp || '');
+  };
+
+  // Save the current B2B form values as a new reusable profile.
+  const handleSaveB2bProfile = async () => {
+    const businessName = editingB2bBusinessName.trim();
+    if (!businessName) { setError('Enter a business name before saving it as a profile.'); return; }
+    const newProfile = {
+      id: (window.crypto && window.crypto.randomUUID)
+        ? window.crypto.randomUUID()
+        : `b2b-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      businessName,
+      logo: editingB2bLogo || '',
+      instagram: editingB2bInstagram.replace(/^@/, '').trim(),
+      whatsapp: editingB2bWhatsapp.replace(/\D/g, ''),
+    };
+    setSavingB2bProfile(true);
+    setError(null);
+    try {
+      await persistB2bProfiles([...b2bProfiles, newProfile]);
+      setSelectedB2bProfileId(newProfile.id);
+      setMessage(`Saved "${businessName}" as a reusable B2B profile.`);
+    } catch (err) {
+      console.error('Error saving B2B profile:', err.message);
+      setError('Could not save B2B profile: ' + err.message);
+    } finally {
+      setSavingB2bProfile(false);
+    }
+  };
+
+  // Remove a saved profile from the library.
+  const handleDeleteB2bProfile = async (profileId) => {
+    if (!profileId) return;
+    setSavingB2bProfile(true);
+    setError(null);
+    try {
+      await persistB2bProfiles(b2bProfiles.filter(p => p.id !== profileId));
+      if (selectedB2bProfileId === profileId) setSelectedB2bProfileId('');
+      setMessage('B2B profile deleted.');
+    } catch (err) {
+      console.error('Error deleting B2B profile:', err.message);
+      setError('Could not delete B2B profile: ' + err.message);
+    } finally {
+      setSavingB2bProfile(false);
+    }
+  };
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -995,6 +1081,7 @@ const AdminDashboard = () => {
     setEditingB2bLogo(b2b.logo || '');
     setEditingB2bInstagram(b2b.instagram || '');
     setEditingB2bWhatsapp(b2b.whatsapp || '');
+    setSelectedB2bProfileId('');
     if (client.share_token) {
         setShareLink(`${window.location.origin}/client/${client.id}?token=${client.share_token}`);
     } else {
@@ -1219,6 +1306,51 @@ const AdminDashboard = () => {
                         </div>
                         {editingB2bEnabled && (
                             <div className="space-y-3 pt-2">
+                                <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 space-y-2">
+                                    <label htmlFor="b2bProfileSelect" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                                        Saved Profiles
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            id="b2bProfileSelect"
+                                            value={selectedB2bProfileId}
+                                            onChange={(e) => handleApplyB2bProfile(e.target.value)}
+                                            disabled={savingB2bProfile}
+                                            className="flex-1 min-w-0 p-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm focus:ring-yellow-400 focus:border-yellow-400"
+                                        >
+                                            <option value="">
+                                                {b2bProfiles.length ? '— Select a saved profile —' : 'No saved profiles yet'}
+                                            </option>
+                                            {b2bProfiles.map(p => (
+                                                <option key={p.id} value={p.id}>{p.businessName}</option>
+                                            ))}
+                                        </select>
+                                        {selectedB2bProfileId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteB2bProfile(selectedB2bProfileId)}
+                                                disabled={savingB2bProfile}
+                                                aria-label="Delete selected profile"
+                                                title="Delete selected profile"
+                                                className="p-2 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveB2bProfile}
+                                        disabled={savingB2bProfile}
+                                        className="w-full flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-md border border-yellow-400 bg-white text-yellow-700 hover:bg-yellow-100 disabled:opacity-50 transition-colors"
+                                    >
+                                        <Plus size={15} />
+                                        {savingB2bProfile ? 'Saving…' : 'Save current details as a new profile'}
+                                    </button>
+                                    <p className="text-[11px] text-gray-500 leading-snug">
+                                        Pick a profile to auto-fill the fields below, or fill them in and save as a new profile to reuse later.
+                                    </p>
+                                </div>
                                 <div>
                                     <label htmlFor="editingB2bBusinessName" className="block text-sm font-medium text-gray-800">
                                         Business Name
