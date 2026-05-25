@@ -1320,7 +1320,7 @@ const ClientView = () => {
                                               'property'
                                             );
                                             return label.isBadge ? (
-                                              <span className={label.className}>{label.text}</span>
+                                              <span className={label.className}><Check size={12} />{label.text}</span>
                                             ) : (
                                               <span className={label.className}>
                                                 <span className="text-xl">{label.price || label.text}</span>
@@ -1580,7 +1580,7 @@ const ClientView = () => {
                                 {(isFinalized ? items.filter(i => i.selected) : items).map(item => {
                                     const price = parseCurrencyToNumber(item.price);
                                     return (
-                                        <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
+                                        <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
                                             {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
                                             {item.recommended && (
                                               <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
@@ -1588,23 +1588,23 @@ const ClientView = () => {
                                                 <span>Agent's Pick</span>
                                               </div>
                                             )}
-                                            <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" loading="lazy" decoding="async" />
-                                            <div className="flex-grow">
-                                                <h4 className="font-bold text-lg sm:text-xl text-gray-800">{item.name}</h4>
-                                                <p className="text-md text-gray-500 mb-4">{item.type || item.carType}</p>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
-                                                    <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation || item.boardingFrom || item.pickupFrom} ({item.location})</div>
-                                                    <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</div>
-                                                    <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</div>
-                                                    { (item.dropoffDate || item.departingDate) && <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</div>}
-                                                    {item.transportType === 'car' && <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {displayPrice(item.excessAmount || 0, item.currency)})</div>}
-                                                    {item.transportType === 'car' && <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>}
-                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
-                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>}
-                                                    {item.transportType === 'driver' && <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>}
+                                            <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-40 xl:w-48 h-40 lg:h-28 xl:h-32 object-cover rounded-md shadow-md flex-shrink-0" loading="lazy" decoding="async" />
+                                            <div className="flex-grow min-w-0 w-full lg:w-auto">
+                                                <h4 className="font-bold text-lg sm:text-xl text-gray-800 break-words">{item.name}</h4>
+                                                <p className="text-md text-gray-500 mb-3">{item.type || item.carType}</p>
+                                                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-x-6 gap-y-1.5 text-sm text-gray-700">
+                                                    <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Pickup:</strong>&nbsp;{[item.pickupLocation || item.boardingFrom || item.pickupFrom, item.location].filter(Boolean).join(' · ')}</span></div>
+                                                    <div className="flex items-start gap-2"><Calendar size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>On:</strong>&nbsp;{formatDate(item.pickupDate || item.boardingDate)} at {formatTime(item.pickupTime || item.boardingTime)}</span></div>
+                                                    <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Drop-off:</strong>&nbsp;{item.dropoffLocation || item.departingTo || item.dropoffTo}</span></div>
+                                                    { (item.dropoffDate || item.departingDate) && <div className="flex items-start gap-2"><Calendar size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>On:</strong>&nbsp;{formatDate(item.dropoffDate || item.departingDate)} at {formatTime(item.dropoffTime || item.departingTime)}</span></div>}
+                                                    {item.transportType === 'car' && <div className="flex items-start gap-2"><ShieldCheck size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Insurance:</strong>&nbsp;{item.insurance} (Excess: {displayPrice(item.excessAmount || 0, item.currency)})</span></div>}
+                                                    {item.transportType === 'car' && <div className="flex items-start gap-2"><Users size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Drivers:</strong>&nbsp;{item.driversIncluded}</span></div>}
+                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-start gap-2"><span className="min-w-0"><strong>Duration:</strong>&nbsp;{item.duration}</span></div>}
+                                                    {(item.transportType === 'ferry' || item.transportType === 'bus') && <div className="flex items-start gap-2"><span className="min-w-0"><strong>Baggage:</strong>&nbsp;{item.baggageAllowance}</span></div>}
+                                                    {item.transportType === 'driver' && <div className="flex items-start gap-2"><span className="min-w-0"><strong>Duration:</strong>&nbsp;{item.duration}</span></div>}
                                                 </div>
                                             </div>
-                                            <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0">
+                                            <div className="w-full lg:w-auto text-left lg:text-right mt-2 lg:mt-0 lg:ml-auto flex-shrink-0">
                                                 {(() => {
                                                   const label = formatContextualLabel(
                                                     price,
@@ -1612,7 +1612,7 @@ const ClientView = () => {
                                                     'transport'
                                                   );
                                                   return label.isBadge ? (
-                                                    <span className={label.className}>{label.text}</span>
+                                                    <span className={label.className}><Check size={12} />{label.text}</span>
                                                   ) : (
                                                     <span className={`${label.className} whitespace-nowrap`}>
                                                       <span className="text-2xl sm:text-3xl">{label.price || label.text}</span>
@@ -1647,63 +1647,71 @@ const ClientView = () => {
                                         const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
                                         return (
                                             <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleFlightSelection(item.id)}>
-                                                <div className="flex flex-col w-full">
-                                                    <div className="flex flex-col sm:flex-row justify-between items-center w-full">
-                                                        {item.selected && ( <div className="absolute top-1/2 -translate-y-1/2 left-4 sm:left-6 rounded-full p-1 shadow-md bg-white z-10"> <CheckCircle size={24} className="text-green-500" /> </div> )}
-                                                        {item.recommended && (
-                                                          <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
-                                                            <Star size={14} className="fill-amber-400 text-amber-600" />
-                                                            <span>Agent's Pick</span>
-                                                          </div>
-                                                        )}
-                                                        <div className="flex items-center gap-4 sm:gap-6 flex-1 pl-10 sm:pl-12">
-                                                            <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-12 sm:h-16 w-auto object-contain" loading="lazy" decoding="async"/>
-                                                            <div className="text-sm">
-                                                                <p className="font-bold text-gray-800 text-base sm:text-lg">{item.airline}</p>
-                                                                <p className="text-gray-500">{item.flightNumber}</p>
-                                                            </div>
+                                                {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-1 shadow-md bg-white z-10"> <CheckCircle size={24} className="text-green-500" /> </div> )}
+                                                {item.recommended && (
+                                                  <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
+                                                    <Star size={14} className="fill-amber-400 text-amber-600" />
+                                                    <span>Agent's Pick</span>
+                                                  </div>
+                                                )}
+                                                <div className="flex flex-col w-full gap-4">
+                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-10 sm:pl-12 pr-2 sm:pr-4">
+                                                        <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-10 sm:h-14 w-auto object-contain shrink-0" loading="lazy" decoding="async"/>
+                                                        <div className="min-w-0 flex-1 basis-[140px]">
+                                                            <p className="font-bold text-gray-800 text-base sm:text-lg truncate">{item.airline}</p>
+                                                            <p className="text-gray-500 text-sm truncate">{item.flightNumber}</p>
                                                         </div>
-                                                        <div className="flex items-center justify-center flex-grow-[2] text-center my-4 sm:my-0">
-                                                            <div className="text-right">
-                                                                <p className="text-2xl sm:text-3xl font-bold">{formatTime(item.departureTime)}</p>
-                                                                <p className="text-lg sm:text-xl font-semibold text-gray-700">{item.from}</p>
-                                                                <p className="text-xs text-gray-500">{formatDate(item.departureDate)}</p>
-                                                            </div>
-                                                            <div className="mx-4 sm:mx-8 text-center">
-                                                                <p className="text-sm text-gray-500">{duration}</p>
-                                                                <div className="w-20 sm:w-32 h-px bg-gray-300 relative my-1"> <Plane size={16} className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gray-50 px-1 text-gray-500"/> </div>
-                                                                <p className="text-xs text-green-600 font-semibold">Direct</p>
-                                                            </div>
-                                                            <div className="text-left">
-                                                                <p className="text-2xl sm:text-3xl font-bold">{formatTime(item.arrivalTime)}</p>
-                                                                <p className="text-lg sm:text-xl font-semibold text-gray-700">{item.to}</p>
-                                                                <p className="text-xs text-gray-500">{formatDate(item.arrivalDate)}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center justify-end flex-1 gap-6">
-                                                            <div className="text-right">
-                                                                {(() => {
-                                                                  const label = formatContextualLabel(
-                                                                    currentPrice,
-                                                                    (amt) => displayPrice(amt, item.currency),
-                                                                    'flight'
-                                                                  );
-                                                                  return label.isBadge ? (
-                                                                    <span className={label.className}>{label.text}</span>
-                                                                  ) : (
-                                                                    <span className={`${label.className} whitespace-nowrap`}>
-                                                                      <span className="text-2xl sm:text-3xl">{label.price || label.text}</span>
-                                                                      {label.suffix && <span className="text-sm font-medium ml-1">{label.suffix}</span>}
-                                                                    </span>
-                                                                  );
-                                                                })()}
-                                                            </div>
+                                                        <div className="shrink-0 w-full sm:w-auto sm:ml-auto text-left sm:text-right">
+                                                            {(() => {
+                                                              const isIncludedInBase = item.included_in_base !== false;
+                                                              if (isIncludedInBase) {
+                                                                return item.selected ? (
+                                                                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap">
+                                                                    <Check size={12} />Included in package
+                                                                  </span>
+                                                                ) : (
+                                                                  <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap">
+                                                                    Removed from package
+                                                                  </span>
+                                                                );
+                                                              }
+                                                              const label = formatContextualLabel(
+                                                                currentPrice,
+                                                                (amt) => displayPrice(amt, item.currency),
+                                                                'flight'
+                                                              );
+                                                              return label.isBadge ? (
+                                                                <span className={label.className}><Check size={12} />{label.text}</span>
+                                                              ) : (
+                                                                <span className={`${label.className} whitespace-nowrap`}>
+                                                                  <span className="text-xl sm:text-3xl">{label.price || label.text}</span>
+                                                                  {label.suffix && <span className="text-xs sm:text-sm font-medium ml-1">{label.suffix}</span>}
+                                                                </span>
+                                                              );
+                                                            })()}
                                                         </div>
                                                     </div>
-                                                    <div className="w-full mt-4 pt-4 border-t border-gray-200 flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-8 text-sm text-gray-600">
+                                                    <div className="flex items-center justify-between gap-3 sm:gap-6 px-2">
+                                                        <div className="text-right min-w-0 flex-1">
+                                                            <p className="text-2xl sm:text-3xl font-bold whitespace-nowrap">{formatTime(item.departureTime)}</p>
+                                                            <p className="text-base sm:text-lg font-semibold text-gray-700 truncate">{item.from}</p>
+                                                            <p className="text-xs text-gray-500 whitespace-nowrap">{formatDate(item.departureDate)}</p>
+                                                        </div>
+                                                        <div className="text-center shrink-0">
+                                                            <p className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">{duration}</p>
+                                                            <div className="w-16 sm:w-32 h-px bg-gray-300 relative my-1"> <Plane size={16} className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gray-50 px-1 text-gray-500"/> </div>
+                                                            <p className="text-xs text-green-600 font-semibold">Direct</p>
+                                                        </div>
+                                                        <div className="text-left min-w-0 flex-1">
+                                                            <p className="text-2xl sm:text-3xl font-bold whitespace-nowrap">{formatTime(item.arrivalTime)}</p>
+                                                            <p className="text-base sm:text-lg font-semibold text-gray-700 truncate">{item.to}</p>
+                                                            <p className="text-xs text-gray-500 whitespace-nowrap">{formatDate(item.arrivalDate)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full pt-4 border-t border-gray-200 flex flex-wrap justify-center items-center gap-x-4 sm:gap-x-6 gap-y-2 text-sm text-gray-600">
                                                         <p className="font-semibold text-gray-500">Baggage Allowance:</p>
-                                                        <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Check-in: {item.baggage.checkInKgs}kg ({item.baggage.checkInPieces} pc)</div>
-                                                        <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Cabin: {item.baggage.cabinKgs}kg ({item.baggage.cabinPieces} pc)</div>
+                                                        <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500 shrink-0" /> Check-in: {item.baggage.checkInKgs}kg ({item.baggage.checkInPieces} pc)</div>
+                                                        <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500 shrink-0" /> Cabin: {item.baggage.cabinKgs}kg ({item.baggage.cabinPieces} pc)</div>
                                                     </div>
                                                 </div>
                                             </div>

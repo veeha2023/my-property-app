@@ -36,7 +36,7 @@ export const formatContextualLabel = (deltaAmount, displayPrice, context = 'prop
     // Zero delta = base option
     return {
       text: 'Included in package',
-      className: 'inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-emerald-50 text-emerald-700',
+      className: 'inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap',
       isBadge: true
     };
   }

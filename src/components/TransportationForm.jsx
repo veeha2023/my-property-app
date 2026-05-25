@@ -569,9 +569,9 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
     const priceColor = getPriceColor(price);
 
     return (
-      <div 
-        key={item.id} 
-        className={`relative p-4 rounded-lg border-2 transition-all duration-300 cursor-pointer flex flex-col lg:flex-row items-start lg:items-center gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}
+      <div
+        key={item.id}
+        className={`relative p-4 rounded-lg border-2 transition-all duration-300 cursor-pointer flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}
         onClick={() => toggleSelection(item.id)}
       >
         {item.selected && (
@@ -579,35 +579,35 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
             <CheckCircle size={24} className="text-green-500" />
           </div>
         )}
-        <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-48 h-auto object-cover rounded-md shadow-md flex-shrink-0" />
-        <div className="flex-grow">
-          <h4 className="font-bold text-xl text-gray-800">{item.name}</h4>
-          <p className="text-md text-gray-500 mb-4 capitalize">{item.type || item.carType}</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+        <img src={item.images?.[0] || 'https://placehold.co/200x120/E0E0E0/333333?text=No+Image'} alt={item.name} className="w-full lg:w-40 xl:w-48 h-40 lg:h-28 xl:h-32 object-cover rounded-md shadow-md flex-shrink-0" />
+        <div className="flex-grow min-w-0 w-full lg:w-auto">
+          <h4 className="font-bold text-lg sm:text-xl text-gray-800 break-words">{item.name}</h4>
+          <p className="text-md text-gray-500 mb-3 capitalize">{item.type || item.carType}</p>
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-x-6 gap-y-1.5 text-sm text-gray-700">
             {item.transportType === 'car' && <>
-              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupLocation}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.pickupDate)} at {formatTimeSafe(item.pickupTime)}</div>
-              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffLocation}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.dropoffDate)} at {formatTimeSafe(item.dropoffTime)}</div>
-              <div className="flex items-center"><ShieldCheck size={14} className="mr-2 text-gray-500" /> <strong>Insurance:</strong> &nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</div>
-              <div className="flex items-center"><Users size={14} className="mr-2 text-gray-500" /> <strong>Drivers:</strong> &nbsp;{item.driversIncluded}</div>
+              <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Pickup:</strong>&nbsp;{item.pickupLocation}</span></div>
+              <div className="flex items-start gap-2"><Calendar size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>On:</strong>&nbsp;{formatDateSafe(item.pickupDate)} at {formatTimeSafe(item.pickupTime)}</span></div>
+              <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Drop-off:</strong>&nbsp;{item.dropoffLocation}</span></div>
+              <div className="flex items-start gap-2"><Calendar size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>On:</strong>&nbsp;{formatDateSafe(item.dropoffDate)} at {formatTimeSafe(item.dropoffTime)}</span></div>
+              <div className="flex items-start gap-2"><ShieldCheck size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Insurance:</strong>&nbsp;{item.insurance} (Excess: {getCurrencySymbol(item.currency)}{item.excessAmount || '0'})</span></div>
+              <div className="flex items-start gap-2"><Users size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Drivers:</strong>&nbsp;{item.driversIncluded}</span></div>
             </>}
             {(item.transportType === 'ferry' || item.transportType === 'bus') && <>
-              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>From:</strong> &nbsp;{item.boardingFrom}</div>
-              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>To:</strong> &nbsp;{item.departingTo}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.boardingDate)} at {formatTimeSafe(item.boardingTime)}</div>
-              <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
-              <div className="flex items-center"><strong>Baggage:</strong> &nbsp;{item.baggageAllowance}</div>
+              <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>From:</strong>&nbsp;{item.boardingFrom}</span></div>
+              <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>To:</strong>&nbsp;{item.departingTo}</span></div>
+              <div className="flex items-start gap-2"><Calendar size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>On:</strong>&nbsp;{formatDateSafe(item.boardingDate)} at {formatTimeSafe(item.boardingTime)}</span></div>
+              <div className="flex items-start gap-2"><span className="min-w-0"><strong>Duration:</strong>&nbsp;{item.duration}</span></div>
+              <div className="flex items-start gap-2"><span className="min-w-0"><strong>Baggage:</strong>&nbsp;{item.baggageAllowance}</span></div>
             </>}
             {item.transportType === 'driver' && <>
-              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Pickup:</strong> &nbsp;{item.pickupFrom} ({item.location})</div>
-              <div className="flex items-center"><MapPin size={14} className="mr-2 text-gray-500" /> <strong>Drop-off:</strong> &nbsp;{item.dropoffTo}</div>
-              <div className="flex items-center"><Calendar size={14} className="mr-2 text-gray-500" /> <strong>On:</strong> &nbsp;{formatDateSafe(item.pickupDate)} at {formatTimeSafe(item.pickupTime)}</div>
-              <div className="flex items-center"><strong>Duration:</strong> &nbsp;{item.duration}</div>
+              <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Pickup:</strong>&nbsp;{[item.pickupFrom, item.location].filter(Boolean).join(' · ')}</span></div>
+              <div className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>Drop-off:</strong>&nbsp;{item.dropoffTo}</span></div>
+              <div className="flex items-start gap-2"><Calendar size={14} className="mt-1 text-gray-500 shrink-0" /><span className="min-w-0"><strong>On:</strong>&nbsp;{formatDateSafe(item.pickupDate)} at {formatTimeSafe(item.pickupTime)}</span></div>
+              <div className="flex items-start gap-2"><span className="min-w-0"><strong>Duration:</strong>&nbsp;{item.duration}</span></div>
             </>}
           </div>
         </div>
-        <div className="w-full lg:w-auto text-right mt-4 lg:mt-0 lg:ml-auto flex-shrink-0 flex flex-col items-end gap-2">
+        <div className="w-full lg:w-auto text-left lg:text-right mt-2 lg:mt-0 lg:ml-auto flex-shrink-0 flex flex-row lg:flex-col items-start lg:items-end gap-2 lg:gap-2">
           <span className={`text-3xl font-bold whitespace-nowrap ${priceColor}`}>
             {`${price < 0 ? '-' : '+'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(price))}`}
           </span>

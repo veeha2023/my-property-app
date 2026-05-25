@@ -103,6 +103,7 @@ const FlightForm = ({ flights, setFlights }) => {
       },
       selected: true,
       recommended: false,
+      included_in_base: true,
     });
     setShowTypeSelection(false);
   };
@@ -196,6 +197,7 @@ const FlightForm = ({ flights, setFlights }) => {
                 },
                 selected: true,
                 recommended: flight.recommended?.toUpperCase() === 'TRUE',
+                included_in_base: flight.included_in_base === undefined || flight.included_in_base === '' ? true : flight.included_in_base?.toString().toLowerCase() !== 'false',
               };
             }).filter(Boolean);
 
@@ -211,9 +213,9 @@ const FlightForm = ({ flights, setFlights }) => {
   };
 
   const downloadTemplate = () => {
-    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces,recommended";
-    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,-350,NZD,23,1,7,1,FALSE";
-    const note = "\n# NOTE: Please use YYYY-MM-DD format for dates. Separate multiple image URLs with a semicolon (;). flightType can be 'domestic' or 'international'.";
+    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces,included_in_base,recommended";
+    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,-350,NZD,23,1,7,1,TRUE,FALSE";
+    const note = "\n# NOTE: Please use YYYY-MM-DD format for dates. Separate multiple image URLs with a semicolon (;). flightType can be 'domestic' or 'international'. included_in_base: TRUE means part of base package (deselecting shows 'Removed from package'); FALSE means optional add-on (uses price differential).";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -271,6 +273,18 @@ const FlightForm = ({ flights, setFlights }) => {
                 Selected by default for client
             </label>
         </div>
+        <div className="lg:col-span-3 flex items-center">
+            <input
+                type="checkbox"
+                id="included_in_base_flight"
+                checked={data.included_in_base !== false}
+                onChange={(e) => setData({ ...data, included_in_base: e.target.checked })}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="included_in_base_flight" className="ml-2 block text-sm font-medium text-gray-700">
+                Included in Base Quote <span className="text-xs text-gray-500 font-normal">(deselecting shows "Removed from package"; uncheck for optional upgrade flights priced by differential)</span>
+            </label>
+        </div>
         <div className="lg:col-span-3 flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
           <div className="flex items-center gap-2">
             <label className="font-semibold text-gray-700">Agent's Pick</label>
@@ -311,58 +325,51 @@ const FlightForm = ({ flights, setFlights }) => {
         className={`relative p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}
         onClick={() => toggleSelection(item.id)}
       >
-        <div className="flex flex-col w-full">
-            <div className="flex justify-between items-center w-full">
-                {item.selected && (
-                    <div className="absolute top-1/2 -translate-y-1/2 left-6 rounded-full p-1 shadow-md bg-white z-10">
-                        <CheckCircle size={24} className="text-green-500" />
-                    </div>
-                )}
-                <div className="flex items-center gap-6 flex-1 pl-12">
-                    <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-16 w-auto object-contain"/>
-                    <div className="text-sm">
-                        <p className="font-bold text-gray-800 text-lg">{item.airline}</p>
-                        <p className="text-gray-500">{item.flightNumber}</p>
-                    </div>
+        {item.selected && (
+            <div className="absolute top-4 left-4 rounded-full p-1 shadow-md bg-white z-10">
+                <CheckCircle size={24} className="text-green-500" />
+            </div>
+        )}
+        <div className="flex flex-col w-full gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-12 pr-2">
+                <img src={item.airlineLogoUrl || 'https://placehold.co/140x50/E0E0E0/333333?text=Logo'} alt={`${item.airline} logo`} className="h-12 sm:h-14 w-auto object-contain shrink-0"/>
+                <div className="min-w-0 flex-1 basis-[120px]">
+                    <p className="font-bold text-gray-800 text-base sm:text-lg truncate">{item.airline}</p>
+                    <p className="text-gray-500 text-sm truncate">{item.flightNumber}</p>
                 </div>
-                
-                <div className="flex items-center justify-center flex-grow-[2] text-center">
-                    <div className="text-right">
-                        <p className="text-3xl font-bold">{formatTimeSafe(item.departureTime)}</p>
-                        <p className="text-xl font-semibold text-gray-700">{item.from}</p>
-                        <p className="text-xs text-gray-500">{formatDateSafe(item.departureDate)}</p>
-                    </div>
-                    <div className="mx-8 text-center">
-                        <p className="text-sm text-gray-500">{duration}</p>
-                        <div className="w-32 h-px bg-gray-300 relative my-1">
-                            <Plane size={16} className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gray-50 px-1 text-gray-500"/>
-                        </div>
-                        <p className="text-xs text-green-600 font-semibold">Direct</p>
-                    </div>
-                    <div className="text-left">
-                        <p className="text-3xl font-bold">{formatTimeSafe(item.arrivalTime)}</p>
-                        <p className="text-xl font-semibold text-gray-700">{item.to}</p>
-                        <p className="text-xs text-gray-500">{formatDateSafe(item.arrivalDate)}</p>
-                    </div>
-                </div>
-
-                <div className="flex items-center justify-end flex-1 gap-6">
-                    <div className="text-right">
-                        <span className={`text-3xl font-bold whitespace-nowrap ${priceColor}`}>
-                            {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(item.currency)}{formatNumberWithCommas(Math.abs(currentPrice))}
-                        </span>
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingFlight(item); }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
-                    </div>
+                <span className={`text-xl sm:text-3xl font-bold whitespace-nowrap shrink-0 ml-auto ${priceColor}`}>
+                    {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(item.currency)}{formatNumberWithCommas(Math.abs(currentPrice))}
+                </span>
+                <div className="flex flex-col space-y-2 shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); setEditingFlight(item); }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
                 </div>
             </div>
-            
-            <div className="w-full mt-4 pt-4 border-t border-gray-200 flex justify-center items-center gap-8 text-sm text-gray-600">
+
+            <div className="flex items-center justify-between gap-3 sm:gap-6 px-2">
+                <div className="text-right min-w-0 flex-1">
+                    <p className="text-2xl sm:text-3xl font-bold whitespace-nowrap">{formatTimeSafe(item.departureTime)}</p>
+                    <p className="text-base sm:text-xl font-semibold text-gray-700 truncate">{item.from}</p>
+                    <p className="text-xs text-gray-500 whitespace-nowrap">{formatDateSafe(item.departureDate)}</p>
+                </div>
+                <div className="text-center shrink-0">
+                    <p className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">{duration}</p>
+                    <div className="w-16 sm:w-32 h-px bg-gray-300 relative my-1">
+                        <Plane size={16} className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gray-50 px-1 text-gray-500"/>
+                    </div>
+                    <p className="text-xs text-green-600 font-semibold">Direct</p>
+                </div>
+                <div className="text-left min-w-0 flex-1">
+                    <p className="text-2xl sm:text-3xl font-bold whitespace-nowrap">{formatTimeSafe(item.arrivalTime)}</p>
+                    <p className="text-base sm:text-xl font-semibold text-gray-700 truncate">{item.to}</p>
+                    <p className="text-xs text-gray-500 whitespace-nowrap">{formatDateSafe(item.arrivalDate)}</p>
+                </div>
+            </div>
+
+            <div className="w-full pt-4 border-t border-gray-200 flex flex-wrap justify-center items-center gap-x-4 sm:gap-x-6 gap-y-2 text-sm text-gray-600">
                 <p className="font-semibold text-gray-500">Baggage Allowance:</p>
-                <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Check-in: {item.baggage.checkInKgs}kg ({item.baggage.checkInPieces} pc)</div>
-                <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500" /> Cabin: {item.baggage.cabinKgs}kg ({item.baggage.cabinPieces} pc)</div>
+                <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500 shrink-0" /> Check-in: {item.baggage.checkInKgs}kg ({item.baggage.checkInPieces} pc)</div>
+                <div className="flex items-center"><Briefcase size={14} className="mr-2 text-gray-500 shrink-0" /> Cabin: {item.baggage.cabinKgs}kg ({item.baggage.cabinPieces} pc)</div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
