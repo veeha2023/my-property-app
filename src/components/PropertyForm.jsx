@@ -1,5 +1,5 @@
 // src/components/PropertyForm.jsx - Version 6.12 (Robust CSV Import & Error Handling)
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Calendar,
   MapPin,
@@ -61,7 +61,66 @@ const PropertyForm = ({
   const [error, setError] = useState(null);
   const [imageLinks, setImageLinks] = useState('');
   const [collapsedSections, setCollapsedSections] = useState({});
+  const [showNewLegPrompt, setShowNewLegPrompt] = useState(false);
+  const [newLegForm, setNewLegForm] = useState({ location: '', checkIn: '', checkOut: '' });
   const fileInputRef = useRef(null);
+
+  // All existing itinerary legs derived from the properties array (placeholder dates take priority)
+  const availableLegs = useMemo(() => {
+    const map = new Map();
+    (properties || []).forEach(p => {
+      if (!p || !p.location) return;
+      const loc = p.location;
+      if (p.isPlaceholder) {
+        map.set(loc, { location: loc, checkIn: p.checkIn, checkOut: p.checkOut });
+      } else if (!map.has(loc)) {
+        map.set(loc, { location: loc, checkIn: p.checkIn, checkOut: p.checkOut });
+      }
+    });
+    return Array.from(map.values());
+  }, [properties]);
+
+  const handleLocationDropdownChange = (e, setProperty) => {
+    const value = e.target.value;
+    if (value === '__NEW_LEG__') {
+      setNewLegForm({ location: '', checkIn: '', checkOut: '' });
+      setShowNewLegPrompt(true);
+    } else {
+      const leg = availableLegs.find(l => l.location === value);
+      if (leg) {
+        setProperty(prev => ({ ...prev, location: leg.location, checkIn: leg.checkIn, checkOut: leg.checkOut }));
+      }
+    }
+  };
+
+  const handleConfirmNewLeg = () => {
+    const loc = (newLegForm.location || '').trim();
+    if (!loc || !newLegForm.checkIn || !newLegForm.checkOut) {
+      setError('Please fill in location, check-in, and check-out for the new itinerary leg.');
+      return;
+    }
+    // Only add a placeholder if no property/leg exists for this location yet
+    const hasExisting = (properties || []).some(p => p && p.location && p.location.trim() === loc);
+    if (!hasExisting) {
+      const placeholder = {
+        id: `itinerary-placeholder-${Date.now()}`,
+        name: 'Itinerary Placeholder',
+        location: loc,
+        checkIn: newLegForm.checkIn,
+        checkOut: newLegForm.checkOut,
+        price: 0, currency: 'NZD', images: [], bedrooms: 0, bathrooms: 0, selected: false, isPlaceholder: true,
+      };
+      setProperties([...(properties || []), placeholder]);
+    }
+    // Update the form being edited or added to use the new leg location/dates
+    if (editingProperty) {
+      setEditingProperty(prev => ({ ...prev, location: loc, checkIn: newLegForm.checkIn, checkOut: newLegForm.checkOut }));
+    } else {
+      setNewProperty(prev => ({ ...prev, location: loc, checkIn: newLegForm.checkIn, checkOut: newLegForm.checkOut }));
+    }
+    setShowNewLegPrompt(false);
+    setError(null);
+  };
 
   const initialNewPropertyState = {
     name: '', location: '', checkIn: '', checkOut: '', currency: 'NZD',
@@ -290,7 +349,9 @@ const PropertyForm = ({
               updatedProperties = [...nonPlaceholderProperties, propertyWithId];
 
           } else {
-              updatedProperties = properties.map(prop =>
+              // Strip any placeholder at the target location — the real property now fills the leg.
+              const cleaned = properties.filter(p => !(p.location === finalPropertyToSave.location && p.isPlaceholder));
+              updatedProperties = cleaned.map(prop =>
                   prop.id === propertyToSave.id ? finalPropertyToSave : prop
               );
           }
@@ -560,15 +621,28 @@ const PropertyForm = ({
         </div>
         <div>
           <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
-          <input
-            type="text"
-            id="location"
-            value={currentProperty.location}
-            onChange={(e) => setProperty(prev => ({ ...prev, location: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-            required
-            readOnly
-          />
+          {(() => {
+            const currentLoc = currentProperty.location || '';
+            const isInLegs = availableLegs.some(l => l.location === currentLoc);
+            const selectValue = isInLegs ? currentLoc : (currentLoc ? '__CURRENT_UNLISTED__' : '');
+            return (
+              <select
+                id="location"
+                value={selectValue}
+                onChange={(e) => handleLocationDropdownChange(e, setProperty)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                {!isInLegs && currentLoc && (
+                  <option value="__CURRENT_UNLISTED__">{currentLoc}</option>
+                )}
+                {availableLegs.map(leg => (
+                  <option key={leg.location} value={leg.location}>{leg.location}</option>
+                ))}
+                <option value="__NEW_LEG__">+ New location (create itinerary leg)...</option>
+              </select>
+            );
+          })()}
         </div>
         <div>
           <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700">Check-in Date</label>
@@ -576,8 +650,7 @@ const PropertyForm = ({
             type="date"
             id="checkIn"
             value={currentProperty.checkIn}
-            onChange={(e) => setProperty(prev => ({ ...prev, checkIn: e.target.value, checkOut: e.target.value > prev.checkOut ? '' : prev.checkOut }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 text-gray-700"
             required
             readOnly
           />
@@ -588,11 +661,8 @@ const PropertyForm = ({
             type="date"
             id="checkOut"
             value={currentProperty.checkOut}
-            onChange={(e) => setProperty(prev => ({ ...prev, checkOut: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 text-gray-700"
             required
-            min={currentProperty.checkIn}
-            disabled={!currentProperty.checkIn}
             readOnly
           />
         </div>
@@ -862,6 +932,71 @@ const PropertyForm = ({
               <button
                 onClick={handleCancelForm}
                 className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNewLegPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4" style={{ zIndex: 60 }}>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
+            <button
+              onClick={() => setShowNewLegPrompt(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-800"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Create New Itinerary Leg</h3>
+            <p className="text-sm text-gray-600 mb-4">This location doesn't exist yet. Enter the leg details to add it to the itinerary first.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Location</label>
+                <input
+                  type="text"
+                  value={newLegForm.location}
+                  onChange={(e) => setNewLegForm(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="e.g. Bali"
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Check-in Date</label>
+                <input
+                  type="date"
+                  value={newLegForm.checkIn}
+                  onChange={(e) => setNewLegForm(prev => ({ ...prev, checkIn: e.target.value, checkOut: prev.checkOut && e.target.value > prev.checkOut ? '' : prev.checkOut }))}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Check-out Date</label>
+                <input
+                  type="date"
+                  value={newLegForm.checkOut}
+                  min={newLegForm.checkIn}
+                  disabled={!newLegForm.checkIn}
+                  onChange={(e) => setNewLegForm(prev => ({ ...prev, checkOut: e.target.value }))}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3 mt-5">
+              <button
+                type="button"
+                onClick={handleConfirmNewLeg}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md"
+              >
+                Create Leg & Use
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNewLegPrompt(false)}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md"
               >
                 Cancel
               </button>

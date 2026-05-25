@@ -1400,7 +1400,7 @@ const ClientView = () => {
                                         </div>
                                         <div className="p-4 flex flex-col justify-between flex-grow">
                                             <div>
-                                                <h4 className="font-bold text-lg text-gray-800 truncate mb-2">{activity.name}</h4>
+                                                <h4 className="font-bold text-lg text-gray-800 break-words mb-2">{activity.name}</h4>
 
                                                 {/* Contextual one-liner — only for states with unique info */}
                                                 {(() => {

@@ -19,8 +19,18 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
   const [showDateTime, setShowDateTime] = useState(false); // State for the toggle
+  const [originalLocation, setOriginalLocation] = useState(null); // tracks location at edit-start, for change detection
   const fileInputRef = useRef(null);
   const accentColor = '#FFD700';
+
+  // Leg locations available as drop-down targets for the activity Location field
+  const availableLegLocations = useMemo(() => {
+    const set = new Set();
+    (itineraryLegs || []).forEach(leg => {
+      if (leg && leg.location) set.add(leg.location);
+    });
+    return Array.from(set);
+  }, [itineraryLegs]);
 
   // --- UTILITY FUNCTIONS ---
   // Helper function to format number with thousand separators
@@ -124,6 +134,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const handleStartAdding = (location) => {
     setAddingToLocation(location);
     setEditingActivity(null);
+    setOriginalLocation(location);
     setNewActivity({
       id: `act-${Date.now()}`,
       name: '',
@@ -148,6 +159,21 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const handleSave = () => {
     let updatedActivities;
     const activityToSave = editingActivity || newActivity;
+
+    // Confirm when location is being moved to one that isn't an existing itinerary leg.
+    const targetLoc = (activityToSave.location || '').trim();
+    if (!targetLoc) {
+      setError('Location is required.');
+      return;
+    }
+    activityToSave.location = targetLoc;
+    const locChanged = targetLoc !== (originalLocation || '').trim();
+    if (locChanged && !availableLegLocations.includes(targetLoc)) {
+      const ok = window.confirm(
+        `"${targetLoc}" is not an existing itinerary location.\n\nSave this activity under "${targetLoc}" anyway?`
+      );
+      if (!ok) return;
+    }
 
     activityToSave.pax = parseInt(activityToSave.pax, 10) || 1;
     activityToSave.cost_per_pax = parseFloat(activityToSave.cost_per_pax) || 0;
@@ -206,6 +232,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     setNewActivity(null);
     setImageLinks('');
     setShowDateTime(false); // Reset toggle on form close
+    setOriginalLocation(null);
   };
 
   const handleAddImageLinks = (currentActivity, setFunc) => {
@@ -433,7 +460,40 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         </div>
         <div>
             <label className="block text-sm font-medium text-gray-700">Location</label>
-            <input type="text" value={activityData.location} readOnly className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" />
+            {(() => {
+              const currentLoc = activityData.location || '';
+              const isInLegs = availableLegLocations.includes(currentLoc);
+              const selectValue = isInLegs ? currentLoc : '__OTHER__';
+              return (
+                <>
+                  <select
+                    value={selectValue}
+                    onChange={(e) => {
+                      if (e.target.value === '__OTHER__') {
+                        setActivityData({ ...activityData, location: '' });
+                      } else {
+                        setActivityData({ ...activityData, location: e.target.value });
+                      }
+                    }}
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                  >
+                    {availableLegLocations.map(loc => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                    <option value="__OTHER__">+ Other location...</option>
+                  </select>
+                  {selectValue === '__OTHER__' && (
+                    <input
+                      type="text"
+                      value={currentLoc}
+                      onChange={(e) => setActivityData({ ...activityData, location: e.target.value })}
+                      placeholder="Type new location"
+                      className="mt-2 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                    />
+                  )}
+                </>
+              );
+            })()}
         </div>
         
         {/* Conditionally render Date and Time fields */}
@@ -700,13 +760,14 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                                 setEditingActivity({ ...activity, recommended: activity.recommended || false, discount_type: activity.discount_type || '', discount_value: activity.discount_value || 0 });
                                 setShowDateTime(!!(activity.date || activity.time)); // Show if date or time exists
                                 setAddingToLocation(null);
+                                setOriginalLocation(activity.location || null);
                             }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
                             <button onClick={(e) => { e.stopPropagation(); handleDelete(activity.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
                           </div>
                         </div>
                         <div className="p-4 flex flex-col justify-between flex-grow">
                           <div>
-                            <h4 className="font-bold text-lg text-gray-800 truncate">{activity.name}</h4>
+                            <h4 className="font-bold text-lg text-gray-800 break-words">{activity.name}</h4>
                             <div className="mt-2 space-y-2 text-sm text-gray-600">
                               
                               {/* --- DISPLAY LOGIC FIX --- */}
