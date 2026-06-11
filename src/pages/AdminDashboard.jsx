@@ -6,7 +6,7 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import TransportationForm from '../components/TransportationForm.jsx';
 import FlightForm from '../components/FlightForm.jsx';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users, Lock, Unlock, UploadCloud } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users, Lock, Unlock, UploadCloud, Menu } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
@@ -172,21 +172,21 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
     const currencySymbol = getCurrencySymbol(currency);
 
     return (
-        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-6">
-                <h2 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Client Selection Summary</h2>
-                <div className="grid grid-cols-3 gap-4 w-full md:w-auto">
-                    <div className="text-center p-3 rounded-lg bg-gray-100">
-                        <p className="text-xs text-gray-600">Base Quote</p>
-                        <p className="text-2xl font-bold text-gray-800">{currencySymbol}{formatNumberWithCommas(baseQuote, currency)}</p>
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b pb-4 sm:pb-6">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">Client Selection Summary</h2>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full md:w-auto">
+                    <div className="text-center p-2 sm:p-3 rounded-lg bg-gray-100 min-w-0">
+                        <p className="text-[11px] sm:text-xs text-gray-600">Base Quote</p>
+                        <p className="text-sm sm:text-xl lg:text-2xl font-bold text-gray-800 break-words">{currencySymbol}{formatNumberWithCommas(baseQuote, currency)}</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-gray-100">
-                        <p className="text-xs text-gray-600">Selections</p>
-                        <p className={`text-2xl font-bold ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{currencySymbol}{formatNumberWithCommas(Math.abs(totalChange), currency)}</p>
+                    <div className="text-center p-2 sm:p-3 rounded-lg bg-gray-100 min-w-0">
+                        <p className="text-[11px] sm:text-xs text-gray-600">Selections</p>
+                        <p className={`text-sm sm:text-xl lg:text-2xl font-bold break-words ${getPriceColor(totalChange)}`}>{totalChange >= 0 ? '+' : '-'}{currencySymbol}{formatNumberWithCommas(Math.abs(totalChange), currency)}</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-blue-100 border border-blue-200">
-                        <p className="text-xs text-blue-800">Final Quote</p>
-                        <p className="text-2xl font-bold text-blue-800">{currencySymbol}{formatNumberWithCommas(finalQuote, currency)}</p>
+                    <div className="text-center p-2 sm:p-3 rounded-lg bg-blue-100 border border-blue-200 min-w-0">
+                        <p className="text-[11px] sm:text-xs text-blue-800">Final Quote</p>
+                        <p className="text-sm sm:text-xl lg:text-2xl font-bold text-blue-800 break-words">{currencySymbol}{formatNumberWithCommas(finalQuote, currency)}</p>
                     </div>
                 </div>
             </div>
@@ -197,18 +197,18 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                 <div className="space-y-8">
                     {selectedProperties.length > 0 && (
                         <div onClick={() => setActiveTab('property')} className="cursor-pointer group">
-                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Building /> Properties</h3>
+                            <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Building /> Properties</h3>
                             <div className="space-y-4">
                                 {selectedProperties.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
-                                            <div>
-                                                <p className="font-bold text-gray-800">{item.name}</p>
-                                                <p className="text-sm text-gray-600">{item.location}</p>
+                                    <div key={item.id} className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                            <img src={item.images?.[item.homeImageIndex || 0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-14 h-14 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm flex-shrink-0"/>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-gray-800 truncate">{item.name}</p>
+                                                <p className="text-sm text-gray-600 truncate">{item.location}</p>
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
+                                        <p className={`font-bold text-base sm:text-lg whitespace-nowrap flex-shrink-0 ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
                                     </div>
                                 ))}
                             </div>
@@ -216,18 +216,18 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                     )}
                     {selectedFlights.length > 0 && (
                         <div onClick={() => setActiveTab('flights')} className="cursor-pointer group">
-                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Plane /> Flights</h3>
+                            <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Plane /> Flights</h3>
                             <div className="space-y-4">
                                 {selectedFlights.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-10 object-contain"/>
-                                            <div>
-                                                <p className="font-bold text-gray-800">{item.airline} ({item.flightNumber})</p>
-                                                <p className="text-sm text-gray-600">{item.from} to {item.to}</p>
+                                    <div key={item.id} className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                            <img src={item.airlineLogoUrl || 'https://placehold.co/100x30/E0E0E0/333333?text=Logo'} alt={item.airline} className="h-8 sm:h-10 max-w-[80px] sm:max-w-none object-contain flex-shrink-0"/>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-gray-800 truncate">{item.airline} ({item.flightNumber})</p>
+                                                <p className="text-sm text-gray-600 truncate">{item.from} to {item.to}</p>
                                             </div>
                                         </div>
-                                        <p className={`font-bold text-lg ${getPriceColor(calculateFinalFlightPrice(item))}`}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(calculateFinalFlightPrice(item)), item.currency)}`}</p>
+                                        <p className={`font-bold text-base sm:text-lg whitespace-nowrap flex-shrink-0 ${getPriceColor(calculateFinalFlightPrice(item))}`}>{`${calculateFinalFlightPrice(item) >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(calculateFinalFlightPrice(item)), item.currency)}`}</p>
                                     </div>
                                 ))}
                             </div>
@@ -235,22 +235,22 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                     )}
                     {selectedActivities.length > 0 && (
                         <div onClick={() => setActiveTab('activities')} className="cursor-pointer group">
-                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
+                            <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Activity /> Activities</h3>
                             <div className="space-y-4">
                                 {selectedActivities.map(item => {
                                     const deltaPrice = calculateActivityDelta(item);
                                     const costPerPax = parseFloat(item.cost_per_pax) || 0;
                                     return (
-                                        <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
-                                            <div className="flex items-center gap-4">
-                                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-20 h-20 rounded-lg object-cover shadow-sm"/>
-                                                <div>
-                                                    <p className="font-bold text-gray-800">{item.name}</p>
-                                                    <p className="text-sm text-gray-600">{item.location}</p>
-                                                    {costPerPax > 0 && <p className="text-xs text-gray-500">{item.pax} pax × {getCurrencySymbol(item.currency)}{formatNumberWithCommas(costPerPax, item.currency)}</p>}
+                                        <div key={item.id} className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
+                                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                                <img src={item.images?.[0] || "https://placehold.co/80x80/E0E0E0/333333?text=No+Image"} alt={item.name} className="w-14 h-14 sm:w-20 sm:h-20 rounded-lg object-cover shadow-sm flex-shrink-0"/>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-gray-800 truncate">{item.name}</p>
+                                                    <p className="text-sm text-gray-600 truncate">{item.location}</p>
+                                                    {costPerPax > 0 && <p className="text-xs text-gray-500 truncate">{item.pax} pax × {getCurrencySymbol(item.currency)}{formatNumberWithCommas(costPerPax, item.currency)}</p>}
                                                 </div>
                                             </div>
-                                            <p className={`font-bold text-lg ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(deltaPrice), item.currency)}`}</p>
+                                            <p className={`font-bold text-base sm:text-lg whitespace-nowrap flex-shrink-0 ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(deltaPrice), item.currency)}`}</p>
                                         </div>
                                     );
                                 })}
@@ -259,7 +259,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                     )}
                     {selectedTransportation.length > 0 && (
                         <div onClick={() => setActiveTab('transportation')} className="cursor-pointer group">
-                            <h3 className="text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
+                            <h3 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-3 text-gray-700 group-hover:text-yellow-500 transition-colors"><Car /> Transportation</h3>
                             <div className="space-y-6">
                                 {groupedSelectedTransportation.map(({ pickupPoint, items }) => (
                                     <div key={pickupPoint}>
@@ -322,7 +322,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                         </div>
                                                     </div>
                                                     <div className="w-full lg:w-auto text-right lg:ml-auto flex-shrink-0">
-                                                        <p className={`text-2xl font-bold whitespace-nowrap ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
+                                                        <p className={`text-xl sm:text-2xl font-bold whitespace-nowrap ${getPriceColor(item.price)}`}>{`${item.price >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(item.price), item.currency)}`}</p>
                                                     </div>
                                                 </div>
                                             ))}
@@ -349,6 +349,7 @@ const AdminDashboard = () => {
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingClientName, setEditingClientName] = useState('');
   const [editingClientQuote, setEditingClientQuote] = useState(0);
   const [editingClientCurrency, setEditingClientCurrency] = useState('NZD');
@@ -385,6 +386,12 @@ const AdminDashboard = () => {
 
   // V9.0: Visibility detection to prevent loading on tab switch
   useVisibility();
+
+  // Lock background scroll while the mobile client drawer is open
+  useEffect(() => {
+    document.body.style.overflow = isMobileSidebarOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobileSidebarOpen]);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
   // V9.0: Auto-save functionality with debouncing (2 second delay)
@@ -543,6 +550,7 @@ const AdminDashboard = () => {
 
   const handleSelectClient = (client) => {
     setSelectedClient(client);
+    setIsMobileSidebarOpen(false);
     let parsedClientProperties = null;
     try {
       if (typeof client.client_properties === 'string') {
@@ -1499,7 +1507,7 @@ const AdminDashboard = () => {
       {/* Add/Edit Itinerary Modal */}
       {showItineraryModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative text-gray-800 max-h-[90vh] overflow-y-auto">
             <button onClick={() => setShowItineraryModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-800" aria-label="Close modal"><X size={24} /></button>
             <h2 className="text-2xl font-bold text-yellow-400 mb-6">
               {editingItineraryLeg ? 'Edit Itinerary Leg' : 'Add New Itinerary Leg'}
@@ -1652,23 +1660,42 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      <div className="w-full flex flex-col sm:flex-row justify-between items-center py-4 px-8 mb-8 rounded-xl shadow-lg bg-gray-900 text-white">
-        <div className="flex items-center mb-4 sm:mb-0">
-          {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-12 w-auto object-contain rounded-lg mr-4" /> ) : ( <div className="h-12 w-12 rounded-lg bg-gray-700 flex items-center justify-center text-gray-400 text-xs mr-4">Logo</div> )}
-          <h1 className="text-3xl font-extrabold text-accent">{companyName}</h1>
+      <div className="w-full flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 px-3 sm:py-4 sm:px-8 mb-4 md:mb-8 rounded-xl shadow-lg bg-gray-900 text-white">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+          <button onClick={() => { setIsMobileSidebarOpen(true); setIsSidebarMinimized(false); }} className="md:hidden p-2 -ml-1 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-accent flex-shrink-0" aria-label="Open clients menu">
+            <Menu size={24} />
+          </button>
+          {globalLogoUrl ? ( <img src={globalLogoUrl} alt="Company Logo" className="h-9 sm:h-12 w-auto object-contain rounded-lg flex-shrink-0" /> ) : ( <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-lg bg-gray-700 flex items-center justify-center text-gray-400 text-xs flex-shrink-0">Logo</div> )}
+          <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-accent truncate">{companyName}</h1>
         </div>
-        <nav className="flex space-x-6">
-          <button onClick={() => setActiveTab('clients')} className={`text-lg font-semibold px-4 py-2 rounded-lg transition-colors duration-200 ${activeTab === 'clients' ? 'bg-accent text-gray-900 shadow-md' : 'text-gray-300 hover:text-white'}`}> Clients </button>
-          <button onClick={() => setShowSettingsModal(true)} className={`text-lg font-semibold px-4 py-2 rounded-lg transition-colors duration-200 ${activeTab === 'settings' ? 'bg-accent text-gray-900 shadow-md' : 'text-gray-300 hover:text-white'}`}> Settings </button>
-        </nav>
-        <button onClick={handleLogout} className="flex items-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500" disabled={loading}> <LogOut size={20} className="mr-2" /> {loading ? 'Logging out...' : 'Logout'} </button>
+        <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
+          <nav className="flex gap-1 sm:gap-4">
+            <button onClick={() => setActiveTab('clients')} className={`text-sm sm:text-lg font-semibold px-3 py-2 sm:px-4 rounded-lg transition-colors duration-200 ${activeTab === 'clients' ? 'bg-accent text-gray-900 shadow-md' : 'text-gray-300 hover:text-white'}`}> Clients </button>
+            <button onClick={() => setShowSettingsModal(true)} className={`text-sm sm:text-lg font-semibold px-3 py-2 sm:px-4 rounded-lg transition-colors duration-200 ${activeTab === 'settings' ? 'bg-accent text-gray-900 shadow-md' : 'text-gray-300 hover:text-white'}`}> Settings </button>
+          </nav>
+          <button onClick={handleLogout} className="flex items-center justify-center bg-red-600 hover:bg-red-700 text-white font-bold p-2 sm:py-2 sm:px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500" disabled={loading} aria-label="Logout" title="Logout">
+            <LogOut size={20} className="sm:mr-2" />
+            <span className="hidden sm:inline">{loading ? 'Logging out...' : 'Logout'}</span>
+          </button>
+        </div>
       </div>
 
-      <div className="flex-grow flex p-4 md:p-8 pt-0">
-        <div className={`bg-gray-900 text-white transition-all duration-300 ease-in-out ${isSidebarMinimized ? 'w-16' : 'w-72'} flex-shrink-0 relative shadow-lg z-10 rounded-xl mr-8`}>
-          <div className={`flex items-center justify-between p-4 border-b border-gray-700 ${isSidebarMinimized ? 'justify-center' : ''}`}>
-            {!isSidebarMinimized && ( <h2 className="text-2xl font-bold text-accent">Clients</h2> )}
-            <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-accent" aria-label={isSidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}> {isSidebarMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />} </button>
+      <div className="flex-grow flex p-3 sm:p-4 md:p-8 pt-0">
+        {/* Backdrop for the mobile client drawer */}
+        {isMobileSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <div className={`bg-gray-900 text-white shadow-lg flex flex-col overflow-hidden
+          fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:relative md:inset-auto md:z-10 md:translate-x-0 md:transition-all ${isSidebarMinimized ? 'md:w-16' : 'md:w-72'} md:max-w-none md:flex-shrink-0 md:rounded-xl md:mr-8`}>
+          <div className={`flex items-center justify-between p-4 border-b border-gray-700 ${isSidebarMinimized ? 'md:justify-center' : ''}`}>
+            <h2 className={`text-2xl font-bold text-accent ${isSidebarMinimized ? 'md:hidden' : ''}`}>Clients</h2>
+            <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="hidden md:block p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-accent" aria-label={isSidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}> {isSidebarMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />} </button>
+            <button onClick={() => setIsMobileSidebarOpen(false)} className="md:hidden p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-accent" aria-label="Close clients menu"> <X size={20} /> </button>
           </div>
           <nav className="flex-grow overflow-y-auto p-4">
             <button onClick={() => setIsAddingClient(!isAddingClient)} className={`flex items-center w-full bg-accent hover:bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg mb-4 justify-center transition duration-200 ${isSidebarMinimized ? 'p-2 w-12 h-12 rounded-full mx-auto flex-shrink-0' : ''}`} title={isAddingClient ? 'Cancel Add Client' : 'Add New Client'}> <Plus size={20} className={`${isSidebarMinimized ? '' : 'mr-2'}`} /> {!isSidebarMinimized && (isAddingClient ? 'Cancel' : 'Add Client')} </button>
@@ -1679,34 +1706,35 @@ const AdminDashboard = () => {
           </nav>
         </div>
         
-        <div className="flex-grow bg-white rounded-xl shadow-lg p-6 border border-gray-200 relative">
+        <div className="flex-grow min-w-0 bg-white rounded-xl shadow-lg p-3 sm:p-6 border border-gray-200 relative">
           {activeTab === 'clients' && (
             selectedClient ? (
               <>
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 border-b pb-4">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-3 sm:mb-0">
+                <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-3 mb-6 border-b pb-4">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-800 break-words min-w-0">
                     Editing: "{selectedClient.client_name}"
                   </h2>
-                  <div className="flex space-x-2">
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 flex-shrink-0">
                     <button
                       onClick={handleRefreshClientData}
                       disabled={isRefreshing}
-                      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg transition duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Refresh client data"
                     >
-                      <RefreshCw size={20} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      <RefreshCw size={18} className={`mr-2 flex-shrink-0 ${isRefreshing ? 'animate-spin' : ''}`} />
                       {isRefreshing ? 'Refreshing...' : 'Refresh'}
                     </button>
-                    <button onClick={() => { setShowItineraryModal(true); setNewItinerary({ location: '', checkIn: '', checkOut: '' }); setEditingItineraryLeg(null); }} className="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out">
-                          <MapPin size={20} className="mr-2" />
-                          Add Itinerary Leg
+                    <button onClick={() => { setShowItineraryModal(true); setNewItinerary({ location: '', checkIn: '', checkOut: '' }); setEditingItineraryLeg(null); }} className="flex items-center justify-center min-h-[44px] bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg transition duration-200 ease-in-out">
+                          <MapPin size={18} className="mr-2 flex-shrink-0" />
+                          <span className="sm:hidden">Add Leg</span>
+                          <span className="hidden sm:inline">Add Itinerary Leg</span>
                       </button>
-                      <button onClick={() => { setShowItineraryListModal(true); }} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out">
-                          <Edit size={20} className="mr-2" />
+                      <button onClick={() => { setShowItineraryListModal(true); }} className="flex items-center justify-center min-h-[44px] bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg transition duration-200 ease-in-out">
+                          <Edit size={18} className="mr-2 flex-shrink-0" />
                           Edit Itinerary
                       </button>
-                      <button onClick={handleToggleFinalize} className={`flex items-center font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out ${clientData?.finalized ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'}`} title={clientData?.finalized ? 'Unfinalize Quote' : 'Finalize Quote'}>
-                          {clientData?.finalized ? <Unlock size={20} className="mr-2" /> : <Lock size={20} className="mr-2" />}
+                      <button onClick={handleToggleFinalize} className={`flex items-center justify-center min-h-[44px] font-bold py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg transition duration-200 ease-in-out ${clientData?.finalized ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'}`} title={clientData?.finalized ? 'Unfinalize Quote' : 'Finalize Quote'}>
+                          {clientData?.finalized ? <Unlock size={18} className="mr-2 flex-shrink-0" /> : <Lock size={18} className="mr-2 flex-shrink-0" />}
                           {clientData?.finalized ? 'Unfinalize' : 'Finalize'}
                       </button>
                   </div>
@@ -1722,21 +1750,21 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                <div className="border-b border-gray-200 mb-6">
-                    <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                        <button onClick={() => setActiveClientTab('summary')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                <div className="border-b border-gray-200 mb-6 -mx-3 px-3 sm:mx-0 sm:px-0 overflow-x-auto">
+                    <nav className="-mb-px flex gap-4 sm:gap-6 min-w-max" aria-label="Tabs">
+                        <button onClick={() => setActiveClientTab('summary')} className={`whitespace-nowrap flex-shrink-0 touch-manipulation py-3 sm:py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <ClipboardList size={16} className="mr-2" /> Summary
                         </button>
-                        <button onClick={() => setActiveClientTab('property')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('property')} className={`whitespace-nowrap flex-shrink-0 touch-manipulation py-3 sm:py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Building size={16} className="mr-2" /> Property
                         </button>
-                        <button onClick={() => setActiveClientTab('activities')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('activities')} className={`whitespace-nowrap flex-shrink-0 touch-manipulation py-3 sm:py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'activities' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Activity size={16} className="mr-2" /> Activities
                         </button>
-                        <button onClick={() => setActiveClientTab('flights')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('flights')} className={`whitespace-nowrap flex-shrink-0 touch-manipulation py-3 sm:py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'flights' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Plane size={16} className="mr-2" /> Flights
                         </button>
-                        <button onClick={() => setActiveClientTab('transportation')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => setActiveClientTab('transportation')} className={`whitespace-nowrap flex-shrink-0 touch-manipulation py-3 sm:py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeClientTab === 'transportation' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <Car size={16} className="mr-2" /> Transportation
                         </button>
                     </nav>
@@ -1776,7 +1804,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="mt-6 text-center">
-                  <div className="flex items-center justify-center gap-4">
+                  <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                     <button
                       onClick={() => handleSaveClientData()}
                       disabled={loading}
@@ -1805,10 +1833,16 @@ const AdminDashboard = () => {
                 </div>
               </>
             ) : (
-              <div className="text-center py-20 text-gray-400">
+              <div className="text-center py-12 sm:py-20 px-4 text-gray-400">
                 <Eye size={48} className="mx-auto mb-4" />
-                <p className="text-xl">Select a client from the sidebar to manage their data.</p>
+                <p className="text-lg sm:text-xl">Select a client from the sidebar to manage their data.</p>
                 <p className="text-md mt-2">Or add a new client if none exist.</p>
+                <button
+                  onClick={() => { setIsMobileSidebarOpen(true); setIsSidebarMinimized(false); }}
+                  className="md:hidden mt-6 inline-flex items-center justify-center gap-2 min-h-[44px] px-6 py-3 bg-accent text-gray-900 font-bold rounded-lg shadow-md hover:bg-yellow-500 transition-colors"
+                >
+                  <Users size={18} /> View Clients
+                </button>
               </div>
             )
           )}
