@@ -1,0 +1,20 @@
+{
+  "name": "property-booking-scraper",
+  "version": "1.0.0",
+  "description": "Custom Booking.com property scraper - extracts only the 15 fields needed by My Property App",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "apify": "^3.2.0",
+    "crawlee": "^3.11.0",
+    "playwright": "*"
+  },
+  "scripts": {
+    "start": "node src/main.js"
+  },
+  "devDependencies": {
+    "apify-cli": "^1.3.0"
+  }
+}

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Property Scraper - Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #020617;
+      color: #F8FAFC;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 60px 20px;
+    }
+
+    .container {
+      max-width: 480px;
+      width: 100%;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .header svg {
+      width: 28px;
+      height: 28px;
+      color: #FFD700;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .card {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94A3B8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      background: #020617;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #F8FAFC;
+      font-size: 14px;
+      font-family: monospace;
+      outline: none;
+      transition: border-color 200ms;
+    }
+
+    input[type="text"]:focus {
+      border-color: #22C55E;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #64748B;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .hint a {
+      color: #22C55E;
+      text-decoration: none;
+    }
+
+    .hint a:hover {
+      text-decoration: underline;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 200ms;
+    }
+
+    .btn-primary {
+      background: #22C55E;
+      color: #020617;
+    }
+
+    .btn-primary:hover {
+      background: #16A34A;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 200ms;
+    }
+
+    .toast.success {
+      background: #052e16;
+      color: #22C55E;
+      border: 1px solid #22C55E;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+        <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </svg>
+      <h1>Property Scraper Settings</h1>
+    </div>
+
+    <div class="card">
+      <label for="apiToken">Apify API Token</label>
+      <input type="text" id="apiToken" placeholder="apify_api_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      <p class="hint">
+        Get your token from
+        <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener noreferrer">
+          console.apify.com/account/integrations
+        </a>
+      </p>
+    </div>
+
+    <button class="btn btn-primary" id="saveBtn">Save Token</button>
+
+    <div class="toast" id="toast">Token saved successfully</div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

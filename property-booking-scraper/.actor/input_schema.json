@@ -1,0 +1,36 @@
+{
+  "title": "Property Booking Scraper",
+  "description": "Scrapes a single Booking.com property page and returns one row per room type with final pricing.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "url": {
+      "title": "Property URL",
+      "description": "Full Booking.com property URL (include checkin/checkout dates in query params)",
+      "type": "string",
+      "editor": "textfield",
+      "prefill": "https://www.booking.com/hotel/nz/aroha-motel.en-gb.html?checkin=2026-04-30&checkout=2026-05-01&selected_currency=NZD"
+    },
+    "currency": {
+      "title": "Currency",
+      "description": "Desired currency code (e.g. NZD, USD, EUR)",
+      "type": "string",
+      "default": "NZD",
+      "editor": "textfield"
+    },
+    "bookingEmail": {
+      "title": "Booking.com Email",
+      "description": "Optional: your Booking.com login email for member/Genius pricing",
+      "type": "string",
+      "editor": "textfield"
+    },
+    "bookingPassword": {
+      "title": "Booking.com Password",
+      "description": "Optional: your Booking.com login password",
+      "type": "string",
+      "editor": "textfield",
+      "isSecret": true
+    }
+  },
+  "required": ["url"]
+}

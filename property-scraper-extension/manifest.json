@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Property Scraper",
+  "version": "1.0.0",
+  "description": "Extract property details from booking sites and export as CSV for My Property App",
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": ["https://*/*"],
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.booking.com/*",
+        "https://www.airbnb.com/*",
+        "https://www.airbnb.co.nz/*",
+        "https://www.expedia.com/*",
+        "https://www.hotels.com/*",
+        "https://www.vrbo.com/*",
+        "https://www.agoda.com/*",
+        "https://www.trip.com/*",
+        "https://www.bookabach.co.nz/*",
+        "https://www.ratehawk.com/*"
+      ],
+      "js": ["content/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

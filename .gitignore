@@ -26,3 +26,10 @@ yarn-error.log*
 src/tailwind.css
 .vercel
 .worktrees/
+
+# nested project dependencies
+node_modules/
+
+# machine-local Claude Code permissions
+.claude/settings.local.json
+.playwright-mcp/

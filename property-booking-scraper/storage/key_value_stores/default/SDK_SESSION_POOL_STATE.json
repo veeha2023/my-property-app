@@ -1,0 +1,256 @@
+{
+  "usableSessionsCount": 3,
+  "retiredSessionsCount": 0,
+  "sessions": [
+    {
+      "id": "session_R6vwdfdl3I",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": []
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-03-15T23:15:08.439Z",
+      "createdAt": "2026-03-15T22:25:08.439Z",
+      "usageCount": 0,
+      "maxUsageCount": 50,
+      "errorScore": 0
+    },
+    {
+      "id": "session_YtI0xPzcqS",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": [
+          {
+            "key": "bkng",
+            "value": "11UmFuZG9tSVYkc2RlIyh9Yaa29%2F3xUOLbbmD9q%2B5pe3WZlWzkfSqne1Po9sxgundjv7nx0bcGe3Oi%2BNHaI8F%2Fosq0To4%2Fb5%2F6KjMhsIjlV9WaePFxd7gLgP7AzyjG36kBp9D3r2hN7tmLdQqJhwug3F0lezWRXH5agPttgedyqrfHwk13PGA6W09%2BAFZhIpzluzcVzQGpcRI%3D",
+            "expires": "2027-04-19T22:26:35.888Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:25:10.856Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          },
+          {
+            "key": "bkng_sso_auth",
+            "value": "CAIQi4nT0gIaeBA72v+9OQQu0Smi6qWiC+hHoJv3Akt40fd4910yt+ENjFJMtoZDspOeu/sJ5/eHL5Mv19yFovoFxikMVb46PGW500GPHu32jLl+07bj+2Js6Z8oganh3DdZmFkaFuHFzW/xctIxDqODfLl0UrI8OTrxQsQQfJ8nAg==",
+            "expires": "2027-04-19T22:26:23.299Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:25:10.859Z",
+            "lastAccessed": "2026-03-15T22:26:39.764Z"
+          },
+          {
+            "key": "pcm_consent",
+            "value": "consentedAt%3D2026-03-15T22%3A26%3A23.076Z%26countryCode%3DNZ%26expiresAt%3D2026-09-11T22%3A26%3A23.076Z%26implicit%3Dfalse%26regionCode%3DAUK%26regulation%3Dnone%26legacyRegulation%3Dnone%26consentId%3Deba601a0-8d54-481e-b6c7-ccb073e38974%26analytical%3Dfalse%26marketing%3Dfalse",
+            "expires": "2027-03-15T22:26:24.299Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:25:10.861Z",
+            "lastAccessed": "2026-03-15T22:26:39.764Z"
+          },
+          {
+            "key": "aws-waf-token",
+            "value": "0cc84969-a3aa-4d83-b6b5-21ac54f14e17:NwoAniicHfw6AAAA:Ja+7czABTM0qyQzXgXS3jYBg8C+btEYdGZdGIq50ydLfKUSF7Y586mnt0hzIYNHqImRT9mpgEnrfWpUslDSTG4Gw1oBTdtOwyAYzc3LbyXUq+c3JIfCSVxhoE3cVVoceRqfjuIJuD9/wlTTloZxQuNd8x5WajpA4kjsMNlJjU1MeltHL/ggLDs6r6slN4B+7eUvpAgukyzSyzhXMCQeik82iBEIVvJmNnmYfctTvfHl4",
+            "expires": "2026-03-19T22:25:12.000Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.741Z",
+            "lastAccessed": "2026-03-15T22:26:39.741Z"
+          },
+          {
+            "key": "pcm_personalization_disabled",
+            "value": "0",
+            "expires": "2026-09-11T22:26:16.921Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.759Z",
+            "lastAccessed": "2026-03-15T22:26:39.759Z"
+          },
+          {
+            "key": "cors_js",
+            "value": "1",
+            "expires": "2027-03-15T22:25:12.000Z",
+            "domain": "booking.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.762Z",
+            "lastAccessed": "2026-03-15T22:26:39.762Z"
+          },
+          {
+            "key": "BJS",
+            "value": "-",
+            "expires": "2026-03-16T22:26:21.453Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.762Z",
+            "lastAccessed": "2026-03-15T22:26:39.762Z"
+          },
+          {
+            "key": "bkng_sso_session",
+            "value": "e30",
+            "expires": "2027-04-19T22:26:28.770Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.763Z",
+            "lastAccessed": "2026-03-15T22:26:39.763Z"
+          },
+          {
+            "key": "_ga",
+            "value": "GA1.2.462476365.1773613582",
+            "expires": "2027-04-19T22:26:21.742Z",
+            "domain": "booking.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.763Z",
+            "lastAccessed": "2026-03-15T22:26:39.763Z"
+          },
+          {
+            "key": "_gid",
+            "value": "GA1.2.518590631.1773613582",
+            "expires": "2026-03-16T22:26:21.000Z",
+            "domain": "booking.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.764Z",
+            "lastAccessed": "2026-03-15T22:26:39.764Z"
+          },
+          {
+            "key": "bkng_sso_auth_1773613583",
+            "value": "CAIQi4nT0gIaeBA72v+9OQQu0Smi6qWiC+hHoJv3Akt40fd4910yt+ENjFJMtoZDspOeu/sJ5/eHL5Mv19yFovoFxikMVb46PGW500GPHu32jLl+07bj+2Js6Z8oganh3DdZmFkaFuHFzW/xctIxDqODfLl0UrI8OTrxQsQQfJ8nAg==",
+            "expires": "2027-04-19T22:26:23.300Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.765Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          },
+          {
+            "key": "bk_nav_search",
+            "value": "%7B%22u%22%3A%22https%3A%2F%2Fwww.booking.com%2Fhotel%2Fnz%2Faroha-motel.en-gb.html%3Fcheckin%3D2026-04-30%26checkout%3D2026-05-01%22%2C%22t%22%3A1773613583721%2C%22p%22%3A%22propertyPage%22%7D",
+            "expires": "2026-03-15T22:56:23.721Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.765Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          },
+          {
+            "key": "_gat",
+            "value": "1",
+            "expires": "2026-03-15T22:27:24.000Z",
+            "domain": "booking.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.765Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          },
+          {
+            "key": "bkng_sso_ses",
+            "value": "eyJib29raW5nX2dsb2JhbCI6W3siaCI6ImNRbVZSbU9qYW5nRzV5dm5GNFA2QkZyd0d6aEtQRG9mL3dzdzdqSFIxaDAiLCJhIjoxfV19",
+            "expires": "2027-04-19T22:26:28.770Z",
+            "domain": "booking.com",
+            "path": "/",
+            "secure": true,
+            "httpOnly": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.765Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          },
+          {
+            "key": "pcm_pac",
+            "value": "%5B%22012f3f90f9cf7aecc983514d6293edb32efb318aaa8e9d755bc7458f2a2d35bf%22%2C6%5D",
+            "expires": "2026-03-15T22:56:28.770Z",
+            "domain": "booking.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.765Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          },
+          {
+            "key": "OptanonConsent",
+            "value": "implicitConsentCountry=nonGDPR&implicitConsentDate=1773613552298&isGpcEnabled=0&datestamp=Mon+Mar+16+2026+11%3A26%3A38+GMT%2B1300+(New+Zealand+Daylight+Time)&version=202501.2.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=58308e34-5b8d-49ba-8a6e-5200f3ebdd24&interactionCount=0&isAnonUser=1&landingPath=https%3A%2F%2Fwww.booking.com%2Fhotel%2Fnz%2Faroha-motel.en-gb.html%3Fcheckin%3D2026-04-30%26checkout%3D2026-05-01%26selected_currency%3DNZD&groups=C0001%3A1%2CC0002%3A1%2CC0004%3A1",
+            "expires": "2026-09-11T22:26:38.000Z",
+            "domain": "www.booking.com",
+            "path": "/",
+            "secure": true,
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.765Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          },
+          {
+            "key": "g_state",
+            "value": "{\"i_l\":0,\"i_ll\":1773613599424,\"i_b\":\"zuNOgEL5L03rYBnGc0ZMQ5M4O+DxOETQh+TdQAVjPA4\",\"i_e\":{\"enable_itp_optimization\":0}}",
+            "expires": "2026-09-11T22:26:39.000Z",
+            "domain": "booking.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-03-15T22:26:39.765Z",
+            "lastAccessed": "2026-03-15T22:26:39.765Z"
+          }
+        ]
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-03-15T23:15:08.441Z",
+      "createdAt": "2026-03-15T22:25:08.441Z",
+      "usageCount": 2,
+      "maxUsageCount": 50,
+      "errorScore": 0.5
+    },
+    {
+      "id": "session_9dOahpOaLh",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": []
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-03-15T23:16:15.062Z",
+      "createdAt": "2026-03-15T22:26:15.062Z",
+      "usageCount": 0,
+      "maxUsageCount": 50,
+      "errorScore": 0
+    }
+  ]
+}

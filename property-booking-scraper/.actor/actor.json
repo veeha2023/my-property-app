@@ -1,0 +1,10 @@
+{
+  "actorSpecification": 1,
+  "name": "property-booking-scraper",
+  "title": "Property Booking Scraper",
+  "description": "Scrapes Booking.com property pages and returns exactly the 15 fields needed by My Property App.",
+  "version": "1.0",
+  "buildTag": "latest",
+  "input": "./input_schema.json",
+  "dockerfile": "./Dockerfile"
+}

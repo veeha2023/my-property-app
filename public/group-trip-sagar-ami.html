@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NZ Extraordinaire 2026 — Sagar &amp; Ami Group Trip</title>
+  <meta name="description" content="Join Sagar &amp; Ami on an extraordinary 13-night New Zealand adventure. Auckland to Christchurch — 8 destinations, 12 included experiences, private Sprinter.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&family=Noto+Serif:ital,wght@0,700;0,900;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#A0401A',
+            'primary-dark': '#802903',
+            accent: '#F27D52',
+            'accent-dark': '#A43D23',
+            brand: '#1A1C1A',
+            'brand-light': '#F4F3F1',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            display: ['Noto Serif', 'serif'],
+            ui: ['Plus Jakarta Sans', 'sans-serif'],
+            script: ['Homemade Apple', 'cursive']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --sa-bg: #faf9f6;
+      --sa-surface-lowest: #ffffff;
+      --sa-surface-low: #f4f3f1;
+      --sa-surface: #efeeeb;
+      --sa-surface-high: #e9e8e5;
+      --sa-surface-highest: #e3e2e0;
+      --sa-primary: #a0401a;
+      --sa-primary-dark: #802903;
+      --sa-brand: #1a1c1a;
+      --sa-brand-soft: #56423b;
+      --sa-accent: #f27d52;
+      --sa-accent-deep: #a43d23;
+      --sa-outline: rgba(138, 114, 106, 0.22);
+      --sa-shadow: 0 24px 60px rgba(26, 28, 26, 0.06);
+      --sa-glass: rgba(255, 255, 255, 0.74);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background:
+        radial-gradient(circle at 10% 0%, rgba(242,125,82,0.12), transparent 30%),
+        radial-gradient(circle at 88% 12%, rgba(190,150,117,0.12), transparent 28%),
+        linear-gradient(180deg, #faf9f6 0%, #f6f4f1 50%, #faf9f6 100%);
+      color: var(--sa-brand);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+    }
+    section { position: relative; }
+    section[id] { scroll-margin-top: 90px; }
+    h1, h2 {
+      font-family: 'Noto Serif', serif;
+      letter-spacing: -0.03em;
+      line-height: 0.94;
+    }
+    h3, h4 {
+      font-family: 'Noto Serif', serif;
+      letter-spacing: -0.02em;
+    }
+
+    .editorial-panel {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(221, 192, 183, 0.45);
+      box-shadow: var(--sa-shadow);
+      backdrop-filter: blur(16px);
+    }
+    .eyebrow {
+      color: var(--sa-primary);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .accent-script {
+      font-family: 'Homemade Apple', cursive;
+      color: var(--sa-accent);
+      letter-spacing: 0;
+    }
+
+    .hero-bg {
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.48)),
+        url('https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=1600&q=80');
+      background-size: cover;
+      background-position: center;
+    }
+
+    .transport-bg {
+      background-image:
+        linear-gradient(to right, rgba(26, 28, 26, 0.72) 0%, rgba(26, 28, 26, 0.28) 100%),
+        url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200&q=80');
+      background-size: cover;
+      background-position: center;
+    }
+
+    .gradient-booking {
+      background:
+        radial-gradient(circle at 82% 0%, rgba(242,125,82,0.22), transparent 36%),
+        linear-gradient(180deg, #fff8f4 0%, #f4f3f1 100%);
+    }
+
+    .nav-transparent { background: rgba(250, 249, 246, 0.68); backdrop-filter: blur(12px); }
+    .nav-scrolled {
+      background: rgba(250, 249, 246, 0.9) !important;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 32px rgba(26, 28, 26, 0.06);
+    }
+    .nav-scrolled .nav-brand,
+    .nav-scrolled .nav-link { color: var(--sa-primary) !important; }
+    .nav-scrolled .nav-plane { color: var(--sa-primary) !important; }
+    .nav-link.active {
+      color: var(--sa-primary) !important;
+      font-weight: 700;
+    }
+    .nav-scrolled .nav-link.active {
+      color: var(--sa-primary-dark) !important;
+    }
+    .nav-link {
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.74rem;
+    }
+
+    .activity-card {
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      border-radius: 9999px 9999px 1.6rem 1.6rem;
+      background: var(--sa-surface-lowest) !important;
+      border: 1px solid rgba(221, 192, 183, 0.5) !important;
+      box-shadow: var(--sa-shadow);
+      overflow: hidden;
+    }
+    .activity-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(242, 125, 82, 0.42);
+      box-shadow: 0 28px 60px rgba(26, 28, 26, 0.09);
+    }
+    .activity-card img {
+      filter: saturate(0.96);
+      transition: transform 0.35s ease, filter 0.35s ease;
+    }
+    .activity-card:hover img {
+      transform: scale(1.04);
+      filter: saturate(1);
+    }
+    .signature-scroll {
+      display: flex;
+      gap: 1.75rem;
+      overflow-x: auto;
+      padding: 0.25rem 0 1rem;
+      scroll-snap-type: x proximity;
+    }
+    .signature-scroll::-webkit-scrollbar {
+      height: 8px;
+    }
+    .signature-scroll::-webkit-scrollbar-thumb {
+      background: rgba(160, 64, 26, 0.2);
+      border-radius: 999px;
+    }
+    .signature-card {
+      width: 210px;
+      min-width: 210px;
+      scroll-snap-align: start;
+      flex: 0 0 auto;
+    }
+    .signature-card-visual {
+      aspect-ratio: 3 / 4;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--sa-shadow);
+      border: 1px solid rgba(221, 192, 183, 0.38);
+      margin-bottom: 0.9rem;
+    }
+    .signature-card-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.35s ease;
+    }
+    .signature-card:hover .signature-card-visual img {
+      transform: scale(1.04);
+    }
+    .signature-card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0 0.25rem;
+    }
+    .signature-card-title {
+      font-weight: 700;
+      color: var(--sa-brand);
+      font-size: 0.98rem;
+      line-height: 1.35;
+    }
+    .signature-card-icon {
+      color: var(--sa-accent-deep);
+      flex-shrink: 0;
+      opacity: 0.9;
+    }
+    @media (max-width: 767px) {
+      .signature-card {
+        width: 176px;
+        min-width: 176px;
+      }
+    }
+
+    .city-card {
+      cursor: pointer;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+      background: var(--sa-surface-lowest) !important;
+      border: 1px solid rgba(221, 192, 183, 0.45) !important;
+      box-shadow: 0 14px 32px rgba(26, 28, 26, 0.04);
+    }
+    .city-card.open {
+      border-color: rgba(242, 125, 82, 0.38) !important;
+      box-shadow: 0 0 0 1px rgba(242, 125, 82, 0.18), 0 24px 56px rgba(26, 28, 26, 0.08);
+    }
+    .city-card-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .city-card-content.open {
+      max-height: 950px;
+    }
+    .city-card-chevron {
+      transition: transform 0.3s ease;
+    }
+    .city-card.open .city-card-chevron {
+      transform: rotate(180deg);
+    }
+    .city-card img {
+      transition: transform 0.5s ease;
+    }
+    .city-card:hover img {
+      transform: scale(1.04);
+    }
+    .city-card-content > div {
+      border-top: 1px solid rgba(221, 192, 183, 0.22) !important;
+      background: linear-gradient(180deg, rgba(250,249,246,0.98), rgba(244,243,241,0.98));
+    }
+
+    #highlights,
+    #included,
+    #pricing {
+      background: #faf9f6;
+    }
+    #about-trip,
+    #addons,
+    #about-hosts {
+      background: #f4f3f1;
+    }
+    #highlights .rounded-2xl,
+    #about-trip .bg-white,
+    #addons .bg-white,
+    #about-hosts .bg-white,
+    #pricing .bg-brand-light {
+      background: rgba(255,255,255,0.82) !important;
+      border: 1px solid rgba(221, 192, 183, 0.45) !important;
+      box-shadow: var(--sa-shadow);
+      backdrop-filter: blur(12px);
+    }
+    #addons .h-px {
+      background: linear-gradient(90deg, transparent, rgba(242, 125, 82, 0.3), transparent) !important;
+    }
+    #addons .text-accent,
+    #pricing .text-accent {
+      color: var(--sa-accent-deep) !important;
+    }
+    #pricing .border-t,
+    #booking .border-t {
+      border-color: rgba(221, 192, 183, 0.45) !important;
+    }
+    #about-hosts img {
+      filter: saturate(0.95);
+    }
+    #about-hosts .text-3xl.text-primary {
+      color: var(--sa-accent-deep) !important;
+      font-family: 'Homemade Apple', cursive !important;
+      font-size: 1.9rem;
+      line-height: 1;
+    }
+
+    a.bg-accent,
+    .floating-cta,
+    #booking a[href="#stripe-placeholder-link"],
+    #pricing a[href="#booking"] {
+      background: linear-gradient(135deg, #a0401a, #f27d52) !important;
+      color: #ffffff !important;
+      box-shadow: 0 18px 40px rgba(160, 64, 26, 0.2);
+    }
+    a.bg-accent:hover,
+    .floating-cta:hover,
+    #booking a[href="#stripe-placeholder-link"]:hover,
+    #pricing a[href="#booking"]:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 24px 52px rgba(160, 64, 26, 0.24);
+    }
+    .floating-cta {
+      border: 1px solid rgba(242, 125, 82, 0.18);
+    }
+    #booking a[target="_blank"],
+    #addons a[target="_blank"] {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: rgba(221, 192, 183, 0.5) !important;
+      color: var(--sa-primary) !important;
+    }
+    footer {
+      background: linear-gradient(180deg, #f4f3f1, #efeeeb) !important;
+      border-top: 1px solid rgba(221, 192, 183, 0.45);
+    }
+    .footer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(221, 192, 183, 0.5);
+      color: rgba(26, 28, 26, 0.72);
+      transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+    .footer-pill:hover {
+      color: var(--sa-brand);
+      border-color: rgba(160, 64, 26, 0.24);
+      transform: translateY(-1px);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.6s ease both; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+
+    @keyframes driftUp {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-50%); }
+    }
+    @keyframes driftDown {
+      from { transform: translateY(-50%); }
+      to   { transform: translateY(0); }
+    }
+    .col-drift-up      { animation: driftUp   40s linear infinite; }
+    .col-drift-down    { animation: driftDown 35s linear infinite; }
+    .col-drift-up-slow { animation: driftUp   45s linear infinite; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fade-up { animation: none; }
+      .col-drift-up, .col-drift-down, .col-drift-up-slow { animation: none; }
+    }
+
+    .floating-cta {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 60;
+      box-shadow: 0 16px 36px rgba(0, 8, 18, 0.38);
+    }
+    @media (min-width: 768px) {
+      .floating-cta { right: 1.5rem; bottom: 1.5rem; }
+    }
+  </style>
+</head>
+
+<body class="font-sans text-brand antialiased">
+
+  <!-- ═══════════════════════════════════════════════
+       NAVIGATION
+  ═══════════════════════════════════════════════ -->
+  <nav id="navbar" class="nav-transparent fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-6">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="nav-plane w-5 h-5 text-primary transition-colors duration-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+        <span class="nav-brand font-display font-black text-base text-primary transition-colors duration-300">NZ Extraordinaire</span>
+      </div>
+      <div class="hidden md:flex items-center gap-6">
+        <a href="#about-trip" class="nav-link nav-brand text-primary/80 hover:text-primary text-sm font-medium transition-colors duration-200 cursor-pointer">The Trip</a>
+        <a href="#about-hosts" class="nav-link nav-brand text-primary/80 hover:text-primary text-sm font-medium transition-colors duration-200 cursor-pointer">Your Hosts</a>
+        <a href="#itinerary" class="nav-link nav-brand text-primary/80 hover:text-primary text-sm font-medium transition-colors duration-200 cursor-pointer">Itinerary</a>
+        <a href="#booking" class="bg-accent hover:bg-accent-dark text-white font-semibold px-5 py-2.5 rounded-full transition-colors duration-200 text-sm shadow-lg cursor-pointer">
+          Book Now
+        </a>
+      </div>
+      <a href="#booking" class="md:hidden bg-accent hover:bg-accent-dark text-white font-semibold px-5 py-2.5 rounded-full transition-colors duration-200 text-sm shadow-lg cursor-pointer">
+        Book Now
+      </a>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════
+       HERO
+  ═══════════════════════════════════════════════ -->
+  <section class="hero-bg min-h-screen flex items-center justify-center relative overflow-hidden" id="hero">
+    <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.12) 36%, rgba(0,0,0,0.54) 100%);"></div>
+
+    <div class="relative z-10 max-w-5xl mx-auto px-6 text-center py-32">
+      <span class="fade-up accent-script inline-block text-2xl md:text-3xl mb-4 transform -rotate-2">
+        Truly bespoke,
+      </span>
+      <h1 class="fade-up delay-1 text-5xl md:text-8xl font-black text-white leading-none mb-5">
+        Unforgettable<br/><span class="text-accent">NZ Experiences</span>
+      </h1>
+      <p class="fade-up delay-2 text-xl text-white/90 font-semibold mb-8">Sagar &amp; Ami Group Trip</p>
+      <div class="fade-up delay-2 flex flex-wrap items-center justify-center gap-6 md:gap-8 text-white mb-10">
+        <div class="flex flex-col items-center">
+          <span class="text-xs uppercase tracking-[0.25em] text-white/70">Dates</span>
+          <span class="text-lg md:text-xl font-bold">November 20 – December 3, 2026</span>
+        </div>
+        <div class="hidden md:block w-px h-12 bg-white/25"></div>
+        <div class="flex flex-col items-center">
+          <span class="text-xs uppercase tracking-[0.25em] text-white/70">Guest Count</span>
+          <span class="text-lg md:text-xl font-bold">Max 10 Travellers</span>
+        </div>
+      </div>
+      <p class="fade-up delay-2 text-base text-white/75 mb-10 flex items-center justify-center gap-2">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        Auckland to Christchurch · 13 nights · 8 destinations
+      </p>
+
+      <div class="fade-up delay-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+      <a href="#booking" class="inline-flex items-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold text-lg px-8 py-4 rounded-full transition-all duration-200 shadow-2xl hover:-translate-y-1 cursor-pointer">
+        Book Your Spot
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+      </a>
+      <a href="#itinerary" class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/30 text-white font-bold text-lg px-8 py-4 rounded-full transition-all duration-200 hover:bg-white/20 cursor-pointer">
+        View Itinerary
+      </a>
+      </div>
+    </div>
+
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce z-10" aria-hidden="true">
+      <svg class="w-6 h-6 text-white/50" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       HIGHLIGHTS
+  ═══════════════════════════════════════════════ -->
+  <section class="py-24" id="highlights">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div class="text-center group">
+          <div class="w-28 h-40 md:w-32 md:h-48 rounded-full overflow-hidden mx-auto mb-5 shadow-lg transition-transform duration-300 group-hover:scale-105">
+            <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&q=80" alt="Private Sprinter van" class="w-full h-full object-cover" loading="lazy"/>
+          </div>
+          <p class="text-2xl font-bold text-brand mb-1">Private Sprinter</p>
+          <p class="text-sm text-brand/60 font-medium">Luxury travel with your own group</p>
+        </div>
+        <div class="text-center group">
+          <div class="w-28 h-40 md:w-32 md:h-48 rounded-full overflow-hidden mx-auto mb-5 shadow-lg transition-transform duration-300 group-hover:scale-105">
+            <img src="https://images.unsplash.com/photo-1516490981167-dc990a242afe?w=600&q=80" alt="Adventure experiences in New Zealand" class="w-full h-full object-cover" loading="lazy"/>
+          </div>
+          <p class="text-2xl font-bold text-brand mb-1">12 Experiences</p>
+          <p class="text-sm text-brand/60 font-medium">Handpicked adventure and culture</p>
+        </div>
+        <div class="text-center group">
+          <div class="w-28 h-40 md:w-32 md:h-48 rounded-full overflow-hidden mx-auto mb-5 shadow-lg transition-transform duration-300 group-hover:scale-105">
+            <img src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=600&q=80" alt="Boutique hotel interior" class="w-full h-full object-cover" loading="lazy"/>
+          </div>
+          <p class="text-2xl font-bold text-brand mb-1">3★ &amp; 4★ Hotels</p>
+          <p class="text-sm text-brand/60 font-medium">Premium stays with local character</p>
+        </div>
+        <div class="text-center group">
+          <div class="w-28 h-40 md:w-32 md:h-48 rounded-full overflow-hidden mx-auto mb-5 shadow-lg transition-transform duration-300 group-hover:scale-105">
+            <img src="https://images.unsplash.com/photo-1591640040362-f55d95a6b2bc?w=600&q=80" alt="Milford Sound aerial view" class="w-full h-full object-cover" loading="lazy"/>
+          </div>
+          <p class="text-2xl font-bold text-brand mb-1">8 Destinations</p>
+          <p class="text-sm text-brand/60 font-medium">A curated route across both islands</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       ABOUT THIS TRIP
+  ═══════════════════════════════════════════════ -->
+  <section id="about-trip" class="py-20">
+    <div class="max-w-4xl mx-auto px-6">
+
+      <div class="text-center mb-10">
+        <span class="eyebrow">The Experience</span>
+        <h2 class="text-3xl md:text-4xl font-bold text-brand mt-2">About This Trip</h2>
+      </div>
+
+      <div class="editorial-panel rounded-2xl p-8 md:p-10 fade-up">
+        <p class="text-lg text-brand/70 leading-relaxed">
+          This is a 12-day journey across both islands of New Zealand, built around the kind of experiences we genuinely love. From Māori culture and glowworm cave rafting in Rotorua to lakeside sauna, group picnics, and slow scenic moments in the South Island — it's a mix of adventure and easy, feel-good travel.
+        </p>
+        <p class="text-lg text-brand/70 leading-relaxed mt-4">
+          There's also space to level it up with options like a helicopter ride over Mount Cook, bungee jumping in Queenstown, or skydiving in Wanaka. It's not rushed, not touristy — just a well-paced trip that lets you actually enjoy New Zealand the way we do.
+        </p>
+
+        <!-- Standout pull quote -->
+        <div class="mt-8 border-l-4 border-primary pl-6 py-1">
+          <p class="text-brand font-semibold text-xl italic leading-snug">"Not rushed, not touristy — just New Zealand the way it should be."</p>
+        </div>
+
+        <!-- Experience pills -->
+        <div class="flex flex-wrap gap-2 mt-8">
+          <span class="bg-sky-50 text-primary border border-sky-200 px-3 py-1.5 rounded-full text-sm font-medium">Māori Culture</span>
+          <span class="bg-sky-50 text-primary border border-sky-200 px-3 py-1.5 rounded-full text-sm font-medium">Glowworm Cave Rafting</span>
+          <span class="bg-sky-50 text-primary border border-sky-200 px-3 py-1.5 rounded-full text-sm font-medium">Lakeside Sauna</span>
+          <span class="bg-sky-50 text-primary border border-sky-200 px-3 py-1.5 rounded-full text-sm font-medium">Group Picnics</span>
+          <span class="bg-sky-50 text-primary border border-sky-200 px-3 py-1.5 rounded-full text-sm font-medium">Scenic South Island</span>
+          <span class="bg-sky-50 text-primary border border-sky-200 px-3 py-1.5 rounded-full text-sm font-medium">Two Islands</span>
+          <span class="bg-orange-50 text-accent border border-orange-200 px-3 py-1.5 rounded-full text-sm font-medium">Optional: Heli Ride</span>
+          <span class="bg-orange-50 text-accent border border-orange-200 px-3 py-1.5 rounded-full text-sm font-medium">Optional: Bungee Jump</span>
+          <span class="bg-orange-50 text-accent border border-orange-200 px-3 py-1.5 rounded-full text-sm font-medium">Optional: Skydiving</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       ITINERARY
+  ═══════════════════════════════════════════════ -->
+  <section class="py-20 bg-brand-light" id="itinerary">
+    <div class="max-w-2xl mx-auto px-6">
+      <div class="text-center mb-10">
+        <span class="eyebrow">Day by Day</span>
+        <h2 class="text-3xl md:text-4xl font-bold text-brand mt-2">Your NZ Journey</h2>
+        <p class="text-brand/55 mt-3 text-base">Auckland → Rotorua → Milford Sound → Queenstown → Wanaka → Tekapo → Christchurch</p>
+      </div>
+
+      <!-- Journey progress dots -->
+      <div class="flex items-center justify-center gap-1 mb-10" aria-hidden="true">
+        <span class="w-2.5 h-2.5 bg-primary rounded-full"></span>
+        <span class="flex-1 max-w-[28px] h-px bg-primary/25"></span>
+        <span class="w-2.5 h-2.5 bg-primary rounded-full"></span>
+        <span class="flex-1 max-w-[28px] h-px bg-primary/25"></span>
+        <span class="w-2.5 h-2.5 bg-primary rounded-full"></span>
+        <span class="flex-1 max-w-[28px] h-px bg-primary/25"></span>
+        <span class="w-2.5 h-2.5 bg-primary rounded-full"></span>
+        <span class="flex-1 max-w-[28px] h-px bg-primary/25"></span>
+        <span class="w-2.5 h-2.5 bg-primary rounded-full"></span>
+        <span class="flex-1 max-w-[28px] h-px bg-primary/25"></span>
+        <span class="w-2.5 h-2.5 bg-primary rounded-full"></span>
+        <span class="flex-1 max-w-[28px] h-px bg-primary/25"></span>
+        <span class="w-2.5 h-2.5 bg-accent rounded-full"></span>
+      </div>
+
+      <p class="text-center text-xs text-brand/40 -mt-6 mb-10 font-medium">Tap any city to explore</p>
+
+      <div class="space-y-3">
+
+        <!-- City 1: Auckland -->
+        <div class="city-card bg-white rounded-2xl overflow-hidden border border-sky-100 shadow-sm" data-city="auckland">
+          <div class="relative h-52 overflow-hidden">
+            <img src="https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=800&q=80" alt="Auckland Sky Tower and harbour" class="w-full h-full object-cover" loading="lazy"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand/85 via-brand/15 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-white/80 uppercase tracking-wide">Nov 20 – 21</span>
+                  <span class="text-xs bg-white/20 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full font-medium border border-white/20">1 night</span>
+                </div>
+                <h3 class="text-xl font-bold text-white">Auckland</h3>
+                <p class="text-white/65 text-xs mt-0.5">New Zealand's vibrant harbour city</p>
+              </div>
+              <div class="city-card-chevron w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0 border border-white/20">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="city-card-content">
+            <div class="px-5 py-4 border-t border-sky-50">
+              <p class="text-brand/60 text-sm mb-3">Arrive into Auckland — New Zealand's largest city. Check in, explore the waterfront, and take in the Sky Tower views before the adventure begins tomorrow.</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">City Arrival</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Viaduct Harbour</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Sky Tower Views</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- City 2: Rotorua + Waitomo excursion -->
+        <div class="city-card bg-white rounded-2xl overflow-hidden border border-sky-100 shadow-sm" data-city="rotorua">
+          <div class="relative h-52 overflow-hidden">
+            <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/ca/a6/ea/wai-o-tapu-thermal-wonderland.jpg?w=600&h=-1&s=1" alt="Wai-O-Tapu Thermal Wonderland, Rotorua" class="w-full h-full object-cover" loading="lazy"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand/85 via-brand/15 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-white/80 uppercase tracking-wide">Nov 21 – 24</span>
+                  <span class="text-xs bg-white/20 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full font-medium border border-white/20">3 nights</span>
+                </div>
+                <h3 class="text-xl font-bold text-white">Rotorua</h3>
+                <p class="text-white/65 text-xs mt-0.5">Geothermal wonders, Māori culture &amp; mud spas</p>
+              </div>
+              <div class="city-card-chevron w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0 border border-white/20">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="city-card-content">
+            <div class="px-5 py-4 border-t border-sky-50">
+              <p class="text-brand/60 text-sm mb-3">Three nights in the geothermal heartland of New Zealand — bubbling mud pools, steaming hot springs, ancient redwood forests and powerful Māori performances.</p>
+              <p class="text-xs font-semibold text-brand/40 uppercase tracking-wider mb-2">Included Experiences</p>
+              <div class="flex flex-wrap gap-1.5 mb-4">
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Redwoods Treewalk</span>
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Hells Gate Mud Spa</span>
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Wai-O-Tapu Walk</span>
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Māori Village &amp; Haka</span>
+              </div>
+              <!-- Day excursion sub-section -->
+              <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+                <div class="flex items-center gap-2 mb-2.5">
+                  <svg class="w-3.5 h-3.5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                  <span class="text-xs font-bold text-amber-700 uppercase tracking-wide">Day Excursion</span>
+                  <span class="text-xs text-amber-600 font-semibold">Waitomo Caves &amp; Hobbiton</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="text-xs bg-white text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full font-medium">Hobbiton Movie Set</span>
+                  <span class="text-xs bg-white text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full font-medium">Black Labyrinth Rafting</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- City 3: Milford Sound Excursion -->
+        <div class="city-card bg-white rounded-2xl overflow-hidden border border-sky-100 shadow-sm" data-city="milford">
+          <div class="relative h-52 overflow-hidden">
+            <img src="https://images.unsplash.com/photo-1591640040362-f55d95a6b2bc?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&w=800" alt="Milford Sound fjord with mountains and mirror water" class="w-full h-full object-cover" loading="lazy"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand/85 via-brand/15 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-white/80 uppercase tracking-wide">Nov 24 – 25</span>
+                  <span class="text-xs bg-white/20 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full font-medium border border-white/20">Overnight Excursion</span>
+                </div>
+                <h3 class="text-xl font-bold text-white">Milford Sound</h3>
+                <p class="text-white/65 text-xs mt-0.5">The eighth wonder of the world</p>
+              </div>
+              <div class="city-card-chevron w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0 border border-white/20">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="city-card-content">
+            <div class="px-5 py-4 border-t border-sky-50">
+              <p class="text-brand/60 text-sm mb-3">Drive through Fiordland's dramatic landscapes to Te Anau, then journey deep into Milford Sound — towering peaks, cascading waterfalls, and mirror-still fiord waters that will leave you speechless.</p>
+              <p class="text-xs font-semibold text-brand/40 uppercase tracking-wider mb-2">Included Experiences</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Milford Sound Cruise</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Te Anau Overnight Stay</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Fiordland Scenic Drive</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- City 4: Queenstown -->
+        <div class="city-card bg-white rounded-2xl overflow-hidden border border-sky-100 shadow-sm" data-city="queenstown">
+          <div class="relative h-52 overflow-hidden">
+            <img src="https://images.unsplash.com/photo-1600466403153-50193d187dde?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&w=800" alt="Queenstown aerial view of lake and mountains" class="w-full h-full object-cover" loading="lazy"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand/85 via-brand/15 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-white/80 uppercase tracking-wide">Nov 25 – 28</span>
+                  <span class="text-xs bg-white/20 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full font-medium border border-white/20">3 nights</span>
+                </div>
+                <h3 class="text-xl font-bold text-white">Queenstown</h3>
+                <p class="text-white/65 text-xs mt-0.5">Adventure capital of the world</p>
+              </div>
+              <div class="city-card-chevron w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0 border border-white/20">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="city-card-content">
+            <div class="px-5 py-4 border-t border-sky-50">
+              <p class="text-brand/60 text-sm mb-3">Three nights in the world's adventure capital. Jet boat through canyon walls at full speed, soak in a private Onsen overlooking the Remarkables, then ride the gondola up to Skyline for thrilling luge runs.</p>
+              <p class="text-xs font-semibold text-brand/40 uppercase tracking-wider mb-2">Included Experiences</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Shotover Jet</span>
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Onsen Hotpools</span>
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Skyline + 3 Luge Rides</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- City 5: Wanaka -->
+        <div class="city-card bg-white rounded-2xl overflow-hidden border border-sky-100 shadow-sm" data-city="wanaka">
+          <div class="relative h-52 overflow-hidden">
+            <img src="https://images.unsplash.com/photo-1562107383-999fee2d5772?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&w=800" alt="That Wanaka Tree on the lake shore" class="w-full h-full object-cover" loading="lazy"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand/85 via-brand/15 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-white/80 uppercase tracking-wide">Nov 28 – 30</span>
+                  <span class="text-xs bg-white/20 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full font-medium border border-white/20">2 nights</span>
+                </div>
+                <h3 class="text-xl font-bold text-white">Wanaka</h3>
+                <p class="text-white/65 text-xs mt-0.5">Serene alpine lake town with iconic views</p>
+              </div>
+              <div class="city-card-chevron w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0 border border-white/20">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="city-card-content">
+            <div class="px-5 py-4 border-t border-sky-50">
+              <p class="text-brand/60 text-sm mb-3">Two nights beside crystal-clear Lake Wanaka, framed by the Southern Alps. Stroll the lakefront to That Wanaka Tree — NZ's most photographed spot — and explore the quirky Puzzling World.</p>
+              <p class="text-xs font-semibold text-brand/40 uppercase tracking-wider mb-2">Included Experiences</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Puzzling World</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">That Wanaka Tree</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Lake Wanaka Lakefront</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- City 6: Lake Tekapo -->
+        <div class="city-card bg-white rounded-2xl overflow-hidden border border-sky-100 shadow-sm" data-city="tekapo">
+          <div class="relative h-52 overflow-hidden">
+            <img src="https://images.unsplash.com/photo-1612038032672-b94a10ce7ebd?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&w=800" alt="Lake Tekapo with lupins and mountains" class="w-full h-full object-cover" loading="lazy"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand/85 via-brand/15 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-white/80 uppercase tracking-wide">Nov 30 – Dec 2</span>
+                  <span class="text-xs bg-white/20 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full font-medium border border-white/20">2 nights</span>
+                </div>
+                <h3 class="text-xl font-bold text-white">Lake Tekapo</h3>
+                <p class="text-white/65 text-xs mt-0.5">UNESCO Dark Sky Reserve — world-class stargazing</p>
+              </div>
+              <div class="city-card-chevron w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0 border border-white/20">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="city-card-content">
+            <div class="px-5 py-4 border-t border-sky-50">
+              <p class="text-brand/60 text-sm mb-3">Two magical nights on the turquoise shores of Lake Tekapo. By day: lupins, the iconic Church of the Good Shepherd, and mountain views. By night: the most spectacular stars on Earth from a UNESCO Dark Sky Reserve.</p>
+              <p class="text-xs font-semibold text-brand/40 uppercase tracking-wider mb-2">Included Experiences</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">Dark Sky Observatory</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Church of the Good Shepherd</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Lake Tekapo Lakefront</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- City 7: Christchurch -->
+        <div class="city-card bg-white rounded-2xl overflow-hidden border border-orange-100 shadow-sm" data-city="christchurch">
+          <div class="relative h-52 overflow-hidden">
+            <img src="https://images.unsplash.com/photo-1576569847896-3cead09c0eec?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&w=800" alt="Christchurch tram on city streets" class="w-full h-full object-cover" loading="lazy"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand/85 via-brand/15 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-bold text-white/80 uppercase tracking-wide">Dec 2 – 3</span>
+                  <span class="text-xs bg-accent/80 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full font-medium">1 night · Departure</span>
+                </div>
+                <h3 class="text-xl font-bold text-white">Christchurch</h3>
+                <p class="text-white/65 text-xs mt-0.5">The Garden City — farewell to New Zealand</p>
+              </div>
+              <div class="city-card-chevron w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0 border border-white/20">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="city-card-content">
+            <div class="px-5 py-4 border-t border-orange-50">
+              <p class="text-brand/60 text-sm mb-3">End your NZ adventure in Christchurch — the Garden City. Wander the stunning Botanic Gardens, soak in the creative arts district, and savour one final morning before your flight home.</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Botanic Gardens</span>
+                <span class="text-xs bg-sky-50 text-primary border border-sky-200 px-2.5 py-1 rounded-full font-medium">Hagley Park</span>
+                <span class="text-xs bg-orange-50 text-accent border border-orange-200 px-2.5 py-1 rounded-full font-medium">Departure Day</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       INCLUDED ACTIVITIES
+  ═══════════════════════════════════════════════ -->
+  <section class="py-20 bg-white" id="included">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
+        <div>
+          <span class="accent-script text-2xl md:text-3xl block mb-3">Curated for you</span>
+          <h2 class="text-3xl md:text-5xl font-bold text-brand">12 Signature Activities</h2>
+        </div>
+        <p class="text-brand/55 max-w-md">
+          Every single one of these experiences is included in your booking price. No hidden costs for the best of NZ.
+        </p>
+      </div>
+
+      <div class="signature-scroll" aria-label="Included signature activities">
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.waitomo.com/_next/image?url=https%3A%2F%2Fprod-thl-retail.xperience-sites.com%2Fgetmedia%2Fef0825a8-0746-4aed-9425-ed701ae08823%2Fbanner-experience-black-water-rafting-labyrinth.webp&w=800&q=75" alt="Waitomo Glowworm cave rafting" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Waitomo Glowworms</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.newzealand.com/assets/externally-managed-assets/tbd-assets/tbd-folder-6447247/img-1713600800-3931-1048510-tbd-asset__aWxvdmVrZWxseQo_CropResizeWzk0MCw1MzAsOTAsImpwZyJd.jpg" alt="Maori haka performance" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Te Puia Haka</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://media.tacdn.com/media/attractions-splice-spp-674x446/0f/eb/30/98.jpg" alt="Milford Sound cruise" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Milford Cruise</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.newzealand.com/assets/externally-managed-assets/tbd-assets/tbd-folder-10012310/img-1713739476-7392-1770082-tbd-asset__aWxvdmVrZWxseQo_CropResizeWzk0MCw1MzAsOTAsImpwZyJd.jpg" alt="Skyline gondola cabin" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Skyline Gondola</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.treewalk.co.nz/wp-content/uploads/2019/06/nightlights-redwoods.jpg" alt="Redwoods Treewalk at night" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Redwoods Treewalk</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS6J1zyKUthMCxoAnWb6WNoFO1NxGSuR99T0g&s" alt="Hells Gate Mud Spa" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Hells Gate Mud Spa</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/ca/a6/ea/wai-o-tapu-thermal-wonderland.jpg?w=600&h=-1&s=1" alt="Wai-O-Tapu geothermal walk" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Wai-O-Tapu Walk</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.newzealand.com/assets/Tourism-NZ/Queenstown/img-1536152296-3741-22038-p-447E4BC6-F7D0-3269-27169DB03F6B1E0F-2544003__aWxvdmVrZWxseQo_CropResizeWzE5MDAsMTAwMCw3NSwianBnIl0.jpg" alt="Shotover Jet ride" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Shotover Jet</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.onsen.co.nz/wp-content/uploads/2025/08/Osen-Original-5.jpg" alt="Onsen Hotpools" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Onsen Hotpools</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://media-cdn.tripadvisor.com/media/attractions-splice-spp-674x446/14/9f/7a/7e.jpg" alt="Dark Sky Observatory" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Dark Sky Observatory</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.newzealand.com/assets/externally-managed-assets/tbd-assets/tbd-folder-4936190/img-1713486563-9589-615421-tbd-asset__aWxvdmVrZWxseQo_CropResizeWzE5MDAsMTAwMCw3NSwianBnIl0.jpg" alt="Hobbiton Movie Set" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Hobbiton Movie Set</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+        <article class="signature-card">
+          <div class="signature-card-visual">
+            <img src="https://www.newzealand.com/assets/externally-managed-assets/tbd-assets/tbd-folder-4536303/img-1713464184-9462-504228-tbd-asset__ExtRewriteWyJKUEciLCJqcGciXQ_aWxvdmVrZWxseQo_CropResizeWzk0MCw1MzAsOTAsImpwZyJd.jpg" alt="Puzzling World in Wanaka" loading="lazy"/>
+          </div>
+          <div class="signature-card-meta">
+            <p class="signature-card-title">Puzzling World</p>
+            <span class="signature-card-icon">✦</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       OPTIONAL ADD-ONS
+  ═══════════════════════════════════════════════ -->
+  <section class="py-20 bg-brand-light" id="addons">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-14">
+        <span class="eyebrow">Individually bookable</span>
+        <h2 class="text-3xl md:text-4xl font-bold text-brand mt-2">Level Up Your Adventure</h2>
+        <p class="text-brand/55 mt-3">Premium extras you can add individually — all prices per person in NZD</p>
+      </div>
+
+      <!-- Mount Cook -->
+      <div class="mb-10">
+        <div class="flex items-center gap-3 mb-5">
+          <svg class="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+          </svg>
+          <h3 class="font-bold text-brand text-base">Mount Cook</h3>
+          <div class="flex-1 h-px bg-sky-200"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://lh4.googleusercontent.com/proxy/d8yCW1-eVMDeMvVm3ZtZVXQbH8AVDMei7YyDQ8Strp4boXF7XRdi6CDLC-dKC1LhjIxiAuwU0ozfJvJ5rwoPYGo" alt="Heli Hike" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Tasman Glacier Heli Hike</p>
+              <p class="text-accent font-bold mt-1.5">$899 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.mtcookskiplanes.com/wp-content/uploads/sites/2494/2019/04/The-Ultimate-Alpine-Experience-Combo-image-1.jpg?w=300&h=300&zoom=2" alt="Helicopter Glacier" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">45-Min Heli + Glacier Highlights</p>
+              <p class="text-accent font-bold mt-1.5">$649 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.mtcookskiplanes.com/wp-content/uploads/sites/2494/2019/04/The-Ultimate-Alpine-Experience-Combo-image-1.jpg?w=300&h=300&zoom=2" alt="Alpine Combo" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">45-Min Heli Alpine Combo</p>
+              <p class="text-accent font-bold mt-1.5">$549 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.newzealand.com/assets/externally-managed-assets/tbd-assets/tbd-folder-10070942/img-1714061292-4844-3438310-tbd-asset__aWxvdmVrZWxseQo_CropResizeWzk0MCw1MzAsOTAsImpwZyJd.jpg" alt="Glacier Boat" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Glacier Boat Ride</p>
+              <p class="text-accent font-bold mt-1.5">$195 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://cdn.filestackcontent.com/UoeljuUGSOanV0qCMVX3/convert?cache=true&compress=true&quality=90&format=webp&rotate=exif&w=400&fit=max" alt="Grand Circle Heli" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">55-Min Grand Circle Helicopter</p>
+              <p class="text-accent font-bold mt-1.5">$749 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.mtcookskiplanes.com/wp-content/uploads/sites/2494/2019/04/The-Ultimate-Alpine-Experience-Combo-image-1.jpg?w=300&h=300&zoom=2" alt="Ski Plane" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">55-Min Grand Circle Ski Plane</p>
+              <p class="text-accent font-bold mt-1.5">$749 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Queenstown -->
+      <div class="mb-10">
+        <div class="flex items-center gap-3 mb-5">
+          <svg class="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+          </svg>
+          <h3 class="font-bold text-brand text-base">Queenstown</h3>
+          <div class="flex-1 h-px bg-sky-200"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/bb/62/fa/caption.jpg?w=200&h=200&s=1" alt="Nevis Bungee" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Nevis Bungee</p>
+              <p class="text-accent font-bold mt-1.5">$395 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.newzealand.com/assets/externally-managed-assets/tbd-assets/tbd-folder-10008698/img-1713728652-2559-1725732-tbd-asset__aWxvdmVrZWxseQo_CropResizeWzk0MCw1MzAsOTAsImpwZyJd.jpg" alt="Nevis Swing" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Nevis Swing</p>
+              <p class="text-accent font-bold mt-1.5">$325 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.everythingnewzealand.com/resources/cache/700x349/1/items~large/Nevis-Bungy-and-Swing-Combo.jpg" alt="Nevis Combo" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Nevis Bungee + Swing Combo</p>
+              <p class="text-accent font-bold mt-1.5">$625 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/29/8a/06/06/caption.jpg?w=200&h=200&s=1" alt="Skydive" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Skydive 15,000 ft</p>
+              <p class="text-accent font-bold mt-1.5">$549 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.bookmestatic.net.nz/images/activities/1901_image1_Hydro_Attack_Jump.jpg" alt="Hydro Attack" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Hydro Attack</p>
+              <p class="text-accent font-bold mt-1.5">$229 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://new.foxyms.co.nz/files/eq/resources/cache/958x657/0/blog/processed/Skyline.jpg" alt="Skyline Gondola" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Skyline Gondola Only</p>
+              <p class="text-accent font-bold mt-1.5">$66 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Waitomo -->
+      <div class="mb-10">
+        <div class="flex items-center gap-3 mb-5">
+          <svg class="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+          </svg>
+          <h3 class="font-bold text-brand text-base">Waitomo</h3>
+          <div class="flex-1 h-px bg-sky-200"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://www.waitomo.com/_next/image?url=https%3A%2F%2Fprod-thl-retail.xperience-sites.com%2Fgetmedia%2F0e3a9d3b-3c55-469a-8b15-74aa2e9189c8%2Fbanner-experience-black-water-rafting-abyss.webp&w=400&q=75" alt="Black Abyss" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Black Abyss Glowworm Rafting</p>
+              <p class="text-accent font-bold mt-1.5">$322 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/5a/0e/93/caption.jpg?w=300&h=300&s=1" alt="White Water Rafting" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">White Water Rafting</p>
+              <p class="text-accent font-bold mt-1.5">$135 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-sky-100 flex gap-3">
+            <img src="https://prod-thl-retail.xperience-sites.com/getmedia/3eb3ff07-8380-4abe-bd16-67955710f306/og-image.webp" alt="Glowworm Tour" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy"/>
+            <div>
+              <p class="font-semibold text-brand text-sm leading-snug">Classic Glowworm Cave Tour</p>
+              <p class="text-accent font-bold mt-1.5">$81 <span class="text-xs text-brand/40 font-normal">/person</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row: Rotorua + Wanaka/Tekapo/CHC -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <svg class="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+            </svg>
+            <h3 class="font-bold text-brand text-base">Rotorua</h3>
+            <div class="flex-1 h-px bg-sky-200"></div>
+          </div>
+          <div class="space-y-3">
+            <div class="bg-white rounded-xl px-4 py-3 border border-sky-100 flex items-center justify-between">
+              <p class="font-semibold text-brand text-sm">Skyline + 3 Luge</p>
+              <p class="text-accent font-bold text-sm">$81<span class="text-xs text-brand/40 font-normal ml-0.5">/pax</span></p>
+            </div>
+            <div class="bg-white rounded-xl px-4 py-3 border border-sky-100 flex items-center justify-between">
+              <p class="font-semibold text-brand text-sm">Agrodome</p>
+              <p class="text-accent font-bold text-sm">$65<span class="text-xs text-brand/40 font-normal ml-0.5">/pax</span></p>
+            </div>
+            <div class="bg-white rounded-xl px-4 py-3 border border-sky-100 flex items-center justify-between">
+              <p class="font-semibold text-brand text-sm">Mirage Rotorua</p>
+              <p class="text-accent font-bold text-sm">$50<span class="text-xs text-brand/40 font-normal ml-0.5">/pax</span></p>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-5">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <svg class="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+              </svg>
+              <h3 class="font-bold text-brand text-base">Wanaka</h3>
+              <div class="flex-1 h-px bg-sky-200"></div>
+            </div>
+            <div class="bg-white rounded-xl px-4 py-3 border border-sky-100 flex items-center justify-between">
+              <p class="font-semibold text-brand text-sm">U-Fly 30-Min Flight</p>
+              <p class="text-accent font-bold text-sm">$498<span class="text-xs text-brand/40 font-normal ml-0.5">/pax</span></p>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <svg class="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+              </svg>
+              <h3 class="font-bold text-brand text-base">Lake Tekapo</h3>
+              <div class="flex-1 h-px bg-sky-200"></div>
+            </div>
+            <div class="bg-white rounded-xl px-4 py-3 border border-sky-100 flex items-center justify-between">
+              <p class="font-semibold text-brand text-sm">Dark Sky Summit Experience</p>
+              <p class="text-accent font-bold text-sm">$219<span class="text-xs text-brand/40 font-normal ml-0.5">/pax</span></p>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <svg class="w-4 h-4 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+              </svg>
+              <h3 class="font-bold text-brand text-base">Christchurch</h3>
+              <div class="flex-1 h-px bg-sky-200"></div>
+            </div>
+            <div class="bg-white rounded-xl px-4 py-3 border border-sky-100 flex items-center justify-between">
+              <p class="font-semibold text-brand text-sm">International Antarctic Centre</p>
+              <p class="text-accent font-bold text-sm">$74<span class="text-xs text-brand/40 font-normal ml-0.5">/pax</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-12">
+        <p class="text-brand/55 text-sm mb-4">Interested in add-ons? Let us know when you book and we'll sort it out!</p>
+        <a href="https://www.instagram.com/sagarandami/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 border-2 border-accent text-accent hover:bg-accent hover:text-white font-semibold px-6 py-3 rounded-full transition-colors duration-200 cursor-pointer">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5a4.25 4.25 0 0 0 4.25 4.25h8.5a4.25 4.25 0 0 0 4.25-4.25v-8.5A4.25 4.25 0 0 0 16.25 3.5h-8.5zm8.9 1.15a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zM12 6.5A5.5 5.5 0 1 1 6.5 12 5.5 5.5 0 0 1 12 6.5zm0 1.5A4 4 0 1 0 16 12a4 4 0 0 0-4-4z"/>
+          </svg>
+          DM on Instagram
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       ABOUT THE HOSTS
+  ═══════════════════════════════════════════════ -->
+  <section id="about-hosts" class="py-20 bg-brand-light">
+    <div class="max-w-6xl mx-auto px-6">
+
+      <div class="text-center mb-12 fade-up">
+        <span class="eyebrow">Your Hosts</span>
+        <h2 class="text-3xl md:text-5xl font-bold text-brand">Meet Sagar &amp; Ami</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-8 md:gap-12 items-center fade-up">
+
+        <div class="md:col-span-3">
+          <div class="rounded-2xl overflow-hidden shadow-2xl" style="height: 420px;">
+            <img src="sagar-ami-milford.jpg"
+                 alt="Sagar and Ami on the bow of a boat in Doubtful Sound, New Zealand, with dramatic mountains behind them"
+                 class="w-full h-full object-cover object-center"
+                 loading="lazy" />
+          </div>
+          <p class="text-center text-brand/40 text-xs mt-3 tracking-wide uppercase font-medium">Doubtful Sound · New Zealand</p>
+        </div>
+
+        <div class="md:col-span-2">
+          <p class="text-3xl text-primary mb-5 leading-snug" style="font-family: 'Homemade Apple', cursive; font-weight: 400;">
+            Indian-born Kiwis,<br/>living slow.
+          </p>
+
+          <p class="text-brand/70 leading-relaxed mb-4">
+            We're Sagar and Ami — Indian-born Kiwis who've been living and travelling across New Zealand for the last 10 years.
+          </p>
+          <p class="text-brand/70 leading-relaxed mb-4">
+            Two years ago, we left our jobs to travel full-time around the world. Now we're back living in our van, exploring NZ slowly while building a life around travel.
+          </p>
+          <p class="text-brand/70 leading-relaxed mb-6">
+            We love simple moments, real experiences, and showing a side of travel that feels honest and doable.
+          </p>
+
+          <div class="editorial-panel rounded-xl px-5 py-4 mb-5">
+            <p class="text-brand font-semibold text-sm leading-relaxed">
+              This is our very first group trip — so it's a special one, and we'd love for you to be part of it.
+            </p>
+          </div>
+
+          <p class="text-2xl text-brand/50" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; letter-spacing: 0.5px;">
+            — Sagar &amp; Ami
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PRICING
+  ═══════════════════════════════════════════════ -->
+  <section class="py-20 bg-white" id="pricing">
+    <div class="max-w-4xl mx-auto px-6">
+      <div class="text-center mb-14">
+        <span class="eyebrow">Investment</span>
+        <h2 class="text-3xl md:text-4xl font-bold text-brand mt-2">Your Trip Price</h2>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- Price card -->
+        <div class="editorial-panel rounded-2xl p-8 text-center">
+          <p class="text-brand/50 text-xs font-semibold uppercase tracking-wider mb-3">Per Person</p>
+          <p class="text-4xl font-bold text-brand mb-1">NZD <span class="text-primary">[PRICE]</span></p>
+          <p class="text-brand/40 text-xs mb-6">Contact us for the final per-person price</p>
+          <div class="border-t border-sky-200 pt-6 mb-6">
+            <p class="text-brand/50 text-xs font-semibold uppercase tracking-wider mb-2">Initial Deposit</p>
+            <p class="text-3xl font-bold text-accent">NZD <span>[DEPOSIT]</span></p>
+            <p class="text-brand/40 text-xs mt-1">40% of total · Secures your spot</p>
+          </div>
+          <a href="#booking" class="w-full inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold px-6 py-3.5 rounded-xl transition-colors duration-200 cursor-pointer">
+            Pay Deposit Now
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+            </svg>
+          </a>
+        </div>
+
+        <!-- Inclusions/exclusions -->
+        <div class="space-y-7">
+          <div>
+            <h3 class="font-bold text-brand mb-3 flex items-center gap-2 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              What's Included
+            </h3>
+            <ul class="space-y-2">
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-emerald-500 font-bold mt-0.5">✓</span> All accommodation — 7 hotels, 13 nights</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-emerald-500 font-bold mt-0.5">✓</span> 12 included activities &amp; experiences</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-emerald-500 font-bold mt-0.5">✓</span> Private 17-seat Sprinter Prestige throughout</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-emerald-500 font-bold mt-0.5">✓</span> All ground transport within New Zealand</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-emerald-500 font-bold mt-0.5">✓</span> Expert trip coordination &amp; support</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-emerald-500 font-bold mt-0.5">✓</span> GST &amp; local taxes</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-bold text-brand mb-3 flex items-center gap-2 text-sm">
+              <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Not Included
+            </h3>
+            <ul class="space-y-2">
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-red-400 font-bold mt-0.5">✗</span> International flights to/from New Zealand</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-red-400 font-bold mt-0.5">✗</span> New Zealand visa fees</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-red-400 font-bold mt-0.5">✗</span> Travel insurance</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-red-400 font-bold mt-0.5">✗</span> Meals &amp; personal expenses</li>
+              <li class="flex items-start gap-2 text-sm text-brand/65"><span class="text-red-400 font-bold mt-0.5">✗</span> Optional add-on experiences</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       BOOK YOUR SPOT
+  ═══════════════════════════════════════════════ -->
+  <section class="py-24 gradient-booking" id="booking">
+    <div class="max-w-3xl mx-auto px-6 text-center">
+      <span class="inline-block bg-white/70 text-primary text-sm font-semibold px-4 py-1.5 rounded-full mb-6 border border-[#ddc0b7]">
+        Limited to 10 Travellers
+      </span>
+      <h2 class="text-3xl md:text-5xl font-bold text-brand mb-4">Ready to Join the Adventure?</h2>
+      <p class="text-brand/70 text-lg mb-3 max-w-xl mx-auto">
+        Secure your spot with a deposit today. We'll be in touch to confirm details and finalise the trip price.
+      </p>
+      <p class="text-brand/50 text-sm mb-10">
+        Deposit: <strong class="text-brand/80">NZD [DEPOSIT]</strong> per person &nbsp;·&nbsp; Balance due closer to departure
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        <a href="#stripe-placeholder-link" class="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold text-base px-8 py-4 rounded-full transition-all duration-200 shadow-xl hover:-translate-y-1 cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+          </svg>
+          Pay Deposit Now
+        </a>
+        <a href="https://www.instagram.com/sagarandami/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-base px-8 py-4 rounded-full transition-all duration-200 cursor-pointer">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5a4.25 4.25 0 0 0 4.25 4.25h8.5a4.25 4.25 0 0 0 4.25-4.25v-8.5A4.25 4.25 0 0 0 16.25 3.5h-8.5zm8.9 1.15a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zM12 6.5A5.5 5.5 0 1 1 6.5 12 5.5 5.5 0 0 1 12 6.5zm0 1.5A4 4 0 1 0 16 12a4 4 0 0 0-4-4z"/>
+          </svg>
+          DM on Instagram
+        </a>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-6 pt-8 border-t border-white/15">
+        <div class="flex items-center gap-2 text-brand/55 text-sm">
+          <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+          Secure Payment via Stripe
+        </div>
+        <div class="flex items-center gap-2 text-brand/55 text-sm">
+          <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          hello@sagarandami.com
+        </div>
+        <div class="flex items-center gap-2 text-brand/55 text-sm">
+          <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          10 Spots Total
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <a href="#booking" class="floating-cta inline-flex items-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold text-sm px-5 py-3 rounded-full transition-all duration-200">
+    Book Your Spot
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+    </svg>
+  </a>
+
+  <!-- ═══════════════════════════════════════════════
+       FOOTER
+  ═══════════════════════════════════════════════ -->
+  <footer class="bg-brand py-6 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="text-center md:text-left">
+          <p class="text-brand font-bold text-base">NZ Extraordinaire 2026</p>
+          <p class="text-brand/45 text-sm mt-1">Sagar &amp; Ami Group Trip</p>
+        </div>
+        <div class="flex flex-wrap items-center justify-center md:justify-end gap-2 text-sm">
+          <a href="https://www.instagram.com/sagarandami/" target="_blank" rel="noopener noreferrer" class="footer-pill">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5a4.25 4.25 0 0 0 4.25 4.25h8.5a4.25 4.25 0 0 0 4.25-4.25v-8.5A4.25 4.25 0 0 0 16.25 3.5h-8.5zm8.9 1.15a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zM12 6.5A5.5 5.5 0 1 1 6.5 12 5.5 5.5 0 0 1 12 6.5zm0 1.5A4 4 0 1 0 16 12a4 4 0 0 0-4-4z"/>
+            </svg>
+            Instagram
+          </a>
+          <a href="https://www.facebook.com/share/1LB1qTzbBg/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" class="footer-pill">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M13.5 22v-8h2.7l.4-3h-3.1V9.1c0-.9.3-1.6 1.7-1.6H17V4.8c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.4V11H7.5v3h2.8v8h3.2z"/>
+            </svg>
+            Facebook
+          </a>
+          <a href="https://sagarandami.com/" target="_blank" rel="noopener noreferrer" class="footer-pill">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/>
+            </svg>
+            Blog
+          </a>
+          <a href="mailto:hello@sagarandami.com" class="footer-pill">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            Email
+          </a>
+        </div>
+      </div>
+      <div class="mt-4 pt-4 border-t border-[#ddc0b7] flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-brand/35">
+        <p>hello@sagarandami.com</p>
+        <p>All prices in NZD · Subject to availability · Last updated April 2026</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════════
+       SCRIPTS
+  ═══════════════════════════════════════════════ -->
+  <script>
+    // Sticky nav
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 60) {
+        navbar.classList.add('nav-scrolled');
+      } else {
+        navbar.classList.remove('nav-scrolled');
+      }
+    }, { passive: true });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const id = a.getAttribute('href');
+        if (id === '#' || id === '#stripe-placeholder-link') return;
+        const el = document.querySelector(id);
+        if (el) {
+          e.preventDefault();
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    // Active nav highlighting by section
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = [...navLinks]
+      .map(link => document.querySelector(link.getAttribute('href')))
+      .filter(Boolean);
+
+    const setActiveLink = (id) => {
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+
+    if ('IntersectionObserver' in window && sections.length) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) setActiveLink(entry.target.id);
+        });
+      }, { threshold: 0.35, rootMargin: '-25% 0px -45% 0px' });
+      sections.forEach(section => io.observe(section));
+    }
+
+    // City card accordion
+    const cards = document.querySelectorAll('.city-card');
+    cards.forEach(card => {
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-expanded', 'false');
+
+      const toggleCard = () => {
+        const content = card.querySelector('.city-card-content');
+        const isOpen = card.classList.contains('open');
+        // Close all
+        cards.forEach(c => {
+          c.classList.remove('open');
+          c.querySelector('.city-card-content').classList.remove('open');
+          c.setAttribute('aria-expanded', 'false');
+        });
+        // Toggle clicked
+        if (!isOpen) {
+          card.classList.add('open');
+          content.classList.add('open');
+          card.setAttribute('aria-expanded', 'true');
+        }
+      };
+
+      card.addEventListener('click', (event) => {
+        if (event.target.closest('.city-card-content')) return;
+        toggleCard();
+      });
+
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleCard();
+        }
+      });
+    });
+
+    // Open first itinerary card by default for better orientation.
+    if (cards[0]) cards[0].click();
+  </script>
+
+</body>
+</html>

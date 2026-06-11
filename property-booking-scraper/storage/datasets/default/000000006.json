@@ -1,0 +1,27 @@
+{
+	"name": "Aroha Motel & Apartments",
+	"location": "Auckland",
+	"price": 168,
+	"currency": "NZD",
+	"price_type": "Total Stay",
+	"bedrooms": 0,
+	"bathrooms": 1,
+	"room_type": "Standard Suite",
+	"images": [
+		"https://cf.bstatic.com/xdata/images/hotel/max1024x768/703819945.jpg?k=9e127236b534aafb951a10f69c6af77f6aef08951001ea11c53c9522cfca457e&o=",
+		"https://cf.bstatic.com/xdata/images/hotel/max1280x900/703819946.jpg?k=676d4318ba848c70f0879bdddc86c5387d24d0de152120e4fdd6abb081c9c86e&o=",
+		"https://cf.bstatic.com/xdata/images/hotel/max1280x900/703819956.jpg?k=aad9ac1e3a74d021136a27135cc91e69b8e1c0914105d751540d411f961c4030&o=",
+		"https://cf.bstatic.com/xdata/images/hotel/max1280x900/703819968.jpg?k=dea32e7e93887ed30abae7111cf4be6468363f173fed52978da6d36a5a8d1391&o=",
+		"https://cf.bstatic.com/xdata/images/hotel/max1280x900/703819921.jpg?k=6cb5220261df340d4e78e864b8612c4dd5de4ebce794277a7f3b41d3dbab2c6b&o=",
+		"https://cf.bstatic.com/xdata/images/hotel/max1280x900/703819998.jpg?k=28afe95354f1aa0f4083a9911bf0b33e3c5cf46a4eb78cd4ee52d8b87d7cda2d&o=",
+		"https://cf.bstatic.com/xdata/images/hotel/max1280x900/703819949.jpg?k=b225e731924d881483b4a32da8c7c79ce3cd60d17cdc9675eb9372c0c34a9bba&o=",
+		"https://cf.bstatic.com/xdata/images/hotel/max1280x900/703819957.jpg?k=3c319e47b279d24403460e0c58bfe2c28b64ce3f65a7cb3cedc58d9a2f861024&o="
+	],
+	"checkIn": "2026-04-30",
+	"checkOut": "2026-05-01",
+	"homeImageIndex": 0,
+	"selected": false,
+	"category": "",
+	"recommended": false,
+	"sourceUrl": "https://www.booking.com/hotel/nz/aroha-motel.en-gb.html?checkin=2026-04-30&checkout=2026-05-01&selected_currency=NZD"
+}

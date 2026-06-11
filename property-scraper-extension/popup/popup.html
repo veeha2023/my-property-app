@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Main View -->
+  <div class="main-view" id="mainView">
+    <header class="header">
+      <div class="header-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+          <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        </svg>
+        <h1>Property Scraper</h1>
+      </div>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="content">
+      <!-- URL Input -->
+      <section class="section url-section">
+        <div class="url-input-row">
+          <textarea id="urlInput" class="url-textarea" placeholder="Paste property URLs here, one per line..." rows="2"></textarea>
+          <button class="btn btn-green btn-add" id="addToQueueBtn" aria-label="Add to queue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/><path d="M12 5v14"/>
+            </svg>
+            Add to Queue
+          </button>
+        </div>
+      </section>
+
+      <!-- Queue -->
+      <section class="section queue-section" id="queueSection" style="display:none">
+        <div class="section-header">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/>
+            </svg>
+            Queue <span class="queue-count" id="queueCount">0</span>
+          </h2>
+          <button class="btn btn-sm btn-outline" id="clearQueueBtn">Clear Done</button>
+        </div>
+        <div class="queue-list" id="queueList"></div>
+      </section>
+
+      <!-- Properties -->
+      <section class="section properties-section">
+        <div class="section-header">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+              <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            </svg>
+            Properties <span class="property-count" id="propertyCount">0</span>
+          </h2>
+          <div class="section-actions">
+            <button class="btn btn-sm btn-gold" id="exportBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+              </svg>
+              Export CSV
+            </button>
+            <button class="btn btn-sm btn-danger" id="clearAllBtn">Clear All</button>
+          </div>
+        </div>
+        <div class="property-list" id="propertyList"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Edit View -->
+  <div class="edit-view" id="editView">
+    <header class="header">
+      <div class="header-left">
+        <button class="icon-btn" id="backBtn" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+          </svg>
+        </button>
+        <h1>Edit Property</h1>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="section">
+        <div class="edit-form" id="editForm">
+          <div class="form-group">
+            <label for="editName">Name</label>
+            <input type="text" id="editName">
+          </div>
+          <div class="form-group">
+            <label for="editLocation">Location</label>
+            <input type="text" id="editLocation">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editCheckIn">Check-in</label>
+              <input type="date" id="editCheckIn">
+            </div>
+            <div class="form-group">
+              <label for="editCheckOut">Check-out</label>
+              <input type="date" id="editCheckOut">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editPrice">Price</label>
+              <input type="number" id="editPrice" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label for="editCurrency">Currency</label>
+              <select id="editCurrency"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Price Type</label>
+            <div class="radio-group">
+              <label><input type="radio" name="priceType" value="Per Night" checked> Per Night</label>
+              <label><input type="radio" name="priceType" value="Total Stay"> Total Stay</label>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editBedrooms">Bedrooms</label>
+              <input type="number" id="editBedrooms" min="0">
+            </div>
+            <div class="form-group">
+              <label for="editBathrooms">Bathrooms</label>
+              <input type="number" id="editBathrooms" min="0">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="editCategory">Category</label>
+            <select id="editCategory">
+              <option value="Luxury">Luxury</option>
+              <option value="Deluxe">Deluxe</option>
+              <option value="Super Deluxe">Super Deluxe</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editDescription">Description</label>
+            <textarea id="editDescription" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="editImages">Images (one URL per line)</label>
+            <textarea id="editImages" rows="4" style="font-family: monospace; font-size: 11px;"></textarea>
+          </div>
+          <button class="btn btn-green" id="saveEditBtn" style="width:100%; margin-top: 8px;">Save Changes</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-dialog">
+      <p id="confirmMessage">Are you sure?</p>
+      <div class="confirm-actions">
+        <button class="btn btn-outline" id="confirmCancel">Cancel</button>
+        <button class="btn btn-danger" id="confirmOk">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+	"id": "5Dz5ELu54pyBe6t",
+	"json": "{\"id\":\"5Dz5ELu54pyBe6t\",\"url\":\"https://www.booking.com/hotel/nz/aroha-motel.en-gb.html?checkin=2026-04-30&checkout=2026-05-01&selected_currency=NZD\",\"loadedUrl\":\"https://www.booking.com/hotel/nz/aroha-motel.en-gb.html?checkin=2026-04-30&checkout=2026-05-01&selected_currency=NZD\",\"uniqueKey\":\"https://www.booking.com/hotel/nz/aroha-motel.en-gb.html?checkin=2026-04-30&checkout=2026-05-01&selected_currency=NZD\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":1,\"errorMessages\":[\"Error: requestHandler timed out after 60 seconds.\\n    at Timeout._onTimeout (/Users/veer_vora/Desktop/pip_install/bin/my-property-app/property-booking-scraper/node_modules/@apify/timeout/cjs/index.cjs:64:68)\\n    at listOnTimeout (node:internal/timers:588:17)\\n    at process.processTimers (node:internal/timers:523:7)\"],\"headers\":{},\"userData\":{\"__crawlee\":{\"state\":4}},\"handledAt\":\"2026-03-15T22:26:49.348Z\"}",
+	"method": "GET",
+	"orderNo": null,
+	"retryCount": 1,
+	"uniqueKey": "https://www.booking.com/hotel/nz/aroha-motel.en-gb.html?checkin=2026-04-30&checkout=2026-05-01&selected_currency=NZD",
+	"url": "https://www.booking.com/hotel/nz/aroha-motel.en-gb.html?checkin=2026-04-30&checkout=2026-05-01&selected_currency=NZD"
+}
