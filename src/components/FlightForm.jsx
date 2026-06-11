@@ -322,7 +322,7 @@ const FlightForm = ({ flights, setFlights }) => {
     return (
       <div 
         key={item.id} 
-        className={`relative p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}
+        className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}
         onClick={() => toggleSelection(item.id)}
       >
         {item.selected && (
@@ -401,12 +401,12 @@ const FlightForm = ({ flights, setFlights }) => {
         }
       `}</style>
 
-      <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-bold text-gray-800">Manage All Flights</h3>
-            <div className="flex items-center gap-2">
-                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
-                    <Upload size={18} className="mr-2" /> Import from CSV
+      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-6 sm:mb-8">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-4">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Manage All Flights</h3>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2">
+                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-blue-700 flex items-center justify-center transition-transform hover:scale-105">
+                    <Upload size={18} className="mr-2 flex-shrink-0" /> Import CSV
                 </button>
                 <input
                     type="file"
@@ -415,22 +415,22 @@ const FlightForm = ({ flights, setFlights }) => {
                     accept=".csv"
                     onChange={handleFileUpload}
                 />
-                <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
-                    <Plus size={18} className="mr-2" /> Add New Flight
+                <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-green-700 flex items-center justify-center transition-transform hover:scale-105">
+                    <Plus size={18} className="mr-2 flex-shrink-0" /> Add Flight
                 </button>
                 {flights && flights.length > 0 && (
                   <button
                     type="button"
                     onClick={() => { if (window.confirm(`Delete all ${flights.length} flights?`)) setFlights([]); }}
-                    className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center transition-transform hover:scale-105"
+                    className="bg-red-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-red-700 flex items-center justify-center transition-transform hover:scale-105"
                   >
-                    <Trash2 size={18} className="mr-2" /> Delete All
+                    <Trash2 size={18} className="mr-2 flex-shrink-0" /> Delete All
                   </button>
                 )}
             </div>
         </div>
-        <div className="text-right mb-4">
-            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</button>
+        <div className="text-center sm:text-right mb-4">
+            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
@@ -460,9 +460,9 @@ const FlightForm = ({ flights, setFlights }) => {
           const items = groupedFlights[typeInfo.type];
           if (!items || items.length === 0) return null;
           return (
-            <div key={typeInfo.type} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+            <div key={typeInfo.type} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3"><Plane /> {typeInfo.label}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-3"><Plane /> {typeInfo.label}</h3>
               </div>
               
               <div className="space-y-4">

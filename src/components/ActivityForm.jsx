@@ -654,10 +654,10 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         }
       `}</style>
       
-      <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-bold text-gray-800">Manage All Activities</h3>
-            <div className="flex items-center gap-2">
+      <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-6 sm:mb-8">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-4">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Manage All Activities</h3>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2">
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -669,21 +669,21 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                   <button
                     type="button"
                     onClick={() => { if (window.confirm(`Delete all ${activities.length} activities?`)) setActivities([]); }}
-                    className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center transition-transform hover:scale-105"
+                    className="bg-red-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-red-700 flex items-center justify-center transition-transform hover:scale-105"
                   >
-                    <Trash2 size={18} className="mr-2" /> Delete All
+                    <Trash2 size={18} className="mr-2 flex-shrink-0" /> Delete All
                   </button>
                 )}
-                <button onClick={exportActivitiesToCSV} className="bg-gray-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800 flex items-center transition-transform hover:scale-105">
-                    <Download size={18} className="mr-2" /> Export to CSV
+                <button onClick={exportActivitiesToCSV} className="bg-gray-700 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-gray-800 flex items-center justify-center transition-transform hover:scale-105">
+                    <Download size={18} className="mr-2 flex-shrink-0" /> Export CSV
                 </button>
-                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
-                    <Upload size={18} className="mr-2" /> Import from CSV
+                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-blue-700 flex items-center justify-center transition-transform hover:scale-105">
+                    <Upload size={18} className="mr-2 flex-shrink-0" /> Import CSV
                 </button>
             </div>
         </div>
-        <div className="text-right mb-4">
-            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline">Download CSV Template</button>
+        <div className="text-center sm:text-right mb-4">
+            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
@@ -691,13 +691,13 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
 
       <div className="space-y-8">
         {sortedActivityGroups.map(({ location, activities: locationActivities, itineraryLeg }) => (
-            <div key={location} className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-800">{location}</h3>
+            <div key={location} className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+                <div className="min-w-0">
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-800 break-words">{location}</h3>
                   {itineraryLeg && itineraryLeg.checkIn && itineraryLeg.checkOut && (
-                    <p className="text-sm text-gray-600 mt-1 flex items-center">
-                      <Calendar size={14} className="mr-1" />
+                    <p className="text-sm text-gray-600 mt-1 flex items-center flex-wrap">
+                      <Calendar size={14} className="mr-1 flex-shrink-0" />
                       {formatDateSafe(itineraryLeg.checkIn)} - {formatDateSafe(itineraryLeg.checkOut)}
                       {itineraryLeg.checkIn && itineraryLeg.checkOut && (
                         <span className="ml-2">
@@ -707,7 +707,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     </p>
                   )}
                 </div>
-                <button onClick={() => handleStartAdding(location)} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
+                <button onClick={() => handleStartAdding(location)} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center w-full sm:w-auto flex-shrink-0 transition-transform hover:scale-105">
                   <Plus size={18} className="mr-2" /> Add Activity
                 </button>
               </div>

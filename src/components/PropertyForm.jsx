@@ -858,10 +858,10 @@ const PropertyForm = ({
       `}</style>
       
       {adminMode && (
-        <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
-          <div className="flex justify-between items-center">
-            <h3 className="text-2xl font-bold text-gray-800">Manage Properties</h3>
-            <div className="flex items-center gap-4">
+        <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-xl border border-gray-100 mb-6 sm:mb-8">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Manage Properties</h3>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -869,25 +869,25 @@ const PropertyForm = ({
                 accept=".csv"
                 onChange={handleFileUpload}
               />
-              <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center transition-transform hover:scale-105">
-                  <Upload size={18} className="mr-2" /> Import from CSV
+              <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-blue-700 flex items-center justify-center transition-transform hover:scale-105">
+                  <Upload size={18} className="mr-2 flex-shrink-0" /> Import CSV
               </button>
-              <button onClick={exportToCSV} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center transition-transform hover:scale-105">
-                  <Download size={18} className="mr-2" /> Export to CSV
-              </button>
-              <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                <Download size={16} />
-                <span>Download Template</span>
+              <button onClick={exportToCSV} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-green-700 flex items-center justify-center transition-transform hover:scale-105">
+                  <Download size={18} className="mr-2 flex-shrink-0" /> Export CSV
               </button>
               {properties && properties.length > 0 && (
                 <button
                   type="button"
                   onClick={() => { if (window.confirm(`Delete all ${properties.length} properties?`)) setProperties([]); }}
-                  className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center transition-transform hover:scale-105"
+                  className="bg-red-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-red-700 flex items-center justify-center transition-transform hover:scale-105"
                 >
-                  <Trash2 size={18} className="mr-2" /> Delete All
+                  <Trash2 size={18} className="mr-2 flex-shrink-0" /> Delete All
                 </button>
               )}
+              <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline flex items-center justify-center gap-1 min-h-[44px] px-2">
+                <Download size={16} className="flex-shrink-0" />
+                <span>Download Template</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1064,11 +1064,11 @@ const PropertyForm = ({
                 className="p-5 border-b bg-gradient-to-r from-gray-50 to-gray-100 cursor-pointer"
                 onClick={() => toggleSection(location)}
               >
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                  <div className="mb-2 md:mb-0">
-                    <h2 className="text-2xl font-bold text-gray-900 font-sans text-left flex items-center">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-sans text-left flex items-center">
                       {location}
-                      {isCollapsed ? <ChevronDown className="ml-2" size={20} /> : <ChevronUp className="ml-2" size={20} />}
+                      {isCollapsed ? <ChevronDown className="ml-2 flex-shrink-0" size={20} /> : <ChevronUp className="ml-2 flex-shrink-0" size={20} />}
                     </h2>
                     <p className="text-sm text-gray-600">
                       <Calendar size={14} className="inline mr-1 text-gray-500" />
@@ -1077,10 +1077,10 @@ const PropertyForm = ({
                         : 'Dates N/A'}
                     </p>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-left md:text-right">
+                  <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
+                    <div className="text-left md:text-right min-w-0">
                         <p className="text-sm text-gray-600">Selected Property:</p>
-                        <p className="font-semibold text-gray-900 text-base">
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">
                             {getSelectedProperty(location)?.name || 'None'}
                         </p>
                     </div>
@@ -1094,7 +1094,7 @@ const PropertyForm = ({
                                     checkOut: itineraryDetails.checkOut
                                 });
                             }}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center text-sm"
+                            className="px-3 sm:px-4 py-2 min-h-[44px] bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center justify-center text-sm whitespace-nowrap flex-shrink-0"
                         >
                             <Plus size={16} className="inline mr-1" /> Add Property
                         </button>
