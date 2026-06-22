@@ -19,6 +19,7 @@ import {
   ChevronUp,
   Download,
   Star,
+  Coffee,
 } from 'lucide-react';
 import { getCurrencyOptions } from '../utils/currencyUtils';
 import {
@@ -27,6 +28,7 @@ import {
   parseNumberFlexible,
   formatDateSafe,
 } from '../utils/csvImport';
+import ImageDots from './ImageDots.jsx';
 
 const PropertyForm = ({
   properties,
@@ -52,6 +54,7 @@ const PropertyForm = ({
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
     selected: false, room_type: '', category: 'Luxury',
     recommended: false, // Recommended property toggle
+    breakfast: false, // Breakfast included toggle
   });
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
@@ -129,6 +132,7 @@ const PropertyForm = ({
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
     selected: false, room_type: '', category: 'Luxury',
     recommended: false, // Recommended property toggle
+    breakfast: false, // Breakfast included toggle
   };
 
   const getCurrencySymbol = (currencyCode) => {
@@ -215,6 +219,7 @@ const PropertyForm = ({
               category: propertyData.category || 'Luxury',
               isPlaceholder: false,
               recommended: propertyData.recommended?.toUpperCase() === 'TRUE',
+              breakfast: propertyData.breakfast?.toUpperCase() === 'TRUE',
           });
         });
 
@@ -247,8 +252,8 @@ const PropertyForm = ({
   };
 
   const downloadTemplate = () => {
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended";
-    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","Deluxe Suite","Luxury","FALSE"`;
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended,breakfast";
+    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","Deluxe Suite","Luxury","FALSE","TRUE"`;
     const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;) or newlines. If using newlines, the entire cell must be enclosed in double quotes (\").";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
@@ -266,7 +271,7 @@ const PropertyForm = ({
       return;
     }
 
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended";
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended,breakfast";
 
     const csvRows = properties.map(property => {
       const row = [
@@ -284,7 +289,8 @@ const PropertyForm = ({
         property.selected ? 'TRUE' : 'FALSE',
         property.room_type || '',
         property.category || 'Luxury',
-        property.recommended ? 'TRUE' : 'FALSE'
+        property.recommended ? 'TRUE' : 'FALSE',
+        property.breakfast ? 'TRUE' : 'FALSE'
       ];
       return row.map(field => `"${field}"`).join(',');
     });
@@ -321,6 +327,7 @@ const PropertyForm = ({
       bedrooms: property.bedrooms === 0 ? '' : property.bedrooms,
       bathrooms: property.bathrooms === 0 ? '' : property.bathrooms,
       recommended: property.recommended || false, // Backward compatible default
+      breakfast: property.breakfast || false, // Backward compatible default
     });
     setIsAddingNew(false);
     setShowPropertyFormModal(true);
@@ -839,6 +846,28 @@ const PropertyForm = ({
           />
         </button>
       </div>
+
+      {/* Breakfast Included Toggle */}
+      <div className="mb-6 flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+        <div className="flex items-center gap-2">
+          <Coffee size={18} className="text-emerald-600" />
+          <label className="font-semibold text-gray-700">Breakfast Included</label>
+          <span className="text-xs text-gray-600">(Shown to client)</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setProperty(prev => ({ ...prev, breakfast: !prev.breakfast }))}
+          className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+            currentProperty.breakfast ? 'bg-emerald-500' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+              currentProperty.breakfast ? 'translate-x-6' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
     </>
   );
 
@@ -1165,6 +1194,12 @@ const PropertyForm = ({
                             <div className="aspect-w-16 aspect-h-9 overflow-hidden">
                               {property.images && property.images.length > 0 ? (
                                 <div className="relative w-full h-48 sm:h-56">
+                                  {property.breakfast && (
+                                    <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 bg-emerald-600 text-white px-2 py-1 rounded-md shadow-md text-xs font-semibold">
+                                      <Coffee size={14} />
+                                      <span>Breakfast included</span>
+                                    </div>
+                                  )}
                                   <img
                                     src={property.images[currentImageIndex[property.id] || property.homeImageIndex || 0]}
                                     alt={property.name}
@@ -1188,16 +1223,11 @@ const PropertyForm = ({
                                       >
                                         <ChevronRight size={20} />
                                       </button>
-                                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                                        {property.images.map((img, idx) => (
-                                          <div
-                                            key={idx}
-                                            className={`w-2 h-2 rounded-full ${
-                                              idx === (currentImageIndex[property.id] || property.homeImageIndex || 0) ? 'bg-white' : 'bg-gray-400'
-                                            }`}
-                                          />
-                                        ))}
-                                      </div>
+                                      <ImageDots
+                                        count={property.images.length}
+                                        active={currentImageIndex[property.id] || property.homeImageIndex || 0}
+                                        className="absolute bottom-2 left-1/2 transform -translate-x-1/2"
+                                      />
                                     </>
                                   )}
                                   <button
@@ -1212,7 +1242,13 @@ const PropertyForm = ({
                                   </button>
                                 </div>
                               ) : (
-                                <div className="w-full h-48 sm:h-56 bg-gray-200 flex items-center justify-center text-gray-500">
+                                <div className="relative w-full h-48 sm:h-56 bg-gray-200 flex items-center justify-center text-gray-500">
+                                  {property.breakfast && (
+                                    <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 bg-emerald-600 text-white px-2 py-1 rounded-md shadow-md text-xs font-semibold">
+                                      <Coffee size={14} />
+                                      <span>Breakfast included</span>
+                                    </div>
+                                  )}
                                   <Image size={48} />
                                 </div>
                               )}

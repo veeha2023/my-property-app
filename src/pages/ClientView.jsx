@@ -8,12 +8,13 @@ import {
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
   ChevronDown, ChevronUp, Minus, Plus, Info, Star,
-  Instagram
+  Instagram, Coffee
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
 import { formatContextualLabel, formatActivityLabel } from '../utils/priceLabels.js';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
+import ImageDots from '../components/ImageDots.jsx';
 import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
@@ -1293,13 +1294,23 @@ const ClientView = () => {
                                       </div>
                                     )}
 
+                                    {/* Breakfast included badge - only show if breakfast is true */}
+                                    {property.breakfast && (
+                                      <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-600 text-white px-2 py-1 rounded-md shadow-md text-xs font-semibold z-10">
+                                        <Coffee size={14} />
+                                        <span>Breakfast included</span>
+                                      </div>
+                                    )}
+
                                     {hasMultipleImages && (
                                       <>
                                         <button onClick={(e) => { e.stopPropagation(); prevImage(property.id); }} aria-label="Previous image" className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:opacity-100"><ChevronLeft size={20} /></button>
                                         <button onClick={(e) => { e.stopPropagation(); nextImage(property.id); }} aria-label="Next image" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition-opacity opacity-0 group-hover:opacity-100 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:opacity-100"><ChevronRight size={20} /></button>
-                                        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
-                                            {property.images.map((_, index) => ( <span key={index} className={`block w-2 h-2 rounded-full transition-colors ${currentIdx === index ? 'bg-white' : 'bg-gray-400'}`}></span> ))}
-                                        </div>
+                                        <ImageDots
+                                          count={property.images.length}
+                                          active={currentIdx}
+                                          className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10"
+                                        />
                                       </>
                                     )}
                                   </div>
