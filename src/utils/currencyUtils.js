@@ -1,6 +1,6 @@
 // Currency utilities for the property app
 export const CURRENCIES = {
-  'AUD': { name: 'Australian Dollar', symbol: 'A$', code: 'AUD' },
+  'AUD': { name: 'Australian Dollar', symbol: 'AU$', code: 'AUD' },
   'BRL': { name: 'Brazilian Real', symbol: 'R$', code: 'BRL' },
   'CAD': { name: 'Canadian Dollar', symbol: 'C$', code: 'CAD' },
   'CHF': { name: 'Swiss Franc', symbol: 'CHF', code: 'CHF' },

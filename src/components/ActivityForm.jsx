@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download, Tag, Star } from 'lucide-react';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
-import { getActivityPax, getActivityRates, getActivityRawPrice, formatPaxLabel } from '../utils/currencyUtils';
+import { getActivityPax, getActivityRates, getActivityRawPrice, formatPaxLabel, getCurrencyOptions, getCurrencySymbol } from '../utils/currencyUtils';
 import {
   parseCSV,
   parseDateFlexible,
@@ -39,16 +39,6 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const getCurrencySymbol = (currencyCode) => {
-    switch (currencyCode) {
-      case 'NZD': return 'NZ$';
-      case 'USD': return '$';
-      case 'EUR': return '€';
-      case 'INR': return '₹';
-      default: return currencyCode || 'NZ$';
-    }
-  };
-  
   const calculateBasePrice = (activity) => getActivityRawPrice(activity);
 
   const getPriceColor = (price) => {
@@ -567,10 +557,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         <div>
             <label className="block text-sm font-medium text-gray-700">Currency</label>
             <select value={activityData.currency} onChange={(e) => setActivityData({...activityData, currency: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                <option value="NZD">NZ$</option>
-                <option value="USD">$</option>
-                <option value="EUR">€</option>
-                <option value="INR">₹</option>
+                {getCurrencyOptions().map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
             </select>
         </div>
         <div className="lg:col-span-3 flex items-center">

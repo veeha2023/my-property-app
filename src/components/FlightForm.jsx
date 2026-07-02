@@ -1,7 +1,7 @@
 // src/components/FlightForm.jsx - Version 1.5 (Enhanced Pricing Model)
 import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Plane, Briefcase, CheckCircle, Upload, Star } from 'lucide-react';
-import { getCurrencyOptions } from '../utils/currencyUtils';
+import { getCurrencyOptions, getCurrencySymbol } from '../utils/currencyUtils';
 import {
   parseCSV,
   parseDateFlexible,
@@ -31,11 +31,6 @@ const FlightForm = ({ flights, setFlights }) => {
   ];
 
   // --- UTILITY FUNCTIONS ---
-  const getCurrencySymbol = (currencyCode) => {
-    const symbols = { NZD: 'NZ$', USD: '$', EUR: '€', INR: '₹' };
-    return symbols[currencyCode] || currencyCode || 'NZ$';
-  };
-
   const calculateDuration = (departureDate, departureTime, arrivalDate, arrivalTime) => {
     if (!departureDate || !departureTime || !arrivalDate || !arrivalTime) {
       return '';

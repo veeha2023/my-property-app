@@ -21,7 +21,7 @@ import {
   Star,
   Coffee,
 } from 'lucide-react';
-import { getCurrencyOptions } from '../utils/currencyUtils';
+import { getCurrencyOptions, getCurrencySymbol } from '../utils/currencyUtils';
 import {
   parseCSV,
   parseDateFlexible,
@@ -135,15 +135,6 @@ const PropertyForm = ({
     breakfast: false, // Breakfast included toggle
   };
 
-  const getCurrencySymbol = (currencyCode) => {
-    switch (currencyCode) {
-      case 'NZD': return 'NZ$';
-      case 'USD': return '$';
-      case 'EUR': return '€';
-      case 'INR': return '₹';
-      default: return currencyCode;
-    }
-  };
 
   useEffect(() => {
     const initialImageIndices = {};

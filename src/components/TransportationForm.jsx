@@ -1,7 +1,7 @@
 // src/components/TransportationForm.jsx - Version 2.7 (Image Link Input Fix)
 import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Edit3, Trash2, X, Car, Calendar, MapPin, ShieldCheck, Users, Link2, Ship, Bus, CheckCircle, Upload, Download, Star } from 'lucide-react';
-import { getCurrencyOptions } from '../utils/currencyUtils';
+import { getCurrencyOptions, getCurrencySymbol } from '../utils/currencyUtils';
 import {
   parseCSV,
   parseDateFlexible,
@@ -34,11 +34,6 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   ];
 
   // --- UTILITY FUNCTIONS ---
-  const getCurrencySymbol = (currencyCode) => {
-    const symbols = { NZD: 'NZ$', USD: '$', EUR: '€', INR: '₹' };
-    return symbols[currencyCode] || currencyCode || 'NZ$';
-  };
-
   const getPriceColor = (price) => {
     if (price < 0) return 'text-green-600';
     if (price > 0) return 'text-red-600';

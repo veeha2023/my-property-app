@@ -105,16 +105,6 @@ const ClientView = () => {
     });
   }, []);
 
-  const getCurrencySymbol = (currencyCode) => {
-    switch (currencyCode) {
-      case 'NZD': return 'NZ$';
-      case 'USD': return '$';
-      case 'EUR': return '€';
-      case 'INR': return '₹';
-      default: return currencyCode || 'NZ$';
-    }
-  };
-
   const parseCurrencyToNumber = useCallback((currencyString) => {
     if (typeof currencyString === 'number') return currencyString;
     if (typeof currencyString !== 'string') return 0;
@@ -343,7 +333,7 @@ const ClientView = () => {
     const displayCurrency = selectedCurrency || fromCurrency;
 
     if (!selectedCurrency || !exchangeRates || selectedCurrency === fromCurrency) {
-      return `${getCurrencySymbol(fromCurrency)}${formatNumber(amount, fromCurrency)}`;
+      return `${getSymbol(fromCurrency)}${formatNumber(amount, fromCurrency)}`;
     }
 
     const convertedAmount = convertPrice(amount, fromCurrency, selectedCurrency, exchangeRates);
