@@ -2,6 +2,7 @@
 // Returns styling objects (text + className) for React components to render.
 // Color coding: emerald-600 = savings, amber-600 = upgrades, gray badge = base option.
 import { applyDiscount } from './discountUtils';
+import { getActivityRawPrice } from './currencyUtils';
 
 /**
  * Formats a price delta into a contextual label with appropriate styling.
@@ -50,11 +51,8 @@ export const formatContextualLabel = (deltaAmount, displayPrice, context = 'prop
  * @returns {{ text: string, className: string, isBadge: boolean }}
  */
 export const formatActivityLabel = (activity, displayPrice, parseCurrencyToNumber) => {
-  const costPerPax = parseCurrencyToNumber(activity.cost_per_pax);
-  const flatPrice = parseCurrencyToNumber(activity.flat_price);
   const basePrice = parseCurrencyToNumber(activity.base_price);
-  const pax = activity.pax || 0;
-  const rawPrice = costPerPax * pax + flatPrice;
+  const rawPrice = getActivityRawPrice(activity);
   const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
 
   if (activity.included_in_base) {

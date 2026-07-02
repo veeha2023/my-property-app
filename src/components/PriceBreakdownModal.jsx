@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
+import { getActivityPax, getActivityRates, getActivityRawPrice } from '../utils/currencyUtils';
 
 const PriceBreakdownModal = ({
   isOpen,
@@ -64,11 +65,7 @@ const PriceBreakdownModal = ({
     // Optional activities total (not included in base but selected)
     const optionalActivities = activities.filter(a => !a.included_in_base && a.selected);
     const optionalActivitiesTotal = optionalActivities.reduce((sum, activity) => {
-      const costPerPax = parseCurrencyToNumber(activity.cost_per_pax);
-      const flatPrice = parseCurrencyToNumber(activity.flat_price);
-      const pax = activity.pax || 0;
-      const perPersonTotal = costPerPax * pax;
-      const rawTotal = perPersonTotal + flatPrice;
+      const rawTotal = getActivityRawPrice(activity);
       const activityTotal = applyDiscount(rawTotal, activity.discount_type, activity.discount_value);
       return sum + activityTotal;
     }, 0);
@@ -239,13 +236,16 @@ const PriceBreakdownModal = ({
               {calculations.optionalActivities.length > 0 ? (
                 <>
                   {calculations.optionalActivities.map(activity => {
-                    const costPerPax = parseCurrencyToNumber(activity.cost_per_pax);
                     const flatPrice = parseCurrencyToNumber(activity.flat_price);
-                    const pax = activity.pax || 0;
-                    const perPersonTotal = costPerPax * pax;
-                    const rawTotal = perPersonTotal + flatPrice;
+                    const paxCounts = getActivityPax(activity);
+                    const rates = getActivityRates(activity);
+                    const rawTotal = getActivityRawPrice(activity);
                     const isDiscounted = hasDiscount(activity);
                     const activityTotal = applyDiscount(rawTotal, activity.discount_type, activity.discount_value);
+                    const hasPerPersonRate = rates.adult > 0 || rates.child > 0;
+                    const personParts = [];
+                    if (rates.adult > 0 && paxCounts.adults > 0) personParts.push(`${displayPrice(rates.adult)}/adult × ${paxCounts.adults}`);
+                    if (rates.child > 0 && paxCounts.children > 0) personParts.push(`${displayPrice(rates.child)}/child × ${paxCounts.children}`);
 
                     return (
                       <div key={activity.id} className="flex justify-between items-start text-sm ml-4">
@@ -254,13 +254,13 @@ const PriceBreakdownModal = ({
                             <span className="text-green-600 mt-0.5">✓</span>
                             <div>
                               <div className="font-medium text-gray-900">{activity.name}</div>
-                              {costPerPax > 0 && (
+                              {hasPerPersonRate && (
                                 <div className="text-gray-600 text-xs">
-                                  {displayPrice(costPerPax)}/person × {pax}
+                                  {personParts.join(' + ')}
                                   {flatPrice > 0 && ` + ${displayPrice(flatPrice)} fee`}
                                 </div>
                               )}
-                              {costPerPax === 0 && flatPrice > 0 && (
+                              {!hasPerPersonRate && flatPrice > 0 && (
                                 <div className="text-gray-600 text-xs">Flat rate</div>
                               )}
                               {isDiscounted && (

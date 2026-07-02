@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Edit3, Trash2, X, Image, Link2, Calendar, Clock, Users, ChevronsRight, CheckCircle, Upload, Download, Tag, Star } from 'lucide-react';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
+import { getActivityPax, getActivityRates, getActivityRawPrice, formatPaxLabel } from '../utils/currencyUtils';
 import {
   parseCSV,
   parseDateFlexible,
@@ -48,13 +49,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     }
   };
   
-  const calculateBasePrice = (activity) => {
-    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-    const flatPrice = parseFloat(activity.flat_price) || 0;
-    const pax = parseInt(activity.pax, 10) || 1;
-
-    return (costPerPax * pax) + flatPrice;
-  };
+  const calculateBasePrice = (activity) => getActivityRawPrice(activity);
 
   const getPriceColor = (price) => {
     if (price < 0) return 'text-green-600';
@@ -142,8 +137,10 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       time: '',
       location: location,
       duration: '',
-      pax: 1,
-      cost_per_pax: 0,
+      num_adults: 1,
+      num_children: 0,
+      cost_per_adult: 0,
+      cost_per_child: 0,
       flat_price: 0,
       currency: 'NZD',
       images: [],
@@ -175,9 +172,18 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       if (!ok) return;
     }
 
-    activityToSave.pax = parseInt(activityToSave.pax, 10) || 1;
-    activityToSave.cost_per_pax = parseFloat(activityToSave.cost_per_pax) || 0;
+    activityToSave.num_adults = parseInt(activityToSave.num_adults, 10) || 0;
+    activityToSave.num_children = parseInt(activityToSave.num_children, 10) || 0;
+    if (activityToSave.num_adults < 1 && activityToSave.num_children < 1) {
+      activityToSave.num_adults = 1;
+    }
+    activityToSave.cost_per_adult = parseFloat(activityToSave.cost_per_adult) || 0;
+    activityToSave.cost_per_child = parseFloat(activityToSave.cost_per_child) || 0;
     activityToSave.flat_price = parseFloat(activityToSave.flat_price) || 0;
+    // Drop legacy fields so this activity is fully migrated to the adult/child model
+    delete activityToSave.pax;
+    delete activityToSave.cost_per_pax;
+    delete activityToSave.base_pax;
 
     // Parse discount fields
     activityToSave.discount_value = activityToSave.discount_type ? (parseFloat(activityToSave.discount_value) || 0) : 0;
@@ -186,8 +192,11 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
     }
 
     // Calculate and store the base price contribution (discounted) for this activity
-    const rawBasePrice = (activityToSave.cost_per_pax * activityToSave.pax) + activityToSave.flat_price;
+    const rawBasePrice = getActivityRawPrice(activityToSave);
     activityToSave.base_price = applyDiscount(rawBasePrice, activityToSave.discount_type, activityToSave.discount_value);
+    // Stamp the base head-counts for included-in-base "base vs now" comparison
+    activityToSave.base_adults = activityToSave.num_adults;
+    activityToSave.base_children = activityToSave.num_children;
 
     // --- BUG FIX ---
     // If the date/time toggle is off, clear the date and time fields before saving
@@ -265,7 +274,9 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             }
             const headers = allRows[0];
 
-            const coreHeaders = ['name', 'location', 'duration', 'pax', 'cost_per_pax', 'currency', 'images'];
+            // Pricing columns are validated as optional (with legacy fallback) so both
+            // the new adult/child template and older pax/cost_per_pax CSVs import cleanly.
+            const coreHeaders = ['name', 'location', 'duration', 'currency', 'images'];
             const missingHeaders = coreHeaders.filter((h) => !headers.includes(h));
             if (missingHeaders.length > 0) {
               setError(`CSV is missing required headers: ${missingHeaders.join(', ')}`);
@@ -295,9 +306,15 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                 if (existingIdx !== -1) {
                     // Update existing: only overwrite fields that have non-empty values in the CSV
                     const existing = { ...updatedActivities[existingIdx] };
+                    const has = (v) => v !== undefined && v !== '';
                     if (raw.duration !== '') existing.duration = parseNumberFlexible(raw.duration, 0);
-                    if (raw.pax !== '') existing.pax = (parseNumberFlexible(raw.pax, 1) || 1);
-                    if (raw.cost_per_pax !== '') existing.cost_per_pax = parseNumberFlexible(raw.cost_per_pax, 0);
+                    // Head counts + rates, with legacy pax/cost_per_pax fallback
+                    if (has(raw.num_adults)) existing.num_adults = parseNumberFlexible(raw.num_adults, 0);
+                    else if (has(raw.pax)) existing.num_adults = (parseNumberFlexible(raw.pax, 1) || 1);
+                    if (has(raw.num_children)) existing.num_children = parseNumberFlexible(raw.num_children, 0);
+                    if (has(raw.cost_per_adult)) existing.cost_per_adult = parseNumberFlexible(raw.cost_per_adult, 0);
+                    else if (has(raw.cost_per_pax)) existing.cost_per_adult = parseNumberFlexible(raw.cost_per_pax, 0);
+                    if (has(raw.cost_per_child)) existing.cost_per_child = parseNumberFlexible(raw.cost_per_child, 0);
                     if (raw.flat_price !== '') existing.flat_price = parseNumberFlexible(raw.flat_price, 0);
                     if (raw.currency !== '') existing.currency = raw.currency;
                     if (raw.date !== '') existing.date = parseDateFlexible(raw.date);
@@ -308,16 +325,19 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     if (raw.discount_type !== undefined && raw.discount_type !== '') existing.discount_type = raw.discount_type;
                     if (raw.discount_value !== undefined && raw.discount_value !== '') existing.discount_value = parseNumberFlexible(raw.discount_value, 0);
                     // Recalculate base_price (with discount)
-                    const rawBP = ((parseFloat(existing.cost_per_pax) || 0) * (parseInt(existing.pax, 10) || 1)) + (parseFloat(existing.flat_price) || 0);
+                    const rawBP = getActivityRawPrice(existing);
                     existing.base_price = applyDiscount(rawBP, existing.discount_type, existing.discount_value);
                     updatedActivities[existingIdx] = existing;
                     updatedCount++;
                 } else {
-                    // New activity (original behavior)
-                    const pax = (parseNumberFlexible(raw.pax, 1) || 1);
-                    const costPerPax = parseNumberFlexible(raw.cost_per_pax, 0);
+                    // New activity — adult/child model with legacy pax/cost_per_pax fallback
+                    const has = (v) => v !== undefined && v !== '';
+                    const numAdults = has(raw.num_adults) ? parseNumberFlexible(raw.num_adults, 0) : (parseNumberFlexible(raw.pax, 1) || 1);
+                    const numChildren = has(raw.num_children) ? parseNumberFlexible(raw.num_children, 0) : 0;
+                    const costPerAdult = has(raw.cost_per_adult) ? parseNumberFlexible(raw.cost_per_adult, 0) : parseNumberFlexible(raw.cost_per_pax, 0);
+                    const costPerChild = has(raw.cost_per_child) ? parseNumberFlexible(raw.cost_per_child, 0) : 0;
                     const flatPrice = parseNumberFlexible(raw.flat_price, 0);
-                    const basePrice = (costPerPax * pax) + flatPrice;
+                    const basePrice = getActivityRawPrice({ num_adults: numAdults, num_children: numChildren, cost_per_adult: costPerAdult, cost_per_child: costPerChild, flat_price: flatPrice });
                     const includedInBase = raw.included_in_base?.toLowerCase() !== 'false';
                     let selected;
                     if (raw.selected && raw.selected.trim() !== '') {
@@ -335,8 +355,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                         time: parseTimeFlexible(raw.time),
                         location: raw.location,
                         duration: parseNumberFlexible(raw.duration, 0),
-                        pax,
-                        cost_per_pax: costPerPax,
+                        num_adults: numAdults,
+                        num_children: numChildren,
+                        cost_per_adult: costPerAdult,
+                        cost_per_child: costPerChild,
+                        base_adults: numAdults,
+                        base_children: numChildren,
                         flat_price: flatPrice,
                         base_price: discountedBasePrice,
                         currency: raw.currency || 'NZD',
@@ -366,18 +390,20 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
 
   const downloadTemplate = () => {
     // --- CSV TEMPLATE UPDATE ---
-    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,discount_type,discount_value,recommended";
-    const exampleWithDate = "Skydiving,Queenstown,3,2,140,50,NZD,https://example.com/image1.jpg,true,2025-08-15,10:00,percentage,20,FALSE";
-    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,25,0,NZD,https://example.com/hike.jpg,false,,,,,FALSE";
+    const headers = "name,location,duration,num_adults,num_children,cost_per_adult,cost_per_child,flat_price,currency,images,included_in_base,date,time,discount_type,discount_value,recommended";
+    const exampleWithDate = "Skydiving,Queenstown,3,2,1,140,70,50,NZD,https://example.com/image1.jpg,true,2025-08-15,10:00,percentage,20,FALSE";
+    const exampleWithoutDate = "Guided Hike,Queenstown,4,2,0,25,0,0,NZD,https://example.com/hike.jpg,false,,,,,FALSE";
 
     const note = [
-        "\n# NOTE: Required headers are: name, location, duration, pax, cost_per_pax, currency, images.",
-        "# 'flat_price' is OPTIONAL - adds a fixed cost on top of per-pax pricing.",
+        "\n# NOTE: Required headers are: name, location, duration, currency, images.",
+        "# 'num_adults'/'num_children' - head counts. 'cost_per_adult'/'cost_per_child' - per-person rates (child defaults to 0 = free).",
+        "# 'flat_price' is OPTIONAL - adds a fixed cost on top of per-person pricing.",
+        "# Legacy 'pax'/'cost_per_pax' columns are still accepted on import (mapped to adults).",
         "# 'included_in_base' - true means included in base quote, false means optional add-on.",
         "# 'date' and 'time' headers are OPTIONAL. You can leave them blank or omit them entirely.",
         "# Please use YYYY-MM-DD format for dates for best compatibility.",
         "# Separate multiple image URLs with a semicolon (;) in the 'images' column.",
-        "# Base price is calculated as: (cost_per_pax × pax) + flat_price",
+        "# Base price is calculated as: (cost_per_adult × num_adults) + (cost_per_child × num_children) + flat_price",
         "# 'discount_type' - percentage or fixed. Leave blank for no discount.",
         "# 'discount_value' - e.g. 20 for 20% off, or 50 for $50 off.",
         "# Discount label is auto-generated from type and value.",
@@ -401,18 +427,22 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
       setError("No activities to export.");
       return;
     }
-    const headers = "name,location,duration,pax,cost_per_pax,flat_price,currency,images,included_in_base,date,time,selected,discount_type,discount_value,recommended";
+    const headers = "name,location,duration,num_adults,num_children,cost_per_adult,cost_per_child,flat_price,currency,images,included_in_base,date,time,selected,discount_type,discount_value,recommended";
     const rows = activities.map(act => {
       const escapeCsvField = (val) => {
         const str = String(val ?? '');
         return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str.replace(/"/g, '""')}"` : str;
       };
+      const pax = getActivityPax(act);
+      const rates = getActivityRates(act);
       return [
         escapeCsvField(act.name),
         escapeCsvField(act.location),
         act.duration ?? '',
-        act.pax ?? 1,
-        act.cost_per_pax ?? 0,
+        pax.adults,
+        pax.children,
+        rates.adult,
+        rates.child,
         act.flat_price ?? 0,
         act.currency || 'NZD',
         (act.images || []).join(';'),
@@ -515,12 +545,20 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
             <input type="number" placeholder="e.g., 3" value={activityData.duration} onChange={(e) => setActivityData({...activityData, duration: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700">Pax</label>
-            <input type="number" min="1" value={activityData.pax} onChange={(e) => setActivityData({...activityData, pax: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Adults</label>
+            <input type="number" min="0" value={activityData.num_adults ?? activityData.pax ?? 1} onChange={(e) => setActivityData({...activityData, num_adults: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700">Cost Per Pax</label>
-            <input type="number" step="0.01" value={activityData.cost_per_pax || ''} onChange={(e) => setActivityData({...activityData, cost_per_pax: e.target.value})} placeholder="e.g., 140" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Children</label>
+            <input type="number" min="0" value={activityData.num_children ?? 0} onChange={(e) => setActivityData({...activityData, num_children: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+            <label className="block text-sm font-medium text-gray-700">Cost Per Adult</label>
+            <input type="number" step="0.01" value={(activityData.cost_per_adult ?? activityData.cost_per_pax) || ''} onChange={(e) => setActivityData({...activityData, cost_per_adult: e.target.value})} placeholder="e.g., 140" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+            <label className="block text-sm font-medium text-gray-700">Cost Per Child</label>
+            <input type="number" step="0.01" value={activityData.cost_per_child || ''} onChange={(e) => setActivityData({...activityData, cost_per_child: e.target.value})} placeholder="e.g., 70" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
         <div>
             <label className="block text-sm font-medium text-gray-700">Flat Price (Optional)</label>
@@ -782,7 +820,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                               {/* --- END DISPLAY LOGIC FIX --- */}
 
                               <div className="flex items-center"><ChevronsRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
-                              <div className="flex items-center"><Users size={16} className="mr-2 text-gray-400" /> <span>{activity.pax} Pax</span></div>
+                              <div className="flex items-center"><Users size={16} className="mr-2 text-gray-400" /> <span>{formatPaxLabel(activity)}</span></div>
                             </div>
                           </div>
                           <div className="mt-4 text-right">

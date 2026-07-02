@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, X, MapPin, Share2, Building, Activity, Plane, Car, ClipboardList, Calendar, Copy, Link2Off, Link as LinkIcon, Save, CheckCircle, RefreshCw, ShieldCheck, Users, Lock, Unlock, UploadCloud, Menu } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
-import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas } from '../utils/currencyUtils.js';
+import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas, getActivityPax, getActivityRates, getActivityRawPrice } from '../utils/currencyUtils.js';
 import { applyDiscount } from '../utils/discountUtils';
 import { useVisibility, useAutoSave } from '../hooks/useVisibility.js';
 
@@ -56,16 +56,13 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
     };
 
     const calculateActivityDelta = useCallback((activity) => {
-        // Calculate delta from base quote using new pricing model
-        const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-        const flatPrice = parseFloat(activity.flat_price) || 0;
-        const currentPax = parseInt(activity.pax, 10) || 1;
+        // Calculate delta from base quote using adult/child pricing model
         const basePrice = parseFloat(activity.base_price) || 0;
         const isIncludedInBase = activity.included_in_base !== false;
         const isSelected = activity.selected !== false;
 
         // Current price calculation (with discount)
-        const rawPrice = (costPerPax * currentPax) + flatPrice;
+        const rawPrice = getActivityRawPrice(activity);
         const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
 
         // Delta logic:
@@ -239,7 +236,12 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                             <div className="space-y-4">
                                 {selectedActivities.map(item => {
                                     const deltaPrice = calculateActivityDelta(item);
-                                    const costPerPax = parseFloat(item.cost_per_pax) || 0;
+                                    const paxCounts = getActivityPax(item);
+                                    const rates = getActivityRates(item);
+                                    const sym = getCurrencySymbol(item.currency);
+                                    const paxSummaryParts = [];
+                                    if (paxCounts.adults > 0 && rates.adult > 0) paxSummaryParts.push(`${paxCounts.adults} adult × ${sym}${formatNumberWithCommas(rates.adult, item.currency)}`);
+                                    if (paxCounts.children > 0 && rates.child > 0) paxSummaryParts.push(`${paxCounts.children} child × ${sym}${formatNumberWithCommas(rates.child, item.currency)}`);
                                     return (
                                         <div key={item.id} className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg shadow-sm border group-hover:border-yellow-400 transition-colors">
                                             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -247,7 +249,7 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                 <div className="min-w-0">
                                                     <p className="font-bold text-gray-800 truncate">{item.name}</p>
                                                     <p className="text-sm text-gray-600 truncate">{item.location}</p>
-                                                    {costPerPax > 0 && <p className="text-xs text-gray-500 truncate">{item.pax} pax × {getCurrencySymbol(item.currency)}{formatNumberWithCommas(costPerPax, item.currency)}</p>}
+                                                    {paxSummaryParts.length > 0 && <p className="text-xs text-gray-500 truncate">{paxSummaryParts.join(' + ')}</p>}
                                                 </div>
                                             </div>
                                             <p className={`font-bold text-base sm:text-lg whitespace-nowrap flex-shrink-0 ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(deltaPrice), item.currency)}`}</p>
@@ -493,14 +495,21 @@ const AdminDashboard = () => {
 
     const data = typeof clientPropertiesData === 'object' && clientPropertiesData !== null ? clientPropertiesData : {};
     const existingProperties = Array.isArray(data.properties) ? data.properties : [];
-    const existingActivities = (data.activities || []).map(a => ({
-        ...a,
-        cost_per_pax: parseFloat(a.cost_per_pax) || 0,
-        flat_price: parseFloat(a.flat_price) || 0,
-        base_price: parseFloat(a.base_price) || 0,
-        pax: parseInt(a.pax, 10) || 1,
-        included_in_base: a.included_in_base !== false,
-    }));
+    const existingActivities = (data.activities || []).map(a => {
+        // Normalize to the adult/child model; legacy pax/cost_per_pax map to adults.
+        const paxCounts = getActivityPax(a);
+        const rates = getActivityRates(a);
+        return {
+            ...a,
+            num_adults: paxCounts.adults,
+            num_children: paxCounts.children,
+            cost_per_adult: rates.adult,
+            cost_per_child: rates.child,
+            flat_price: parseFloat(a.flat_price) || 0,
+            base_price: parseFloat(a.base_price) || 0,
+            included_in_base: a.included_in_base !== false,
+        };
+    });
     const existingTransportation = Array.isArray(data.transportation) ? data.transportation : [];
     const existingFlights = (data.flights || []).map(f => ({ ...f, price: parseFloat(f.price) || 0 }));
 

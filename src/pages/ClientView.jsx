@@ -8,10 +8,10 @@ import {
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
   ChevronDown, ChevronUp, Minus, Plus, Info, Star,
-  Instagram, Coffee
+  Instagram, Coffee, Pencil
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
-import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber } from '../utils/currencyUtils.js';
+import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber, getActivityPax, getActivityBasePax, getActivityRates, getActivityRawPrice, formatPaxLabel } from '../utils/currencyUtils.js';
 import { formatContextualLabel, formatActivityLabel } from '../utils/priceLabels.js';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
 import ImageDots from '../components/ImageDots.jsx';
@@ -95,6 +95,15 @@ const ClientView = () => {
 
   const [swipeState, setSwipeState] = useState({});
   const SWIPE_THRESHOLD = 50;
+  // Which activity cards currently have their pax steppers revealed (UI-only, not persisted)
+  const [editingPaxIds, setEditingPaxIds] = useState(() => new Set());
+  const togglePaxEdit = useCallback((activityId) => {
+    setEditingPaxIds(prev => {
+      const next = new Set(prev);
+      if (next.has(activityId)) next.delete(activityId); else next.add(activityId);
+      return next;
+    });
+  }, []);
 
   const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode) {
@@ -175,16 +184,13 @@ const ClientView = () => {
   };
 
   const calculateActivityDelta = useCallback((activity) => {
-    // Calculate delta from base quote
-    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-    const flatPrice = parseFloat(activity.flat_price) || 0;
-    const currentPax = parseInt(activity.pax, 10) || 1;
+    // Calculate delta from base quote (adult/child pricing model)
     const basePrice = parseFloat(activity.base_price) || 0;
     const isIncludedInBase = activity.included_in_base !== false;
     const isSelected = activity.selected !== false;
 
     // Current price calculation (with discount)
-    const rawPrice = (costPerPax * currentPax) + flatPrice;
+    const rawPrice = getActivityRawPrice(activity);
     const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
 
     // Delta logic:
@@ -353,12 +359,12 @@ const ClientView = () => {
   const getActivityContextLabel = useCallback((activity) => {
     const isIncludedInBase = activity.included_in_base !== false;
     const isSelected = activity.selected !== false;
-    const currentPax = parseInt(activity.pax, 10) || 0;
-    const basePax = parseInt(activity.base_pax, 10) || 0;
+    const cur = getActivityPax(activity);
+    const bp = getActivityBasePax(activity);
+    const currentPax = cur.adults + cur.children;
+    const basePax = bp.adults + bp.children;
     const basePrice = parseFloat(activity.base_price) || 0;
-    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-    const flatPrice = parseFloat(activity.flat_price) || 0;
-    const rawPrice = (costPerPax * currentPax) + flatPrice;
+    const rawPrice = getActivityRawPrice(activity);
     const currentPrice = applyDiscount(rawPrice, activity.discount_type, activity.discount_value);
     const isDiscounted = hasDiscount(activity);
 
@@ -407,45 +413,49 @@ const ClientView = () => {
   }, [displayPrice]);
 
   const getActivityMathBreakdown = useCallback((activity) => {
-    const costPerPax = parseFloat(activity.cost_per_pax) || 0;
+    const rates = getActivityRates(activity);
     const flatPrice = parseFloat(activity.flat_price) || 0;
-    const currentPax = parseInt(activity.pax, 10) || 0;
-    const basePax = parseInt(activity.base_pax, 10) || 0;
+    const cur = getActivityPax(activity);
+    const bp = getActivityBasePax(activity);
     const isIncludedInBase = activity.included_in_base !== false;
     const isSelected = activity.selected !== false;
 
-    if (costPerPax === 0) return null;
+    if (rates.adult === 0 && rates.child === 0) return null;
 
-    // Hide per-person math on included activities when deselected or at base pax
+    // Hide per-person math on included activities when deselected or at base counts
     if (isIncludedInBase) {
       if (!isSelected) return null;
-      const paxUnchanged = currentPax === basePax || basePax === 0;
-      if (paxUnchanged) return null;
+      const countsUnchanged = (cur.adults === bp.adults && cur.children === bp.children) || (bp.adults === 0 && bp.children === 0);
+      if (countsUnchanged) return null;
     }
 
-    const currentSubtotal = costPerPax * currentPax;
-    const currentTotal = currentSubtotal + flatPrice;
+    // Build the per-person line(s) for a given adult/child count
+    const personLines = (adults, children) => {
+      const parts = [];
+      if (rates.adult > 0 && adults > 0) parts.push(`${displayPrice(rates.adult)}/adult × ${adults}`);
+      if (rates.child > 0 && children > 0) parts.push(`${displayPrice(rates.child)}/child × ${children}`);
+      return parts;
+    };
 
-    if (isIncludedInBase && isSelected && currentPax !== basePax && basePax > 0) {
-      const baseSubtotal = costPerPax * basePax;
-      const baseTotal = baseSubtotal + flatPrice;
+    const currentTotal = getActivityRawPrice(activity);
+    const countsChanged = (cur.adults !== bp.adults || cur.children !== bp.children) && (bp.adults > 0 || bp.children > 0);
+
+    if (isIncludedInBase && isSelected && countsChanged) {
+      const baseTotal = getActivityRawPrice(activity, bp.adults, bp.children);
       const change = currentTotal - baseTotal;
+      const feeStr = flatPrice > 0 ? ` + ${displayPrice(flatPrice)} fee` : '';
 
       return {
         type: 'comparison',
         lines: [
-          `Base: ${displayPrice(costPerPax)}/person × ${basePax} = ${displayPrice(baseTotal)}`,
-          `Now:  ${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentTotal)}`,
+          `Base: ${personLines(bp.adults, bp.children).join(' + ')}${feeStr} = ${displayPrice(baseTotal)}`,
+          `Now:  ${personLines(cur.adults, cur.children).join(' + ')}${feeStr} = ${displayPrice(currentTotal)}`,
           `Change: ${change >= 0 ? '+' : ''}${displayPrice(Math.abs(change))}`
         ]
       };
     }
 
-    const lines = [];
-
-    if (currentPax > 0) {
-      lines.push(`${displayPrice(costPerPax)}/person × ${currentPax} = ${displayPrice(currentSubtotal)}`);
-    }
+    const lines = personLines(cur.adults, cur.children);
 
     if (flatPrice > 0) {
       lines.push(`+ ${displayPrice(flatPrice)} fee`);
@@ -594,9 +604,11 @@ const ClientView = () => {
     setClientData(prevData => ({ ...prevData, activities: prevData.activities.map(act => act.id === activityId ? { ...act, selected: !act.selected } : act) }));
   }, []);
 
-  const updateActivityPax = useCallback((activityId, newPax) => {
-    const paxValue = Math.max(1, parseInt(newPax, 10) || 1);
-    setClientData(prevData => ({ ...prevData, activities: prevData.activities.map(act => act.id === activityId ? { ...act, pax: paxValue } : act) }));
+  const updateActivityCount = useCallback((activityId, field, newValue) => {
+    // field is 'num_adults' or 'num_children'. Adults floor at 1, children at 0.
+    const floor = field === 'num_adults' ? 1 : 0;
+    const value = Math.max(floor, parseInt(newValue, 10) || 0);
+    setClientData(prevData => ({ ...prevData, activities: prevData.activities.map(act => act.id === activityId ? { ...act, [field]: value } : act) }));
   }, []);
 
   const toggleTransportationSelection = useCallback((itemId) => {
@@ -1363,8 +1375,9 @@ const ClientView = () => {
                         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{location} Activities</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {(isFinalized ? activitiesInLocation.filter(a => a.selected !== false) : activitiesInLocation).map(activity => {
-                                const costPerPax = parseFloat(activity.cost_per_pax) || 0;
-                                const hasPaxPricing = costPerPax > 0;
+                                const rates = getActivityRates(activity);
+                                const paxCounts = getActivityPax(activity);
+                                const hasPaxPricing = rates.adult > 0 || rates.child > 0;
                                 const isSelected = activity.selected !== false;
                                 return (
                                     <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleActivitySelection(activity.id)}>
@@ -1417,9 +1430,10 @@ const ClientView = () => {
                                                 {(() => {
                                                   const isIncAct = activity.included_in_base !== false;
                                                   const isSelAct = activity.selected !== false;
-                                                  const bPax = parseInt(activity.base_pax, 10) || 0;
-                                                  const cPax = parseInt(activity.pax, 10) || 0;
-                                                  const paxChanged = isSelAct && bPax > 0 && cPax !== bPax;
+                                                  const cCounts = getActivityPax(activity);
+                                                  const bCounts = getActivityBasePax(activity);
+                                                  const bPax = bCounts.adults + bCounts.children;
+                                                  const paxChanged = isSelAct && bPax > 0 && (cCounts.adults !== bCounts.adults || cCounts.children !== bCounts.children);
                                                   // Show for: included activities with pax change, all optional activities
                                                   if (isIncAct && !paxChanged) return null;
                                                   const label = getActivityContextLabel(activity);
@@ -1443,42 +1457,93 @@ const ClientView = () => {
 
                                                     <div className="flex items-center"><ChevronRight size={16} className="mr-2 text-gray-400" /> <span>{activity.duration} hours</span></div>
 
-                                                    {/* Pax display - show controls only when not finalized */}
+                                                    {/* Pax display - adults + children, show steppers only when not finalized */}
                                                     {isSelected && hasPaxPricing ? (
-                                                        <div className={`flex items-center ${isFinalized ? '' : 'justify-between'}`} onClick={(e) => e.stopPropagation()}>
-                                                            <div className="flex items-center">
+                                                        isFinalized ? (
+                                                            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                                                                 <Users size={16} className="mr-2 text-gray-400" />
-                                                                <span className="text-sm">Pax:&nbsp;</span>
+                                                                <span className="font-semibold text-gray-800">{formatPaxLabel(activity)}</span>
                                                             </div>
-                                                            {isFinalized ? (
-                                                                <span className="font-semibold text-gray-800">{activity.pax}</span>
-                                                            ) : (
-                                                            <div className="flex items-center gap-2">
+                                                        ) : editingPaxIds.has(activity.id) ? (
+                                                            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                                                                {/* Adults */}
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center">
+                                                                        <Users size={16} className="mr-2 text-gray-400" />
+                                                                        <span className="text-sm">Adults:&nbsp;</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); updateActivityCount(activity.id, 'num_adults', paxCounts.adults - 1); }}
+                                                                            aria-label="Decrease number of adults"
+                                                                            className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                                                            disabled={paxCounts.adults <= 1}
+                                                                        >
+                                                                            <Minus size={16} className={paxCounts.adults <= 1 ? 'text-gray-300' : 'text-gray-700'} />
+                                                                        </button>
+                                                                        <span className="w-8 text-center font-semibold text-gray-800">{paxCounts.adults}</span>
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); updateActivityCount(activity.id, 'num_adults', paxCounts.adults + 1); }}
+                                                                            aria-label="Increase number of adults"
+                                                                            className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                                                        >
+                                                                            <Plus size={16} className="text-gray-700" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                {/* Children */}
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center">
+                                                                        <Users size={16} className="mr-2 text-gray-400" />
+                                                                        <span className="text-sm">Children:&nbsp;</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); updateActivityCount(activity.id, 'num_children', paxCounts.children - 1); }}
+                                                                            aria-label="Decrease number of children"
+                                                                            className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                                                            disabled={paxCounts.children <= 0}
+                                                                        >
+                                                                            <Minus size={16} className={paxCounts.children <= 0 ? 'text-gray-300' : 'text-gray-700'} />
+                                                                        </button>
+                                                                        <span className="w-8 text-center font-semibold text-gray-800">{paxCounts.children}</span>
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); updateActivityCount(activity.id, 'num_children', paxCounts.children + 1); }}
+                                                                            aria-label="Increase number of children"
+                                                                            className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                                                        >
+                                                                            <Plus size={16} className="text-gray-700" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                {/* Done - collapse the steppers back to the summary */}
+                                                                <div className="flex justify-end pt-1">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); togglePaxEdit(activity.id); }}
+                                                                        className="inline-flex items-center h-11 px-4 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                                                    >
+                                                                        Done
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            /* Collapsed: read-only summary + Edit pax button */
+                                                            <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                                                                <div className="flex items-center">
+                                                                    <Users size={16} className="mr-2 text-gray-400" />
+                                                                    <span className="font-semibold text-gray-800">{formatPaxLabel(activity)}</span>
+                                                                </div>
                                                                 <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        updateActivityPax(activity.id, Math.max(1, activity.pax - 1));
-                                                                    }}
-                                                                    aria-label="Decrease number of participants"
-                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                                                                    disabled={activity.pax <= 1}
+                                                                    onClick={(e) => { e.stopPropagation(); togglePaxEdit(activity.id); }}
+                                                                    aria-label="Edit number of guests"
+                                                                    aria-expanded={false}
+                                                                    className="inline-flex items-center gap-1.5 h-11 px-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors cursor-pointer active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                                                                 >
-                                                                    <Minus size={16} className={activity.pax <= 1 ? 'text-gray-300' : 'text-gray-700'} />
-                                                                </button>
-                                                                <span className="w-8 text-center font-semibold text-gray-800">{activity.pax}</span>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        updateActivityPax(activity.id, activity.pax + 1);
-                                                                    }}
-                                                                    aria-label="Increase number of participants"
-                                                                    className="w-11 h-11 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                                                                >
-                                                                    <Plus size={16} className="text-gray-700" />
+                                                                    <Pencil size={14} className="text-gray-600" />
+                                                                    Edit pax
                                                                 </button>
                                                             </div>
-                                                            )}
-                                                        </div>
+                                                        )
                                                     ) : null}
                                                 </div>
                                             </div>
@@ -1511,10 +1576,7 @@ const ClientView = () => {
                                                   const isDiscounted = hasDiscount(activity);
                                                   const isIncluded = activity.included_in_base !== false;
                                                   const isActSelected = activity.selected !== false;
-                                                  const cpPaxCheck = parseCurrencyToNumber(activity.cost_per_pax);
-                                                  const fPriceCheck = parseCurrencyToNumber(activity.flat_price);
-                                                  const paxCheck = activity.pax || 0;
-                                                  const rawPriceCheck = cpPaxCheck * paxCheck + fPriceCheck;
+                                                  const rawPriceCheck = getActivityRawPrice(activity);
                                                   const currentPriceCheck = isDiscounted ? applyDiscount(rawPriceCheck, activity.discount_type, activity.discount_value) : rawPriceCheck;
                                                   const basePriceCheck = parseCurrencyToNumber(activity.base_price);
                                                   const isAtBasePrice = isActSelected && Math.abs(currentPriceCheck - basePriceCheck) < 0.01;
@@ -1535,10 +1597,7 @@ const ClientView = () => {
 
                                                   // Discounted activities: compact state-aware layout
                                                   if (isDiscounted) {
-                                                    const cpPax = parseCurrencyToNumber(activity.cost_per_pax);
-                                                    const fPrice = parseCurrencyToNumber(activity.flat_price);
-                                                    const pax = activity.pax || 0;
-                                                    const rawTotal = cpPax * pax + fPrice;
+                                                    const rawTotal = getActivityRawPrice(activity);
                                                     const discountedTotal = applyDiscount(rawTotal, activity.discount_type, activity.discount_value);
                                                     if (!isActSelected) {
                                                       // Not selected: show discounted price as main price

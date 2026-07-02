@@ -202,6 +202,43 @@ export const convertCurrency = (amount, fromCurrency, toCurrency, rates = null) 
   return Math.round(finalAmount * 100) / 100; // Round to 2 decimal places
 };
 
+// --- Activity pricing helpers (adult + child split) ---
+// Centralize the pricing math + backward-compat fallback so every consumer
+// (ActivityForm, AdminDashboard, ClientView, PriceBreakdownModal) stays in sync.
+// Legacy activities only have `pax`/`cost_per_pax` — treat those as adults.
+export const getActivityPax = (a) => ({
+  adults: parseInt(a.num_adults ?? a.pax, 10) || (a.num_adults == null ? 1 : 0),
+  children: parseInt(a.num_children, 10) || 0,
+});
+
+export const getActivityBasePax = (a) => ({
+  adults: parseInt(a.base_adults ?? a.base_pax, 10) || 0,
+  children: parseInt(a.base_children, 10) || 0,
+});
+
+export const getActivityRates = (a) => ({
+  adult: parseFloat(a.cost_per_adult ?? a.cost_per_pax) || 0,
+  child: parseFloat(a.cost_per_child) || 0,
+});
+
+// Human-readable head-count label, e.g. "2 adults · 1 child" (hides children when 0).
+export const formatPaxLabel = (a) => {
+  const { adults, children } = getActivityPax(a);
+  const adultLabel = `${adults} ${adults === 1 ? 'adult' : 'adults'}`;
+  if (children <= 0) return adultLabel;
+  return `${adultLabel} · ${children} ${children === 1 ? 'child' : 'children'}`;
+};
+
+// Raw (pre-discount) price for a given adult/child count, defaulting to the
+// activity's own counts. Pass explicit counts for base-vs-now comparisons.
+export const getActivityRawPrice = (a, adults = null, children = null) => {
+  const pax = getActivityPax(a);
+  const r = getActivityRates(a);
+  const nAdults = adults == null ? pax.adults : adults;
+  const nChildren = children == null ? pax.children : children;
+  return r.adult * nAdults + r.child * nChildren + (parseFloat(a.flat_price) || 0);
+};
+
 // Convert all items in an array to a new currency
 export const convertItemsCurrency = async (items, fromCurrency, toCurrency, conversionDate = null) => {
   if (fromCurrency === toCurrency) {
