@@ -10,7 +10,7 @@ import { LogOut, Plus, Edit, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRigh
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { getCurrencySymbol, getCurrencyOptions, convertItemsCurrency, formatNumberWithCommas, getActivityPax, getActivityRates, getActivityRawPrice } from '../utils/currencyUtils.js';
-import { applyDiscount } from '../utils/discountUtils';
+import { applyDiscount, hasDiscount } from '../utils/discountUtils';
 import { useVisibility, useAutoSave } from '../hooks/useVisibility.js';
 
 const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
@@ -250,6 +250,13 @@ const AdminSummaryView = ({ clientData, setActiveTab, currency }) => {
                                                     <p className="font-bold text-gray-800 truncate">{item.name}</p>
                                                     <p className="text-sm text-gray-600 truncate">{item.location}</p>
                                                     {paxSummaryParts.length > 0 && <p className="text-xs text-gray-500 truncate">{paxSummaryParts.join(' + ')}</p>}
+                                                    {hasDiscount(item) && (
+                                                        <p className="text-xs text-green-600 font-medium mt-0.5">
+                                                            {item.discount_type === 'percentage'
+                                                                ? `${item.discount_value}% Off`
+                                                                : `${sym}${item.discount_value} Off`}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <p className={`font-bold text-base sm:text-lg whitespace-nowrap flex-shrink-0 ${getPriceColor(deltaPrice)}`}>{`${deltaPrice >= 0 ? '+' : '-'}${getCurrencySymbol(item.currency)}${formatNumberWithCommas(Math.abs(deltaPrice), item.currency)}`}</p>

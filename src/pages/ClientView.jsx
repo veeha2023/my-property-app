@@ -1185,6 +1185,13 @@ const ClientView = () => {
                                   <div>
                                     <p className="font-bold text-gray-800 text-sm sm:text-base">{item.name}</p>
                                     <p className="text-xs sm:text-sm text-gray-600">{item.location}</p>
+                                    {hasDiscount(item) && (
+                                      <span className="inline-flex items-center w-fit mt-1 bg-emerald-600 text-white rounded-full px-2.5 py-1 text-xs font-bold shadow-sm">
+                                        {item.discount_type === 'percentage'
+                                          ? `Save ${item.discount_value}%`
+                                          : `Save ${displayPrice(item.discount_value, item.currency)}`}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 <p className="font-bold text-base sm:text-lg" style={{color: getPriceColor(calculateActivityDelta(item))}}>{displayPriceWithSign(calculateActivityDelta(item), item.currency)}</p>
