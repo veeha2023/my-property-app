@@ -28,3 +28,23 @@ code {
 .animate-fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
+
+/* ---------- Print / Save-as-PDF ---------- */
+.print-only { display: none; }
+
+@page { size: A4; margin: 12mm; }   /* narrow borders */
+
+@media print {
+  .screen-only { display: none !important; }
+  .print-only  { display: block !important; }
+  /* keep gradients, badge fills, price colors, and photos in the PDF */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { background: #fff !important; }
+  /* Fixed A4 content width (210mm − 2×12mm margins) so a PDF composes the same
+     whether generated on desktop or a phone — stops mobile squeezing to viewport width. */
+  .print-only { font-size: 11px; color: #111; text-align: left; width: 186mm; margin-left: auto; margin-right: auto; }
+  .print-avoid-break { break-inside: avoid; }
+  .print-break-before { break-before: page; }
+  h1, h2, h3, h4 { break-after: avoid; }
+  img { break-inside: avoid; max-width: 100%; }
+}

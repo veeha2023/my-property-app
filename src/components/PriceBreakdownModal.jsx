@@ -11,12 +11,13 @@ const PriceBreakdownModal = ({
   clientData,
   displayPrice,
   finalQuote: finalQuoteProp,
-  parseCurrencyToNumber
+  parseCurrencyToNumber,
+  inline = false
   // selectedCurrency intentionally removed — displayPrice handles conversion internally
 }) => {
-  // Close on ESC key
+  // Close on ESC key (modal only)
   useEffect(() => {
-    if (!isOpen) return;
+    if (inline || !isOpen) return;
 
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose();
@@ -24,10 +25,11 @@ const PriceBreakdownModal = ({
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, inline]);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll when modal is open (modal only)
   useEffect(() => {
+    if (inline) return;
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -36,7 +38,7 @@ const PriceBreakdownModal = ({
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen]);
+  }, [isOpen, inline]);
 
   // Calculate all totals using useMemo for performance
   const calculations = useMemo(() => {
@@ -103,34 +105,10 @@ const PriceBreakdownModal = ({
     };
   }, [clientData, baseQuote, parseCurrencyToNumber]);
 
-  if (!isOpen) return null;
+  if (!inline && !isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Modal panel */}
-      <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
-        <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-            <h2 className="text-xl font-bold text-gray-900">YOUR TRIP BREAKDOWN</h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              aria-label="Close breakdown"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="px-6 py-6 space-y-6">
+  const body = (
+    <div className="px-6 py-6 space-y-6">
             {/* Base Package Section */}
             <div className="pb-4 border-b border-gray-200">
               <div className="flex justify-between items-start">
@@ -372,7 +350,36 @@ const PriceBreakdownModal = ({
                 </div>
               </div>
             </div>
+    </div>
+  );
+
+  // Print/embedded variant: render just the breakdown body, no modal chrome
+  if (inline) return body;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal panel */}
+      <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+            <h2 className="text-xl font-bold text-gray-900">YOUR TRIP BREAKDOWN</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Close breakdown"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
           </div>
+          {body}
         </div>
       </div>
     </div>

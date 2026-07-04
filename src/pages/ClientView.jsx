@@ -8,7 +8,7 @@ import {
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
   ChevronDown, ChevronUp, Minus, Plus, Info, Star,
-  Instagram, Coffee, Pencil
+  Instagram, Coffee, Pencil, Printer
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber, getActivityPax, getActivityBasePax, getActivityRates, getActivityRawPrice, formatPaxLabel } from '../utils/currencyUtils.js';
@@ -21,6 +21,7 @@ import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
 import ItineraryRouteVisualization from '../components/ItineraryRouteVisualization.jsx';
 import QuickStats from '../components/QuickStats.jsx';
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx';
+import PrintableItinerary from '../components/PrintableItinerary.jsx';
 
 const WhatsAppIcon = ({ size = 18, className = '' }) => (
   <svg
@@ -798,7 +799,10 @@ const ClientView = () => {
       return { startDate: null, endDate: null };
     }
 
-    let earliestCheckIn = null;
+    // Track by timestamp for comparison, but keep the original ISO date STRING for display.
+    // (Formatting via new Date(...).toISOString() shifts the date a day in timezones ahead
+    //  of UTC, e.g. NZ — so format from the parsed string, matching itineraryStays.)
+    let earliestCheckIn = null; // { time, iso }
     let latestCheckOut = null;
 
     selectedProps.forEach(p => {
@@ -808,20 +812,20 @@ const ClientView = () => {
       const checkOutDate = checkOutParsed ? new Date(checkOutParsed + 'T00:00:00') : null;
 
       if (checkInDate && !isNaN(checkInDate.getTime())) {
-        if (!earliestCheckIn || checkInDate < earliestCheckIn) {
-          earliestCheckIn = checkInDate;
+        if (!earliestCheckIn || checkInDate.getTime() < earliestCheckIn.time) {
+          earliestCheckIn = { time: checkInDate.getTime(), iso: checkInParsed };
         }
       }
       if (checkOutDate && !isNaN(checkOutDate.getTime())) {
-        if (!latestCheckOut || checkOutDate > latestCheckOut) {
-          latestCheckOut = checkOutDate;
+        if (!latestCheckOut || checkOutDate.getTime() > latestCheckOut.time) {
+          latestCheckOut = { time: checkOutDate.getTime(), iso: checkOutParsed };
         }
       }
     });
 
     return {
-      startDate: earliestCheckIn ? formatDate(earliestCheckIn.toISOString().split('T')[0]) : null,
-      endDate: latestCheckOut ? formatDate(latestCheckOut.toISOString().split('T')[0]) : null
+      startDate: earliestCheckIn ? formatDate(earliestCheckIn.iso) : null,
+      endDate: latestCheckOut ? formatDate(latestCheckOut.iso) : null
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientData?.properties]);
@@ -860,7 +864,8 @@ const ClientView = () => {
   const hasSelections = selectedProperties.length > 0 || selectedActivities.length > 0 || selectedTransportation.length > 0 || selectedFlights.length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <>
+    <div className="screen-only min-h-screen bg-gray-50 font-sans">
       <style>{`
         .selected-border, .selected-activity-card, .selected-transport-row, .selected-flight-row { border-color: ${accentColor}; box-shadow: 0 0 12px 1px rgba(255, 215, 0, 0.8); border-width: 3px; }
         .selected-border, .selected-activity-card { border-radius: 1rem; }
@@ -989,8 +994,19 @@ const ClientView = () => {
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
         <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-8">
-          {/* Currency on top for mobile only */}
-          <div className="flex justify-end mb-3 sm:hidden">
+          {/* Currency + Print on top for mobile only */}
+          <div className="flex justify-end gap-2 mb-3 sm:hidden">
+            {hasSelections && (
+              <button
+                onClick={() => window.print()}
+                disabled={isLoadingRates}
+                aria-label="Print or save as PDF"
+                className="print:hidden flex items-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                <Printer size={18} />
+                <span>Save PDF</span>
+              </button>
+            )}
             <button
               onClick={() => setShowAllCurrencies(true)}
               disabled={isLoadingRates}
@@ -1047,8 +1063,19 @@ const ClientView = () => {
               </div>
             </div>
 
-            {/* Currency on the right for desktop */}
-            <div className="hidden sm:flex items-center">
+            {/* Currency + Print on the right for desktop */}
+            <div className="hidden sm:flex items-center gap-2">
+              {isFinalized && (
+                <button
+                  onClick={() => window.print()}
+                  disabled={isLoadingRates}
+                  aria-label="Print or save as PDF"
+                  className="print:hidden flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                >
+                  <Printer size={18} />
+                  <span>Print / Save PDF</span>
+                </button>
+              )}
               <button
                 onClick={() => setShowAllCurrencies(true)}
                 disabled={isLoadingRates}
@@ -1881,6 +1908,35 @@ const ClientView = () => {
         />
       </div>
     </div>
+
+    <PrintableItinerary
+      clientData={clientData}
+      b2b={b2b}
+      globalLogoUrl={globalLogoUrl}
+      clientName={clientName}
+      baseQuote={baseQuote}
+      finalQuote={finalQuote}
+      itineraries={itineraries}
+      sortedActivityGroups={sortedActivityGroups}
+      sortedTransportationGroups={sortedTransportationGroups}
+      groupedFlights={groupedFlights}
+      itineraryStays={itineraryStays}
+      dateRange={dateRange}
+      totalNights={totalNights}
+      uniqueLocations={uniqueLocations}
+      helpers={{
+        displayPrice,
+        getActivityContextLabel,
+        getActivityMathBreakdown,
+        formatDate,
+        formatTime,
+        calculateNights,
+        parseCurrencyToNumber,
+        calculateFinalFlightPrice,
+        calculateDuration,
+      }}
+    />
+    </>
   );
 };
 
