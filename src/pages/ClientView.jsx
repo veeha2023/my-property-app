@@ -1732,7 +1732,6 @@ const ClientView = () => {
                                 <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">{typeInfo.icon} {typeInfo.label}</h3>
                                 <div className="space-y-4">
                                     {visibleItems.map(item => {
-                                        const currentPrice = calculateFinalFlightPrice(item);
                                         const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
                                         return (
                                             <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleFlightSelection(item.id)}>
@@ -1764,11 +1763,15 @@ const ClientView = () => {
                                                                   </span>
                                                                 );
                                                               }
+                                                              // Optional add-on: label the cost of adding it, not the
+                                                              // selection-dependent delta (0 when unticked read as "included").
+                                                              const addOnPrice = parseFloat(item.price) || 0;
                                                               const label = formatContextualLabel(
-                                                                currentPrice,
+                                                                addOnPrice,
                                                                 (amt) => displayPrice(amt, item.currency),
                                                                 'flight'
                                                               );
+                                                              if (addOnPrice === 0) label.text = 'No extra cost';
                                                               return label.isBadge ? (
                                                                 <span className={label.className}><Check size={12} />{label.text}</span>
                                                               ) : (
