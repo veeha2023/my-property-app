@@ -607,12 +607,7 @@ const ClientView = () => {
   }, []);
 
   const toggleFlightSelection = useCallback((flightId) => {
-    setClientData(prevData => {
-      const flightToToggle = (prevData.flights || []).find(f => f.id === flightId);
-      if (!flightToToggle) return prevData;
-      const newFlights = (prevData.flights || []).map(f => f.flightType === flightToToggle.flightType ? { ...f, selected: f.id === flightId ? !f.selected : false } : f);
-      return { ...prevData, flights: newFlights };
-    });
+    setClientData(prevData => ({ ...prevData, flights: (prevData.flights || []).map(f => f.id === flightId ? { ...f, selected: !f.selected } : f) }));
   }, []);
 
   const toggleSection = (location) => setCollapsedSections(prev => ({ ...prev, [location]: !prev[location] }));

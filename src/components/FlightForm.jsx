@@ -130,17 +130,7 @@ const FlightForm = ({ flights, setFlights }) => {
   };
 
   const toggleSelection = (id) => {
-    const flightToToggle = (flights || []).find(f => f.id === id);
-    if (!flightToToggle) return;
-  
-    const updatedFlights = (flights || []).map(f => {
-      if (f.flightType === flightToToggle.flightType) {
-        return { ...f, selected: f.id === id ? !f.selected : false };
-      }
-      return f;
-    });
-  
-    setFlights(updatedFlights);
+    setFlights((flights || []).map(f => f.id === id ? { ...f, selected: !f.selected } : f));
   };
 
   const handleFileUpload = (event) => {
@@ -190,7 +180,7 @@ const FlightForm = ({ flights, setFlights }) => {
                   cabinKgs: parseNumberFlexible(flight.baggage_cabinKgs, 0),
                   cabinPieces: parseNumberFlexible(flight.baggage_cabinPieces, 0),
                 },
-                selected: true,
+                selected: flight.selected === undefined || flight.selected === '' ? true : flight.selected?.toString().toLowerCase() !== 'false',
                 recommended: flight.recommended?.toUpperCase() === 'TRUE',
                 included_in_base: flight.included_in_base === undefined || flight.included_in_base === '' ? true : flight.included_in_base?.toString().toLowerCase() !== 'false',
               };
@@ -208,8 +198,8 @@ const FlightForm = ({ flights, setFlights }) => {
   };
 
   const downloadTemplate = () => {
-    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces,included_in_base,recommended";
-    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,-350,NZD,23,1,7,1,TRUE,FALSE";
+    const headers = "flightType,airline,airlineLogoUrl,flightNumber,from,to,departureDate,departureTime,arrivalDate,arrivalTime,price,currency,baggage_checkInKgs,baggage_checkInPieces,baggage_cabinKgs,baggage_cabinPieces,included_in_base,recommended,selected";
+    const example = "domestic,Jetstar,https://logo.com/jetstar.png,JQ235,Auckland,Christchurch,2025-12-05,14:30,2025-12-05,15:55,-350,NZD,23,1,7,1,TRUE,FALSE,TRUE";
     const note = "\n# NOTE: Please use YYYY-MM-DD format for dates. Separate multiple image URLs with a semicolon (;). flightType can be 'domestic' or 'international'. included_in_base: TRUE means part of base package (deselecting shows 'Removed from package'); FALSE means optional add-on (uses price differential).";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
