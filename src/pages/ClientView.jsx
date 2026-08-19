@@ -1110,8 +1110,8 @@ const ClientView = () => {
               />
             )}
 
-            {/* Tab navigation */}
-            <div className="border-b border-gray-200 mb-8">
+            {/* Tab navigation — sticks to the top once scrolled past */}
+            <div className="sticky top-0 z-30 bg-gray-50 pt-2 border-b border-gray-200 mb-8">
             <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto hide-scrollbar" aria-label="Tabs" role="tablist">
                 <button onClick={() => setActiveTab('summary')} role="tab" aria-selected={activeTab === 'summary'} aria-controls="summary-panel" id="summary-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${activeTab === 'summary' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <ClipboardList size={18} className="mr-2" /> Summary </button>
                 <button onClick={() => setActiveTab('property')} role="tab" aria-selected={activeTab === 'property'} aria-controls="property-panel" id="property-tab" className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm sm:text-base flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${activeTab === 'property' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}> <Building size={18} className="mr-2" /> Property </button>
