@@ -1,5 +1,5 @@
 // src/pages/ClientView.jsx - Version 6.2 (Currency Conversion)
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
 
@@ -8,7 +8,7 @@ import {
   BedDouble, Bath, Image, Building, Activity, Plane, Car, ClipboardList,
   Clock, Users, Link2Off, ShieldCheck, CheckCircle, Briefcase,
   ChevronDown, ChevronUp, Minus, Plus, Info, Star,
-  Instagram, Coffee, Pencil, Printer
+  Instagram, Coffee, Pencil, Printer, HelpCircle
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber, getActivityPax, getActivityBasePax, getActivityRates, getActivityRawPrice, formatPaxLabel } from '../utils/currencyUtils.js';
@@ -19,6 +19,7 @@ import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
 import { QuoteDisclaimerModal, QuoteAcceptedModal } from '../components/QuoteModals.jsx';
+import GuidedTour from '../components/GuidedTour.jsx';
 import ItineraryRouteVisualization from '../components/ItineraryRouteVisualization.jsx';
 import QuickStats from '../components/QuickStats.jsx';
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx';
@@ -94,6 +95,24 @@ const ClientView = () => {
   // meant to re-arm on every open/refresh of the quote.
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [showAccepted, setShowAccepted] = useState(false);
+
+  // "How it works" walkthrough. Auto-runs once per client (localStorage), replayable
+  // from the header button. tourReturnRef holds whichever button opened it, so focus
+  // goes back to the right one — null when the tour auto-started.
+  const [runTour, setRunTour] = useState(false);
+  const tourReturnRef = useRef(null);
+  const openTour = useCallback((e) => {
+    tourReturnRef.current = e.currentTarget;
+    setRunTour(true);
+  }, []);
+  const closeTour = useCallback(() => {
+    setRunTour(false);
+    try {
+      if (clientId) localStorage.setItem(`tour_seen_${clientId}_v1`, 'true');
+    } catch (err) {
+      // Private browsing / storage disabled — the tour just re-runs next visit.
+    }
+  }, [clientId]);
 
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
@@ -872,6 +891,95 @@ const ClientView = () => {
   const selectedFlights = clientData?.flights?.filter(f => f.selected) || [];
   const hasSelections = selectedProperties.length > 0 || selectedActivities.length > 0 || selectedTransportation.length > 0 || selectedFlights.length > 0;
 
+  // Flights and transportation steps are dropped when the quote has none, so the counter
+  // reflects what this client actually has. Same conditions the panels use for their own
+  // empty states (PlaceholderContent), so the step and the tab can never disagree.
+  const hasFlights = Object.values(groupedFlights).some(group => group.length > 0);
+  const hasTransportation = sortedTransportationGroups.length > 0;
+
+  const strong = (text) => <strong className="font-semibold text-gray-900">{text}</strong>;
+
+  // The walkthrough. `target` is a function so the last step can pick the desktop sidebar
+  // or the mobile bar at the moment it runs; returning null anywhere degrades to a plain
+  // centred card, which is what covers a collapsed section or a missing anchor.
+  // Budget: max 2 bullets per step, `note` optional. The card never scrolls, so a step
+  // that outgrows this costs the spotlight — GuidedTour drops the ring to fit the card.
+  const tourSteps = [
+    {
+      title: "Everything's already chosen for you",
+      bullets: [
+        <>Your package starts at {strong(displayPrice(baseQuote))} &mdash; stays, activities, flights and transport all included.</>,
+        <>Change anything you like and your price updates as you go.</>,
+      ],
+    },
+    {
+      tab: 'property',
+      target: () => document.querySelector('[data-tour="property-card"]'),
+      eyebrow: 'Property tab',
+      title: 'Pick where you stay',
+      bullets: [
+        // Tapping the photo opens the lightbox (openExpandedImage stops propagation), so
+        // the selecting tap is the card body. Saying "tap the card" would be wrong.
+        <>Tap a card {strong('below the photo')} to choose that stay</>,
+        <>{strong('Swipe')} a photo for more, or {strong('tap')} it to open it full-screen</>,
+      ],
+      note: (
+        <>
+          Green <strong className="font-semibold text-emerald-700">Savings</strong> comes off your total &middot;
+          amber <strong className="font-semibold text-amber-700">upgrade</strong> adds to it &middot;{' '}
+          {strong('Agent’s Pick')} is what I&rsquo;d recommend
+        </>
+      ),
+    },
+    {
+      tab: 'activities',
+      target: () => document.querySelector('[data-tour="activity-card"]'),
+      eyebrow: 'Activities tab',
+      title: 'Add or remove activities',
+      bullets: [
+        <>Tap a card to add it &mdash; tap again and the money comes back</>,
+        <>Tap {strong('Edit pax')} when only some of you are going</>,
+      ],
+      note: (
+        <>
+          <strong className="font-semibold text-emerald-700">Included in package</strong> &middot;{' '}
+          <strong className="font-semibold text-rose-700">Removed from package</strong> &middot;{' '}
+          <strong className="font-semibold text-blue-700">+ Optional</strong>
+        </>
+      ),
+    },
+    hasFlights && {
+      tab: 'flights',
+      target: () => document.querySelector('[data-tour="flight-card"]'),
+      eyebrow: 'Flights tab',
+      title: 'Choose your flights',
+      bullets: [
+        <>Tap any option to pick it</>,
+        <>The price shows what that upgrade costs</>,
+      ],
+    },
+    hasTransportation && {
+      tab: 'transportation',
+      target: () => document.querySelector('[data-tour="transport-card"]'),
+      eyebrow: 'Transportation tab',
+      title: 'Choose your vehicle',
+      bullets: [
+        <>Tap any vehicle to pick it</>,
+        <>Options are listed cheapest first</>,
+      ],
+    },
+    {
+      tab: 'summary',
+      target: () => document.querySelector(window.innerWidth >= 1024 ? '[data-tour="price-panel"]' : '[data-tour="mobile-bar"]'),
+      eyebrow: 'Summary tab',
+      title: 'Your price, live',
+      bullets: [
+        <>{strong('Save My Selections')} keeps your picks so you can come back</>,
+        <>{strong('Accept Quote')} sends this quote to us</>,
+      ],
+    },
+  ].filter(Boolean);
+
   return (
     <>
     <div className="screen-only min-h-screen bg-gray-50 font-sans">
@@ -880,17 +988,39 @@ const ClientView = () => {
         .selected-border, .selected-activity-card { border-radius: 1rem; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* The tour scrolls these into view; without this the sticky tab nav (top-0) sits
+           on top of the spotlight ring it just drew. */
+        [data-tour] { scroll-margin-top: 72px; }
       `}</style>
 
       {/* Quote disclaimer — shown on every open of a non-finalised quote */}
       <QuoteDisclaimerModal
         isOpen={showDisclaimer && !isFinalized}
         baseCurrency={baseCurrency}
-        onAccept={() => setShowDisclaimer(false)}
+        onAccept={() => {
+          setShowDisclaimer(false);
+          // First visit only — the walkthrough picks up where the disclaimer leaves off.
+          try {
+            if (clientId && !localStorage.getItem(`tour_seen_${clientId}_v1`)) {
+              tourReturnRef.current = null;
+              setRunTour(true);
+            }
+          } catch (err) {
+            // Storage unavailable — skip the auto-tour rather than break the quote.
+          }
+        }}
       />
 
       {/* Shown after the client accepts the quote */}
       <QuoteAcceptedModal isOpen={showAccepted} onClose={() => setShowAccepted(false)} />
+
+      <GuidedTour
+        steps={tourSteps}
+        isOpen={runTour && !isFinalized}
+        onClose={closeTour}
+        setActiveTab={setActiveTab}
+        returnFocusRef={tourReturnRef}
+      />
 
       {/* Currency Selection Modal */}
       {showAllCurrencies && (
@@ -1015,6 +1145,15 @@ const ClientView = () => {
         <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-8">
           {/* Currency + Print on top for mobile only */}
           <div className="flex justify-end gap-2 mb-3 sm:hidden">
+            {!isFinalized && (
+              <button
+                onClick={openTour}
+                className="flex items-center gap-2 px-3 py-2 min-h-[44px] border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                <HelpCircle size={18} />
+                <span>How it works</span>
+              </button>
+            )}
             {isFinalized && (
               <button
                 onClick={() => window.print()}
@@ -1084,6 +1223,15 @@ const ClientView = () => {
 
             {/* Currency + Print on the right for desktop */}
             <div className="hidden sm:flex items-center gap-2">
+              {!isFinalized && (
+                <button
+                  onClick={openTour}
+                  className="flex items-center gap-2 px-3 py-2 min-h-[44px] border border-blue-600 rounded-md text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                >
+                  <HelpCircle size={18} />
+                  <span>How it works</span>
+                </button>
+              )}
               {isFinalized && (
                 <button
                   onClick={() => window.print()}
@@ -1332,7 +1480,7 @@ const ClientView = () => {
                               const hasMultipleImages = property.images && property.images.length > 1;
 
                               return (
-                                <div key={property.id} className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleSelection(itinerary.id, property.id)}>
+                                <div key={property.id} data-tour="property-card" className={`relative group bg-white rounded-xl shadow-lg border-2 overflow-hidden transform hover:scale-102 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} ${property.selected ? 'selected-border' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleSelection(itinerary.id, property.id)}>
                                   <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl bg-gray-200" onTouchStart={(e) => handleTouchStart(e, property.id)} onTouchMove={(e) => handleTouchMove(e, property.id)} onTouchEnd={() => handleTouchEnd(property.id)} onClick={(e) => openExpandedImage(e, property.id, currentIdx)}>
                                     <div className="flex h-full" style={{ transform: `translateX(calc(-${currentIdx * 100}% + ${currentSwipeState.moveX}px))`, transition: currentSwipeState.isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                                         {property.images && property.images.length > 0 ? (
@@ -1423,7 +1571,7 @@ const ClientView = () => {
                                 const hasPaxPricing = rates.adult > 0 || rates.child > 0;
                                 const isSelected = activity.selected !== false;
                                 return (
-                                    <div key={activity.id} className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleActivitySelection(activity.id)}>
+                                    <div key={activity.id} data-tour="activity-card" className={`bg-white rounded-xl shadow-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} group overflow-hidden ${isSelected ? 'selected-activity-card' : 'border-gray-200'}`} onClick={() => !isFinalized && toggleActivitySelection(activity.id)}>
                                         <div className="relative aspect-video">
                                             {activity.images && activity.images.length > 0 ? ( <img src={activity.images[0]} alt={activity.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = "https://placehold.co/800x450/E0E0E0/333333?text=Image+Error"; }}/> ) : ( <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"> <Image size={40} /> </div> )}
 
@@ -1693,7 +1841,7 @@ const ClientView = () => {
                                 {(isFinalized ? items.filter(i => i.selected) : items).map(item => {
                                     const price = parseCurrencyToNumber(item.price);
                                     return (
-                                        <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
+                                        <div key={item.id} data-tour="transport-card" className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6 w-full ${item.selected ? 'selected-transport-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleTransportationSelection(item.id)}>
                                             {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-2 shadow-md z-10" style={{ backgroundColor: accentColor, color: '#333' }}><Check size={18} /></div> )}
                                             {item.recommended && (
                                               <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
@@ -1758,7 +1906,7 @@ const ClientView = () => {
                                     {visibleItems.map(item => {
                                         const duration = calculateDuration(item.departureDate, item.departureTime, item.arrivalDate, item.arrivalTime);
                                         return (
-                                            <div key={item.id} className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleFlightSelection(item.id)}>
+                                            <div key={item.id} data-tour="flight-card" className={`relative p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${isFinalized ? '' : 'cursor-pointer'} w-full ${item.selected ? 'selected-flight-row' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`} onClick={() => !isFinalized && toggleFlightSelection(item.id)}>
                                                 {item.selected && ( <div className="absolute top-4 left-4 rounded-full p-1 shadow-md bg-white z-10"> <CheckCircle size={24} className="text-green-500" /> </div> )}
                                                 {item.recommended && (
                                                   <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2 py-1 rounded-md shadow-sm text-xs font-semibold z-10">
@@ -1883,7 +2031,7 @@ const ClientView = () => {
           {/* Desktop sidebar - only shows on lg+ screens */}
           {!isFinalized && (
             <div className="hidden lg:block w-[320px] shrink-0">
-              <div className="sticky top-4">
+              <div data-tour="price-panel" className="sticky top-4">
                 <PriceSummaryPanel
                   baseQuote={baseQuote}
                   totalChangeValue={totalChangeValue}
@@ -1905,7 +2053,7 @@ const ClientView = () => {
 
         {/* Mobile/Tablet bottom bar - only shows on <lg screens */}
         {!isFinalized && (
-          <div className="fixed bottom-0 inset-x-0 lg:hidden z-40 bg-white border-t shadow-lg">
+          <div data-tour="mobile-bar" className="fixed bottom-0 inset-x-0 lg:hidden z-40 bg-white border-t shadow-lg">
             <MobileBottomBar
               finalQuote={finalQuote}
               displayPrice={displayPrice}
