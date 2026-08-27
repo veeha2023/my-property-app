@@ -1015,7 +1015,7 @@ const ClientView = () => {
         <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-8">
           {/* Currency + Print on top for mobile only */}
           <div className="flex justify-end gap-2 mb-3 sm:hidden">
-            {hasSelections && (
+            {isFinalized && (
               <button
                 onClick={() => window.print()}
                 disabled={isLoadingRates}
