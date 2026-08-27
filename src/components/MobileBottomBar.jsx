@@ -7,33 +7,38 @@ const MobileBottomBar = ({
   displayPrice,
   selectedCurrency,
   onDetailsClick,
-  onConfirm
+  onSave,
+  onAccept
 }) => {
   return (
-    <div className="flex items-center justify-between px-4 py-3 gap-3 h-16">
-      {/* Price Display */}
-      <div className="flex-1">
-        <p className="text-xl font-bold text-gray-900">
-          {displayPrice(finalQuote)}
-        </p>
-        <p className="text-xs text-gray-600">total</p>
-      </div>
-
-      {/* Details Button */}
+    <div className="flex items-center justify-between px-4 py-3 gap-2 h-16">
+      {/* Price Display — doubles as the breakdown trigger so three buttons don't crowd the bar */}
       <button
         onClick={onDetailsClick}
-        className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="flex-1 min-w-0 text-left rounded-lg px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        aria-label="View price breakdown"
       >
-        <span>Details</span>
-        <ChevronUp size={16} />
+        <p className="text-lg font-bold text-gray-900 flex items-center gap-1">
+          <span className="truncate">{displayPrice(finalQuote)}</span>
+          <ChevronUp size={16} className="text-gray-500 shrink-0" />
+        </p>
+        <p className="text-xs text-gray-600">total &middot; tap for details</p>
       </button>
 
-      {/* Confirm Button */}
+      {/* Save Button */}
       <button
-        onClick={onConfirm}
-        className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        onClick={() => onSave()}
+        className="px-3 py-2 border border-blue-600 rounded-lg text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
-        Confirm
+        Save
+      </button>
+
+      {/* Accept Button */}
+      <button
+        onClick={onAccept}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+      >
+        Accept
       </button>
     </div>
   );

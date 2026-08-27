@@ -18,6 +18,7 @@ import ImageDots from '../components/ImageDots.jsx';
 import PriceSummaryPanel from '../components/PriceSummaryPanel.jsx';
 import MobileBottomBar from '../components/MobileBottomBar.jsx';
 import PriceBreakdownModal from '../components/PriceBreakdownModal.jsx';
+import { QuoteDisclaimerModal, QuoteAcceptedModal } from '../components/QuoteModals.jsx';
 import ItineraryRouteVisualization from '../components/ItineraryRouteVisualization.jsx';
 import QuickStats from '../components/QuickStats.jsx';
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx';
@@ -89,6 +90,10 @@ const ClientView = () => {
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
+  // ponytail: no sessionStorage key here (unlike the welcome banner) — the disclaimer is
+  // meant to re-arm on every open/refresh of the quote.
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const [showAccepted, setShowAccepted] = useState(false);
 
   const accentColor = '#FFD700';
   const savingsColor = '#10B981';
@@ -459,7 +464,7 @@ const ClientView = () => {
     return lines.length > 0 ? { type: 'standard', lines } : null;
   }, [displayPrice]);
 
-  const handleSaveSelection = useCallback(async () => {
+  const handleSaveSelection = useCallback(async (accept = false) => {
     const searchParams = new URLSearchParams(location.search);
     const token = searchParams.get('token');
     if (!clientId || !token) { setError('Client ID or share token is missing. Cannot save.'); return; }
@@ -467,12 +472,21 @@ const ClientView = () => {
     setMessage('');
     setError(null);
     try {
-      const dataToSave = { ...clientData };
+      const dataToSave = accept
+        ? { ...clientData, quote_accepted_at: new Date().toISOString() }
+        : { ...clientData };
       const { data: success, error: rpcError } = await supabase.rpc('update_client_data_with_token', { p_client_id: clientId, p_token: token, new_properties: dataToSave });
       if (rpcError) throw rpcError;
       if (!success) throw new Error("Update failed. The link may be invalid or expired.");
-      setMessage('Your selection has been successfully saved!');
-      setTimeout(() => setMessage(''), 4000);
+      // Only surface success feedback once the RPC has actually succeeded — the catch
+      // below swaps the whole page for the Access Denied screen.
+      if (accept) {
+        setClientData(dataToSave);
+        setShowAccepted(true);
+      } else {
+        setMessage('Your selection has been successfully saved!');
+        setTimeout(() => setMessage(''), 4000);
+      }
     } catch (err) {
       console.error("Error saving client selection:", err);
       setError("Error saving your selection: " + err.message);
@@ -867,6 +881,16 @@ const ClientView = () => {
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+
+      {/* Quote disclaimer — shown on every open of a non-finalised quote */}
+      <QuoteDisclaimerModal
+        isOpen={showDisclaimer && !isFinalized}
+        baseCurrency={baseCurrency}
+        onAccept={() => setShowDisclaimer(false)}
+      />
+
+      {/* Shown after the client accepts the quote */}
+      <QuoteAcceptedModal isOpen={showAccepted} onClose={() => setShowAccepted(false)} />
 
       {/* Currency Selection Modal */}
       {showAllCurrencies && (
@@ -1871,7 +1895,8 @@ const ClientView = () => {
                   displayPrice={displayPrice}
                   selectedCurrency={selectedCurrency}
                   onBreakdownClick={() => setShowBreakdownModal(true)}
-                  onConfirm={handleSaveSelection}
+                  onSave={handleSaveSelection}
+                  onAccept={() => handleSaveSelection(true)}
                 />
               </div>
             </div>
@@ -1886,7 +1911,8 @@ const ClientView = () => {
               displayPrice={displayPrice}
               selectedCurrency={selectedCurrency}
               onDetailsClick={() => setShowBreakdownModal(true)}
-              onConfirm={handleSaveSelection}
+              onSave={handleSaveSelection}
+              onAccept={() => handleSaveSelection(true)}
             />
           </div>
         )}

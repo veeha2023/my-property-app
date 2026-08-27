@@ -13,7 +13,8 @@ const PriceSummaryPanel = ({
   displayPrice,
   selectedCurrency,
   onBreakdownClick,
-  onConfirm
+  onSave,
+  onAccept
 }) => {
   // Color helpers
   const getPriceColor = (price) => {
@@ -112,12 +113,20 @@ const PriceSummaryPanel = ({
           <ChevronDown size={16} />
         </button>
 
-        {/* Confirm Button */}
+        {/* Save Button */}
+        <button
+          className="w-full py-3 px-4 border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg font-semibold text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          onClick={() => onSave()}
+        >
+          Save My Selections
+        </button>
+
+        {/* Accept Button */}
         <button
           className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          onClick={onConfirm}
+          onClick={onAccept}
         >
-          Confirm My Selections
+          Accept Quote
         </button>
       </div>
     </div>
