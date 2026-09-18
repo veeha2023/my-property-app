@@ -46,23 +46,46 @@ const PlaceholderContent = ({ title }) => (
   </div>
 );
 
-const WelcomeBanner = ({ clientName, baseQuote, onDismiss, displayPrice }) => (
-  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex gap-3 items-start">
-    <Info className="text-blue-600 shrink-0 mt-0.5" size={20} />
-    <div className="flex-1 min-w-0">
-      <p className="text-gray-800 text-sm sm:text-base leading-relaxed">
-        <strong>Welcome, {clientName}!</strong> Your travel package starts at {displayPrice(baseQuote)}. Browse each tab to customize, and the sidebar tracks your total.
-      </p>
+const WelcomeBanner = ({ clientName, baseQuote, finalQuote, totalChangeValue, isFinalized, onDismiss, displayPrice }) => {
+  // ponytail: cents epsilon — float deltas rarely land exactly on 0.
+  const changed = Math.abs(totalChangeValue) >= 0.005;
+  const saved = totalChangeValue < 0;
+  // Words, not +/- signs — a minus glyph next to the em dash reads as one long dash.
+  const delta = changed ? (
+    <>
+      ,{' '}
+      <span className={`font-semibold ${saved ? 'text-emerald-700' : 'text-red-600'}`}>
+        {saved ? 'a saving of ' : 'an extra '}{displayPrice(Math.abs(totalChangeValue))}
+      </span>{' '}
+      on the {displayPrice(baseQuote)} starting price.
+    </>
+  ) : '.';
+
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex gap-3 items-start">
+      <Info className="text-blue-600 shrink-0 mt-0.5" size={20} />
+      <div className="flex-1 min-w-0">
+        <p aria-live="polite" className="text-gray-800 text-sm sm:text-base leading-relaxed">
+          <strong>Welcome, {clientName}!</strong>{' '}
+          {isFinalized ? (
+            <>Your confirmed travel package comes to <strong>{displayPrice(finalQuote)}</strong>{delta}</>
+          ) : changed ? (
+            <>Your travel package now comes to <strong>{displayPrice(finalQuote)}</strong>{delta} Keep customizing. Your total updates as you go.</>
+          ) : (
+            <>Your travel package starts at <strong>{displayPrice(baseQuote)}</strong>. Browse each tab to customize. Your total updates as you go.</>
+          )}
+        </p>
+      </div>
+      <button
+        onClick={onDismiss}
+        className="text-blue-600 hover:text-blue-800 shrink-0 p-1 rounded hover:bg-blue-100 transition-colors"
+        aria-label="Dismiss welcome message"
+      >
+        <X size={20} />
+      </button>
     </div>
-    <button
-      onClick={onDismiss}
-      className="text-blue-600 hover:text-blue-800 shrink-0 p-1 rounded hover:bg-blue-100 transition-colors"
-      aria-label="Dismiss welcome message"
-    >
-      <X size={20} />
-    </button>
-  </div>
-);
+  );
+};
 
 const ClientView = () => {
   const { clientId } = useParams();
@@ -1277,6 +1300,9 @@ const ClientView = () => {
               <WelcomeBanner
                 clientName={clientName}
                 baseQuote={baseQuote}
+                finalQuote={finalQuote}
+                totalChangeValue={totalChangeValue}
+                isFinalized={isFinalized}
                 onDismiss={dismissWelcomeBanner}
                 displayPrice={displayPrice}
               />
@@ -2051,22 +2077,21 @@ const ClientView = () => {
           )}
         </div>
 
-        {/* Mobile/Tablet bottom bar - only shows on <lg screens */}
-        {!isFinalized && (
-          <div data-tour="mobile-bar" className="fixed bottom-0 inset-x-0 lg:hidden z-40 bg-white border-t shadow-lg">
-            <MobileBottomBar
-              finalQuote={finalQuote}
-              displayPrice={displayPrice}
-              selectedCurrency={selectedCurrency}
-              onDetailsClick={() => setShowBreakdownModal(true)}
-              onSave={handleSaveSelection}
-              onAccept={() => handleSaveSelection(true)}
-            />
-          </div>
-        )}
-
-        {/* Add bottom padding to prevent content overlap with fixed bottom bar on mobile */}
-        <div className="h-20 lg:hidden" aria-hidden="true"></div>
+        {/* Mobile/Tablet bottom bar - only shows on <lg screens.
+            sticky (not fixed): hovers at the viewport bottom while there is page left,
+            then settles beneath the content once you reach the end. Negative margins
+            cancel the page gutter so it stays full-bleed while stuck. */}
+        <div data-tour="mobile-bar" className="sticky bottom-0 -mx-4 -mb-4 md:-mx-6 md:-mb-6 lg:hidden z-40 bg-white border-t shadow-lg">
+          <MobileBottomBar
+            finalQuote={finalQuote}
+            displayPrice={displayPrice}
+            selectedCurrency={selectedCurrency}
+            isFinalized={isFinalized}
+            onDetailsClick={() => setShowBreakdownModal(true)}
+            onSave={handleSaveSelection}
+            onAccept={() => handleSaveSelection(true)}
+          />
+        </div>
 
         {/* Price Breakdown Modal */}
         <PriceBreakdownModal
