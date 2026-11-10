@@ -18,7 +18,7 @@ const FlightForm = ({ flights, setFlights }) => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
-  const accentColor = '#FFD700';
+  const accentColor = '#FFE401';
 
   // Helper function to format number with thousand separators
   const formatNumberWithCommas = (number) => {
@@ -252,7 +252,7 @@ const FlightForm = ({ flights, setFlights }) => {
                 id="selected_by_default_flight"
                 checked={data.selected}
                 onChange={(e) => setData({ ...data, selected: e.target.checked })}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="h-4 w-4 accent-ink border-gray-300 rounded focus:ring-ink"
             />
             <label htmlFor="selected_by_default_flight" className="ml-2 block text-sm font-medium text-gray-700">
                 Selected by default for client
@@ -264,7 +264,7 @@ const FlightForm = ({ flights, setFlights }) => {
                 id="included_in_base_flight"
                 checked={data.included_in_base !== false}
                 onChange={(e) => setData({ ...data, included_in_base: e.target.checked })}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="h-4 w-4 accent-ink border-gray-300 rounded focus:ring-ink"
             />
             <label htmlFor="included_in_base_flight" className="ml-2 block text-sm font-medium text-gray-700">
                 Included in Base Quote <span className="text-xs text-gray-500 font-normal">(deselecting shows "Removed from package"; uncheck for optional upgrade flights priced by differential)</span>
@@ -278,12 +278,12 @@ const FlightForm = ({ flights, setFlights }) => {
           <button
             type="button"
             onClick={() => setData({ ...data, recommended: !data.recommended })}
-            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
-              data.recommended ? 'bg-amber-500' : 'bg-gray-300'
+            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-1 ${
+              data.recommended ? 'bg-brand' : 'bg-gray-300'
             }`}
           >
             <span
-              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-colors duration-200 ${
                 data.recommended ? 'translate-x-6' : 'translate-x-0'
               }`}
             />
@@ -291,8 +291,8 @@ const FlightForm = ({ flights, setFlights }) => {
         </div>
       </div>
       <div className="flex items-center justify-end space-x-3 mt-6">
-        <button onClick={resetForm} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
-        <button onClick={handleSave} className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">
+        <button onClick={resetForm} className="py-2 px-4 rounded-full bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer">Cancel</button>
+        <button onClick={handleSave} className="py-2 px-4 rounded-full bg-brand text-ink hover:bg-brand-600 cursor-pointer">
           {editingFlight ? 'Update Flight' : 'Save Flight'}
         </button>
       </div>
@@ -326,7 +326,7 @@ const FlightForm = ({ flights, setFlights }) => {
                     {currentPrice < 0 ? `-` : `+`}{getCurrencySymbol(item.currency)}{formatNumberWithCommas(Math.abs(currentPrice))}
                 </span>
                 <div className="flex flex-col space-y-2 shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); setEditingFlight(item); }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); setEditingFlight(item); }} className="p-2 bg-ink text-white rounded-full hover:bg-ink-800 shadow-md"><Edit3 size={16} /></button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
                 </div>
             </div>
@@ -390,7 +390,7 @@ const FlightForm = ({ flights, setFlights }) => {
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-4">
             <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Manage All Flights</h3>
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2">
-                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-blue-700 flex items-center justify-center transition-transform hover:scale-105">
+                <button onClick={() => fileInputRef.current.click()} className="bg-white text-ink border border-gray-300 hover:bg-gray-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200">
                     <Upload size={18} className="mr-2 flex-shrink-0" /> Import CSV
                 </button>
                 <input
@@ -400,14 +400,14 @@ const FlightForm = ({ flights, setFlights }) => {
                     accept=".csv"
                     onChange={handleFileUpload}
                 />
-                <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-green-700 flex items-center justify-center transition-transform hover:scale-105">
+                <button onClick={handleStartAdding} className="font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-full flex items-center justify-center bg-brand text-ink hover:bg-brand-600 cursor-pointer">
                     <Plus size={18} className="mr-2 flex-shrink-0" /> Add Flight
                 </button>
                 {flights && flights.length > 0 && (
                   <button
                     type="button"
                     onClick={() => { if (window.confirm(`Delete all ${flights.length} flights?`)) setFlights([]); }}
-                    className="bg-red-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-red-700 flex items-center justify-center transition-transform hover:scale-105"
+                    className="bg-white text-red-600 border border-red-300 hover:bg-red-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200"
                   >
                     <Trash2 size={18} className="mr-2 flex-shrink-0" /> Delete All
                   </button>
@@ -415,7 +415,7 @@ const FlightForm = ({ flights, setFlights }) => {
             </div>
         </div>
         <div className="text-center sm:text-right mb-4">
-            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
+            <button type="button" onClick={downloadTemplate} className="text-sm font-semibold text-ink underline-offset-2 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
@@ -428,7 +428,7 @@ const FlightForm = ({ flights, setFlights }) => {
             <h3 className="text-xl font-bold mb-4 text-gray-800">Select Flight Type</h3>
             <div className="grid grid-cols-2 gap-4">
               {flightTypes.map(t => (
-                <button key={t.type} onClick={() => handleTypeSelected(t.type)} className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-gray-100 hover:border-yellow-400">
+                <button key={t.type} onClick={() => handleTypeSelected(t.type)} className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-brand-50 hover:border-brand">
                   <Plane />
                   <span className="mt-2">{t.label}</span>
                 </button>

@@ -20,7 +20,9 @@ import {
   Download,
   Star,
   Coffee,
+  Check,
 } from 'lucide-react';
+import { MEALS, mealsLabel } from '../utils/mealsUtils';
 import { getCurrencyOptions, getCurrencySymbol } from '../utils/currencyUtils';
 import {
   parseCSV,
@@ -40,7 +42,7 @@ const PropertyForm = ({
   const formatNumberWithCommas = (number) => {
     return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
-  const accentColor = '#FFD700';
+  const accentColor = '#FFE401';
   const savingsColor = '#10B981';
   const extraColor = '#EF4444';
 
@@ -54,7 +56,9 @@ const PropertyForm = ({
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
     selected: false, room_type: '', category: 'Luxury',
     recommended: false, // Recommended property toggle
-    breakfast: false, // Breakfast included toggle
+    breakfast: false, // Meals included toggles
+    lunch: false,
+    dinner: false,
   });
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
@@ -132,7 +136,9 @@ const PropertyForm = ({
     bedrooms: '', bathrooms: '', images: [], homeImageIndex: 0,
     selected: false, room_type: '', category: 'Luxury',
     recommended: false, // Recommended property toggle
-    breakfast: false, // Breakfast included toggle
+    breakfast: false, // Meals included toggles
+    lunch: false,
+    dinner: false,
   };
 
 
@@ -211,6 +217,8 @@ const PropertyForm = ({
               isPlaceholder: false,
               recommended: propertyData.recommended?.toUpperCase() === 'TRUE',
               breakfast: propertyData.breakfast?.toUpperCase() === 'TRUE',
+              lunch: propertyData.lunch?.toUpperCase() === 'TRUE',
+              dinner: propertyData.dinner?.toUpperCase() === 'TRUE',
           });
         });
 
@@ -243,8 +251,8 @@ const PropertyForm = ({
   };
 
   const downloadTemplate = () => {
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended,breakfast";
-    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","Deluxe Suite","Luxury","FALSE","TRUE"`;
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended,breakfast,lunch,dinner";
+    const example = `"Luxury Lakeview Villa","Queenstown","2025-10-20","2025-10-25","NZD","550","Per Night","3","2.5","https://example.com/image1.jpg;https://example.com/image2.jpg","0","TRUE","Deluxe Suite","Luxury","FALSE","TRUE","FALSE","TRUE"`;
     const note = "\n# NOTE: For multiple images, separate URLs with a semicolon (;) or newlines. If using newlines, the entire cell must be enclosed in double quotes (\").";
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${example}${note}`;
     const encodedUri = encodeURI(csvContent);
@@ -262,7 +270,7 @@ const PropertyForm = ({
       return;
     }
 
-    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended,breakfast";
+    const headers = "name,location,checkIn,checkOut,currency,price,price_type,bedrooms,bathrooms,images,homeImageIndex,selected,room_type,category,recommended,breakfast,lunch,dinner";
 
     const csvRows = properties.map(property => {
       const row = [
@@ -281,7 +289,9 @@ const PropertyForm = ({
         property.room_type || '',
         property.category || 'Luxury',
         property.recommended ? 'TRUE' : 'FALSE',
-        property.breakfast ? 'TRUE' : 'FALSE'
+        property.breakfast ? 'TRUE' : 'FALSE',
+        property.lunch ? 'TRUE' : 'FALSE',
+        property.dinner ? 'TRUE' : 'FALSE'
       ];
       return row.map(field => `"${field}"`).join(',');
     });
@@ -318,7 +328,9 @@ const PropertyForm = ({
       bedrooms: property.bedrooms === 0 ? '' : property.bedrooms,
       bathrooms: property.bathrooms === 0 ? '' : property.bathrooms,
       recommended: property.recommended || false, // Backward compatible default
-      breakfast: property.breakfast || false, // Backward compatible default
+      breakfast: property.breakfast || false, // Backward compatible defaults
+      lunch: property.lunch || false,
+      dinner: property.dinner || false,
     });
     setIsAddingNew(false);
     setShowPropertyFormModal(true);
@@ -555,9 +567,9 @@ const PropertyForm = ({
 
   const getCategoryColor = (category) => {
     switch (category) {
-      case 'Luxury': return 'bg-yellow-400 text-gray-900';
-      case 'Deluxe': return 'bg-green-600 text-white';
-      case 'Super Deluxe': return 'bg-blue-600 text-white';
+      case 'Luxury': return 'bg-brand text-ink';
+      case 'Deluxe': return 'bg-gray-200 text-ink';
+      case 'Super Deluxe': return 'bg-ink text-white';
       default: return 'bg-gray-400 text-white';
     }
   };
@@ -613,7 +625,7 @@ const PropertyForm = ({
             id="name"
             value={currentProperty.name}
             onChange={(e) => setProperty(prev => ({ ...prev, name: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
             required
           />
         </div>
@@ -628,7 +640,7 @@ const PropertyForm = ({
                 id="location"
                 value={selectValue}
                 onChange={(e) => handleLocationDropdownChange(e, setProperty)}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
                 required
               >
                 {!isInLegs && currentLoc && (
@@ -671,7 +683,7 @@ const PropertyForm = ({
             id="price"
             value={currentProperty.price}
             onChange={(e) => setProperty(prev => ({ ...prev, price: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
             required
             step="0.01"
             placeholder="e.g., 100.00 or -50.00"
@@ -683,7 +695,7 @@ const PropertyForm = ({
             id="currency"
             value={currentProperty.currency}
             onChange={(e) => setProperty(prev => ({ ...prev, currency: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
           >
             {getCurrencyOptions().map(option => (
               <option key={option.value} value={option.value}>
@@ -698,7 +710,7 @@ const PropertyForm = ({
             id="price_type"
             value={currentProperty.price_type}
             onChange={(e) => setProperty(prev => ({ ...prev, price_type: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
           >
             <option value="Per Night">Per Night</option>
             <option value="Total Stay">Total Stay</option>
@@ -711,7 +723,7 @@ const PropertyForm = ({
             id="bedrooms"
             value={currentProperty.bedrooms}
             onChange={(e) => setProperty(prev => ({ ...prev, bedrooms: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
             min="0"
             placeholder="e.g., 2"
           />
@@ -723,7 +735,7 @@ const PropertyForm = ({
             id="bathrooms"
             value={currentProperty.bathrooms}
             onChange={(e) => setProperty(prev => ({ ...prev, bathrooms: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
             min="0"
             step="0.5"
             placeholder="e.g., 1.5"
@@ -735,7 +747,7 @@ const PropertyForm = ({
             id="category"
             value={currentProperty.category}
             onChange={(e) => setProperty(prev => ({ ...prev, category: e.target.value }))}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
           >
             <option value="Deluxe">Deluxe</option>
             <option value="Super Deluxe">Super Deluxe</option>
@@ -750,7 +762,7 @@ const PropertyForm = ({
           value={currentProperty.room_type}
           onChange={(e) => setProperty(prev => ({ ...prev, room_type: e.target.value }))}
           rows="4"
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
         />
       </div>
 
@@ -764,13 +776,13 @@ const PropertyForm = ({
               rows="5"
               value={imageLinks}
               onChange={(e) => setImageLinks(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-ink focus:border-ink"
               placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.png"
             ></textarea>
             <button
               type="button"
               onClick={() => handleAddImageLinks(isAddingNew ? newProperty : editingProperty, isAddingNew ? setNewProperty : setEditingProperty)}
-              className="mt-2 cursor-pointer bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
+              className="mt-2 cursor-pointer bg-ink text-white py-2 px-4 rounded-full hover:bg-ink-800 transition-colors flex items-center justify-center space-x-2"
             >
               <Link2 size={20} />
               <span>Add Images from Links</span>
@@ -792,7 +804,7 @@ const PropertyForm = ({
                   <button
                     onClick={() => setProperty(prev => ({ ...prev, homeImageIndex: index }))}
                     className={`absolute bottom-1 left-1 rounded-full p-1 shadow-md transition-all duration-200
-                      ${currentProperty.homeImageIndex === index ? `bg-accent/90 text-gray-900` : 'bg-gray-700 bg-opacity-70 text-white hover:bg-opacity-90'}`}
+                      ${currentProperty.homeImageIndex === index ? `bg-brand/90 text-ink` : 'bg-gray-700 bg-opacity-70 text-white hover:bg-opacity-90'}`}
                     title="Set as Home Image"
                   >
                     <Image size={16} />
@@ -810,7 +822,7 @@ const PropertyForm = ({
           id="selected"
           checked={currentProperty.selected}
           onChange={(e) => setProperty(prev => ({ ...prev, selected: e.target.checked }))}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          className="h-4 w-4 accent-ink border-gray-300 rounded focus:ring-ink"
         />
         <label htmlFor="selected" className="ml-2 block text-sm font-medium text-gray-700">
           Selected for Client
@@ -826,38 +838,40 @@ const PropertyForm = ({
         <button
           type="button"
           onClick={() => setProperty(prev => ({ ...prev, recommended: !prev.recommended }))}
-          className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
-            currentProperty.recommended ? 'bg-amber-500' : 'bg-gray-300'
+          className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-1 ${
+            currentProperty.recommended ? 'bg-brand' : 'bg-gray-300'
           }`}
         >
           <span
-            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-colors duration-200 ${
               currentProperty.recommended ? 'translate-x-6' : 'translate-x-0'
             }`}
           />
         </button>
       </div>
 
-      {/* Breakfast Included Toggle */}
-      <div className="mb-6 flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-        <div className="flex items-center gap-2">
+      {/* Meals Included */}
+      <div className="mb-6 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+        <div className="flex items-center gap-2 mb-2">
           <Coffee size={18} className="text-emerald-600" />
-          <label className="font-semibold text-gray-700">Breakfast Included</label>
+          <span className="font-semibold text-gray-700">Meals Included</span>
           <span className="text-xs text-gray-600">(Shown to client)</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setProperty(prev => ({ ...prev, breakfast: !prev.breakfast }))}
-          className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
-            currentProperty.breakfast ? 'bg-emerald-500' : 'bg-gray-300'
-          }`}
-        >
-          <span
-            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
-              currentProperty.breakfast ? 'translate-x-6' : 'translate-x-0'
-            }`}
-          />
-        </button>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Meals included">
+          {MEALS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={!!currentProperty[key]}
+              onClick={() => setProperty(prev => ({ ...prev, [key]: !prev[key] }))}
+              className={`inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full text-sm font-semibold border cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-1 ${
+                currentProperty[key] ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {currentProperty[key] && <Check size={14} aria-hidden="true" />}{label}
+            </button>
+          ))}
+        </div>
       </div>
     </>
   );
@@ -889,22 +903,22 @@ const PropertyForm = ({
                 accept=".csv"
                 onChange={handleFileUpload}
               />
-              <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-blue-700 flex items-center justify-center transition-transform hover:scale-105">
+              <button onClick={() => fileInputRef.current.click()} className="bg-white text-ink border border-gray-300 hover:bg-gray-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200">
                   <Upload size={18} className="mr-2 flex-shrink-0" /> Import CSV
               </button>
-              <button onClick={exportToCSV} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-green-700 flex items-center justify-center transition-transform hover:scale-105">
+              <button onClick={exportToCSV} className="font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-full flex items-center justify-center bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer">
                   <Download size={18} className="mr-2 flex-shrink-0" /> Export CSV
               </button>
               {properties && properties.length > 0 && (
                 <button
                   type="button"
                   onClick={() => { if (window.confirm(`Delete all ${properties.length} properties?`)) setProperties([]); }}
-                  className="bg-red-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-red-700 flex items-center justify-center transition-transform hover:scale-105"
+                  className="bg-white text-red-600 border border-red-300 hover:bg-red-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200"
                 >
                   <Trash2 size={18} className="mr-2 flex-shrink-0" /> Delete All
                 </button>
               )}
-              <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline flex items-center justify-center gap-1 min-h-[44px] px-2">
+              <button type="button" onClick={downloadTemplate} className="text-sm font-semibold text-ink underline-offset-2 hover:underline flex items-center justify-center gap-1 min-h-[44px] px-2">
                 <Download size={16} className="flex-shrink-0" />
                 <span>Download Template</span>
               </button>
@@ -944,14 +958,14 @@ const PropertyForm = ({
                 onClick={() => {
                   handleSavePropertyDetails(isAddingNew ? newProperty : editingProperty, isAddingNew);
                 }}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="px-6 py-3 bg-brand text-ink font-bold rounded-full shadow-md hover:bg-brand-600 cursor-pointer transition-colors disabled:opacity-50"
                 disabled={uploadingImages || !(isAddingNew ? newProperty.name : editingProperty?.name) || !(isAddingNew ? newProperty.location : editingProperty?.location) || !(isAddingNew ? newProperty.checkIn : editingProperty?.checkIn) || !(isAddingNew ? newProperty.checkOut : editingProperty?.checkOut)}
               >
                 {uploadingImages ? 'Uploading...' : (isAddingNew ? 'Save Property' : 'Save Changes')}
               </button>
               <button
                 onClick={handleCancelForm}
-                className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition-colors"
+                className="px-6 py-3 rounded-full shadow-md transition-colors bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -1009,7 +1023,7 @@ const PropertyForm = ({
               <button
                 type="button"
                 onClick={handleConfirmNewLeg}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md"
+                className="flex-1 font-bold py-2 px-4 rounded-full bg-brand text-ink hover:bg-brand-600 cursor-pointer"
               >
                 Create Leg & Use
               </button>
@@ -1114,7 +1128,7 @@ const PropertyForm = ({
                                     checkOut: itineraryDetails.checkOut
                                 });
                             }}
-                            className="px-3 sm:px-4 py-2 min-h-[44px] bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center justify-center text-sm whitespace-nowrap flex-shrink-0"
+                            className="px-4 sm:px-5 py-2 min-h-[44px] bg-brand text-ink font-semibold rounded-full shadow-sm hover:bg-brand-600 cursor-pointer transition-colors flex items-center justify-center text-sm whitespace-nowrap flex-shrink-0"
                         >
                             <Plus size={16} className="inline mr-1" /> Add Property
                         </button>
@@ -1152,7 +1166,7 @@ const PropertyForm = ({
                                     e.stopPropagation();
                                     toggleSelection(property.location, property.id);
                                   }}
-                                  className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                                  className="form-checkbox h-5 w-5 accent-ink rounded focus:ring-ink"
                                 />
                               </div>
                             )}
@@ -1164,7 +1178,7 @@ const PropertyForm = ({
                                     e.stopPropagation();
                                     handleEditPropertyClick(property);
                                   }}
-                                  className="p-2 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 transition-colors"
+                                  className="p-2 bg-ink text-white rounded-full shadow-md hover:bg-ink-800 transition-colors"
                                   title="Edit Property"
                                 >
                                   <Edit3 size={16} />
@@ -1185,10 +1199,10 @@ const PropertyForm = ({
                             <div className="aspect-w-16 aspect-h-9 overflow-hidden">
                               {property.images && property.images.length > 0 ? (
                                 <div className="relative w-full h-48 sm:h-56">
-                                  {property.breakfast && (
+                                  {mealsLabel(property) && (
                                     <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 bg-emerald-600 text-white px-2 py-1 rounded-md shadow-md text-xs font-semibold">
                                       <Coffee size={14} />
-                                      <span>Breakfast included</span>
+                                      <span>{mealsLabel(property)}</span>
                                     </div>
                                   )}
                                   <img
@@ -1234,10 +1248,10 @@ const PropertyForm = ({
                                 </div>
                               ) : (
                                 <div className="relative w-full h-48 sm:h-56 bg-gray-200 flex items-center justify-center text-gray-500">
-                                  {property.breakfast && (
+                                  {mealsLabel(property) && (
                                     <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 bg-emerald-600 text-white px-2 py-1 rounded-md shadow-md text-xs font-semibold">
                                       <Coffee size={14} />
-                                      <span>Breakfast included</span>
+                                      <span>{mealsLabel(property)}</span>
                                     </div>
                                   )}
                                   <Image size={48} />

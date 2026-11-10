@@ -19,7 +19,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [imageLinks, setImageLinks] = useState(''); // State for image URL input
-  const accentColor = '#FFD700';
+  const accentColor = '#FFE401';
 
   // Helper function to format number with thousand separators
   const formatNumberWithCommas = (number) => {
@@ -469,7 +469,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
       return (
         <div className="bg-red-50 p-6 rounded-lg border border-red-200 mb-6">
           <p className="text-red-600">Error: Invalid transportation item. Missing transportType field.</p>
-          <button onClick={resetForm} className="mt-4 bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+          <button onClick={resetForm} className="mt-4 py-2 px-4 rounded-full bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer">Cancel</button>
         </div>
       );
     }
@@ -498,7 +498,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
         return (
           <div className="bg-red-50 p-6 rounded-lg border border-red-200 mb-6">
             <p className="text-red-600">Error: Unknown transportation type "{data.transportType}". Supported types: car, van, suv, sedan, ferry, bus, driver.</p>
-            <button onClick={resetForm} className="mt-4 bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+            <button onClick={resetForm} className="mt-4 py-2 px-4 rounded-full bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer">Cancel</button>
           </div>
         );
     }
@@ -524,12 +524,12 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
                 <button
                   type="button"
                   onClick={() => setData({ ...data, recommended: !data.recommended })}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
-                    data.recommended ? 'bg-amber-500' : 'bg-gray-300'
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-1 ${
+                    data.recommended ? 'bg-brand' : 'bg-gray-300'
                   }`}
                 >
                   <span
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-colors duration-200 ${
                       data.recommended ? 'translate-x-6' : 'translate-x-0'
                     }`}
                   />
@@ -538,7 +538,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
               <div className="lg:col-span-3">
                   <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
                   <textarea rows="3" value={imageLinks} onChange={(e) => setImageLinks(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
-                  <button onClick={() => handleAddImageLinks(data, setData)} className="mt-2 text-sm bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600 flex items-center"><Link2 size={14} className="mr-1" /> Add from Links</button>
+                  <button onClick={() => handleAddImageLinks(data, setData)} className="mt-2 text-sm bg-ink text-white py-1 px-3 rounded-full hover:bg-ink-800 flex items-center"><Link2 size={14} className="mr-1" /> Add from Links</button>
               </div>
               <div className="lg:col-span-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                   {(data.images || []).map((img, index) => (
@@ -550,8 +550,8 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
               </div>
           </div>
           <div className="flex items-center justify-end space-x-3 mt-6">
-              <button onClick={resetForm} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
-              <button onClick={handleSave} className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">
+              <button onClick={resetForm} className="py-2 px-4 rounded-full bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer">Cancel</button>
+              <button onClick={handleSave} className="py-2 px-4 rounded-full bg-brand text-ink hover:bg-brand-600 cursor-pointer">
                   {editingItem ? 'Update' : 'Save'}
               </button>
           </div>
@@ -643,7 +643,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
                   }
                 }, 100);
               }}
-              className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"
+              className="p-2 bg-ink text-white rounded-full hover:bg-ink-800 shadow-md"
             >
               <Edit3 size={16} />
             </button>
@@ -669,7 +669,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
             <h3 className="text-xl font-bold mb-4 text-gray-800">Select Transportation Type</h3>
             <div className="grid grid-cols-2 gap-4">
               {transportationTypes.map(t => (
-                <button key={t.type} onClick={() => handleTypeSelected(t.type)} className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-gray-100 hover:border-yellow-400">
+                <button key={t.type} onClick={() => handleTypeSelected(t.type)} className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-brand-50 hover:border-brand">
                   {t.icon}
                   <span className="mt-2">{t.label}</span>
                 </button>
@@ -690,13 +690,13 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
                     accept=".csv"
                     onChange={handleFileUpload}
                 />
-                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-blue-700 flex items-center justify-center transition-transform hover:scale-105">
+                <button onClick={() => fileInputRef.current.click()} className="bg-white text-ink border border-gray-300 hover:bg-gray-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200">
                     <Upload size={18} className="mr-2 flex-shrink-0" /> Import CSV
                 </button>
-                <button onClick={exportToCSV} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-green-700 flex items-center justify-center transition-transform hover:scale-105">
+                <button onClick={exportToCSV} className="font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-full flex items-center justify-center bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer">
                     <Download size={18} className="mr-2 flex-shrink-0" /> Export CSV
                 </button>
-                <button onClick={handleStartAdding} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-green-700 flex items-center justify-center transition-transform hover:scale-105">
+                <button onClick={handleStartAdding} className="font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-full flex items-center justify-center bg-brand text-ink hover:bg-brand-600 cursor-pointer">
                     <Plus size={18} className="mr-2 flex-shrink-0" />
                     <span className="sm:hidden">Add New</span>
                     <span className="hidden sm:inline">Add New Transportation</span>
@@ -705,7 +705,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
                   <button
                     type="button"
                     onClick={() => { if (window.confirm(`Delete all ${transportation.length} transportation items?`)) setTransportation([]); }}
-                    className="bg-red-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-red-700 flex items-center justify-center transition-transform hover:scale-105"
+                    className="bg-white text-red-600 border border-red-300 hover:bg-red-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200"
                   >
                     <Trash2 size={18} className="mr-2 flex-shrink-0" /> Delete All
                   </button>
@@ -713,7 +713,7 @@ const TransportationForm = ({ transportation, setTransportation, itineraryLegs }
             </div>
         </div>
         <div className="text-center sm:text-right mb-4">
-            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
+            <button type="button" onClick={downloadTemplate} className="text-sm font-semibold text-ink underline-offset-2 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}

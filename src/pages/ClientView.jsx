@@ -10,6 +10,7 @@ import {
   ChevronDown, ChevronUp, Minus, Plus, Info, Star,
   Instagram, Coffee, Pencil, Printer, HelpCircle
 } from 'lucide-react';
+import { mealsLabel } from '../utils/mealsUtils';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCurrencySymbol as getSymbol, fetchExchangeRates, convertCurrency as convertPrice, formatNumberWithCommas as formatNumber, getActivityPax, getActivityBasePax, getActivityRates, getActivityRawPrice, formatPaxLabel } from '../utils/currencyUtils.js';
 import { formatContextualLabel, formatActivityLabel } from '../utils/priceLabels.js';
@@ -1523,11 +1524,11 @@ const ClientView = () => {
                                       </div>
                                     )}
 
-                                    {/* Breakfast included badge - only show if breakfast is true */}
-                                    {property.breakfast && (
+                                    {/* Meals included badge - only show if any meal is included */}
+                                    {mealsLabel(property) && (
                                       <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-600 text-white px-2 py-1 rounded-md shadow-md text-xs font-semibold z-10">
                                         <Coffee size={14} />
-                                        <span>Breakfast included</span>
+                                        <span>{mealsLabel(property)}</span>
                                       </div>
                                     )}
 

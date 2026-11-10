@@ -22,7 +22,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
   const [showDateTime, setShowDateTime] = useState(false); // State for the toggle
   const [originalLocation, setOriginalLocation] = useState(null); // tracks location at edit-start, for change detection
   const fileInputRef = useRef(null);
-  const accentColor = '#FFD700';
+  const accentColor = '#FFE401';
 
   // Leg locations available as drop-down targets for the activity Location field
   const availableLegLocations = useMemo(() => {
@@ -469,7 +469,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                 id="showDateTimeToggle"
                 checked={showDateTime}
                 onChange={(e) => setShowDateTime(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="h-4 w-4 accent-ink border-gray-300 rounded focus:ring-ink"
             />
         </div>
       </div>
@@ -568,7 +568,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                 id="included_in_base"
                 checked={activityData.included_in_base !== false}
                 onChange={(e) => setActivityData({ ...activityData, included_in_base: e.target.checked })}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="h-4 w-4 accent-ink border-gray-300 rounded focus:ring-ink"
             />
             <label htmlFor="included_in_base" className="ml-2 block text-sm font-medium text-gray-700">
                 Included in Base Quote
@@ -583,12 +583,12 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
           <button
             type="button"
             onClick={() => setActivityData({ ...activityData, recommended: !activityData.recommended })}
-            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
-              activityData.recommended ? 'bg-amber-500' : 'bg-gray-300'
+            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-1 ${
+              activityData.recommended ? 'bg-brand' : 'bg-gray-300'
             }`}
           >
             <span
-              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-colors duration-200 ${
                 activityData.recommended ? 'translate-x-6' : 'translate-x-0'
               }`}
             />
@@ -651,7 +651,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         <div className="lg:col-span-3">
             <label className="block text-sm font-medium text-gray-700">Image URLs (one per line)</label>
             <textarea rows="3" value={imageLinks} onChange={(e) => setImageLinks(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
-            <button onClick={() => handleAddImageLinks(activityData, setActivityData)} className="mt-2 text-sm bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600 flex items-center"><Link2 size={14} className="mr-1" /> Add from Links</button>
+            <button onClick={() => handleAddImageLinks(activityData, setActivityData)} className="mt-2 text-sm bg-ink text-white py-1 px-3 rounded-full hover:bg-ink-800 flex items-center"><Link2 size={14} className="mr-1" /> Add from Links</button>
         </div>
         <div className="lg:col-span-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {(activityData.images || []).map((img, index) => (
@@ -663,8 +663,8 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
         </div>
       </div>
       <div className="flex items-center justify-end space-x-3 mt-4">
-          <button onClick={resetForm} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
-          <button onClick={handleSave} className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">
+          <button onClick={resetForm} className="py-2 px-4 rounded-full bg-white text-ink border border-gray-300 hover:bg-gray-50 cursor-pointer">Cancel</button>
+          <button onClick={handleSave} className="py-2 px-4 rounded-full bg-brand text-ink hover:bg-brand-600 cursor-pointer">
               {editingActivity ? 'Update Activity' : 'Save Activity'}
           </button>
       </div>
@@ -696,21 +696,21 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                   <button
                     type="button"
                     onClick={() => { if (window.confirm(`Delete all ${activities.length} activities?`)) setActivities([]); }}
-                    className="bg-red-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-red-700 flex items-center justify-center transition-transform hover:scale-105"
+                    className="bg-white text-red-600 border border-red-300 hover:bg-red-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200"
                   >
                     <Trash2 size={18} className="mr-2 flex-shrink-0" /> Delete All
                   </button>
                 )}
-                <button onClick={exportActivitiesToCSV} className="bg-gray-700 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-gray-800 flex items-center justify-center transition-transform hover:scale-105">
+                <button onClick={exportActivitiesToCSV} className="font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200 bg-white text-ink border border-gray-300 hover:bg-gray-50">
                     <Download size={18} className="mr-2 flex-shrink-0" /> Export CSV
                 </button>
-                <button onClick={() => fileInputRef.current.click()} className="bg-blue-600 text-white font-bold min-h-[44px] py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg hover:bg-blue-700 flex items-center justify-center transition-transform hover:scale-105">
+                <button onClick={() => fileInputRef.current.click()} className="bg-white text-ink border border-gray-300 hover:bg-gray-50 font-bold min-h-[44px] py-2 px-3 sm:px-5 text-sm sm:text-base rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200">
                     <Upload size={18} className="mr-2 flex-shrink-0" /> Import CSV
                 </button>
             </div>
         </div>
         <div className="text-center sm:text-right mb-4">
-            <button type="button" onClick={downloadTemplate} className="text-sm text-blue-600 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
+            <button type="button" onClick={downloadTemplate} className="text-sm font-semibold text-ink underline-offset-2 hover:underline min-h-[44px] sm:min-h-0 inline-flex items-center">Download CSV Template</button>
         </div>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {message && <p className="text-green-600 text-sm mb-4">{message}</p>}
@@ -734,7 +734,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                     </p>
                   )}
                 </div>
-                <button onClick={() => handleStartAdding(location)} className="bg-green-600 text-white font-bold min-h-[44px] py-2 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center w-full sm:w-auto flex-shrink-0 transition-transform hover:scale-105">
+                <button onClick={() => handleStartAdding(location)} className="bg-brand text-ink font-bold min-h-[44px] py-2 px-5 rounded-full hover:bg-brand-600 flex items-center justify-center w-full sm:w-auto flex-shrink-0 cursor-pointer transition-colors duration-200">
                   <Plus size={18} className="mr-2" /> Add Activity
                 </button>
               </div>
@@ -773,7 +773,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                                 e.stopPropagation();
                                 toggleSelection(activity.id);
                               }}
-                              className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                              className="form-checkbox h-5 w-5 accent-ink rounded focus:ring-ink"
                             />
                           </div>
                           {isIncluded && (
@@ -788,7 +788,7 @@ const ActivityForm = ({ activities, setActivities, itineraryLegs }) => {
                                 setShowDateTime(!!(activity.date || activity.time)); // Show if date or time exists
                                 setAddingToLocation(null);
                                 setOriginalLocation(activity.location || null);
-                            }} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"><Edit3 size={16} /></button>
+                            }} className="p-2 bg-ink text-white rounded-full hover:bg-ink-800 shadow-md"><Edit3 size={16} /></button>
                             <button onClick={(e) => { e.stopPropagation(); handleDelete(activity.id); }} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md"><Trash2 size={16} /></button>
                           </div>
                         </div>
