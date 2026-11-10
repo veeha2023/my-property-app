@@ -6,6 +6,7 @@
 // PDF never drifts from the web copy. This component only filters + lays out for print.
 import React from 'react';
 import { Star, Coffee, BedDouble, Bath, MapPin, Plane, Briefcase, Instagram, Calendar, Clock, Users, ShieldCheck, MessageCircle } from 'lucide-react';
+import { mealsLabel } from '../utils/mealsUtils';
 import { formatContextualLabel, formatActivityLabel } from '../utils/priceLabels.js';
 import { hasDiscount, applyDiscount } from '../utils/discountUtils';
 import { getActivityRawPrice, formatPaxLabel, getActivityRates, getActivityPax, getActivityBasePax } from '../utils/currencyUtils.js';
@@ -193,7 +194,7 @@ const PrintableItinerary = ({
                             {p.bedrooms > 0 && <span className="inline-flex items-center gap-1"><BedDouble size={13} />{p.bedrooms} Bed{p.bedrooms > 1 ? 's' : ''}</span>}
                             {p.bathrooms > 0 && <span className="inline-flex items-center gap-1"><Bath size={13} />{p.bathrooms} Bath{p.bathrooms > 1 ? 's' : ''}</span>}
                             {p.recommended && <span className="inline-flex items-center gap-1 text-amber-600 font-semibold"><Star size={13} />Agent's Pick</span>}
-                            {p.breakfast && <span className="inline-flex items-center gap-1 text-emerald-700"><Coffee size={13} />Breakfast included</span>}
+                            {mealsLabel(p) && <span className="inline-flex items-center gap-1 text-emerald-700"><Coffee size={13} />{mealsLabel(p)}</span>}
                           </div>
                         </div>
                       </div>

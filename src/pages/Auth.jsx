@@ -33,12 +33,12 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-900 text-white">
-      <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-xl border border-gray-700">
-        <h2 className="text-3xl font-bold text-center text-yellow-400">Admin Login</h2>
+    <div className="flex justify-center items-center min-h-[100dvh] px-4 bg-ink text-ink font-brand">
+      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-3xl shadow-xl border-t-8 border-brand">
+        <h2 className="text-3xl font-bold text-center text-ink">Admin Login</h2>
         <form className="space-y-6" onSubmit={handleLogin}>
           <div>
-            <label htmlFor="email" className="text-sm font-medium text-gray-400">
+            <label htmlFor="email" className="text-sm font-semibold text-gray-600">
               Email address
             </label>
             <input
@@ -47,7 +47,7 @@ const Auth = () => {
               type="email"
               autoComplete="email"
               required
-              className="w-full px-3 py-2 mt-1 border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white"
+              className="w-full px-4 py-2.5 mt-1 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-ink focus:border-ink bg-white text-ink"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
@@ -56,7 +56,7 @@ const Auth = () => {
           <div>
             <label
               htmlFor="password"
-              className="text-sm font-medium text-gray-400"
+              className="text-sm font-semibold text-gray-600"
             >
               Password
             </label>
@@ -66,7 +66,7 @@ const Auth = () => {
               type="password"
               autoComplete="current-password"
               required
-              className="w-full px-3 py-2 mt-1 border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white"
+              className="w-full px-4 py-2.5 mt-1 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-ink focus:border-ink bg-white text-ink"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -76,7 +76,7 @@ const Auth = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-2 text-sm font-medium text-gray-900 bg-yellow-400 border border-transparent rounded-md shadow-sm hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
+              className="w-full min-h-[44px] px-4 py-2.5 text-base font-bold text-white bg-pop rounded-full shadow-sm hover:bg-pop/90 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pop disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Logging in...' : 'Log In'}
             </button>
