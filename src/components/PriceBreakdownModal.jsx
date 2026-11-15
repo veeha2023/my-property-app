@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { applyDiscount, hasDiscount } from '../utils/discountUtils';
-import { getActivityPax, getActivityRates, getActivityRawPrice } from '../utils/currencyUtils';
+import { getActivityPax, getActivityBasePax, getActivityRates, getActivityRawPrice } from '../utils/currencyUtils';
 
 const PriceBreakdownModal = ({
   isOpen,
@@ -48,10 +48,12 @@ const PriceBreakdownModal = ({
     const flights = clientData?.flights || [];
 
     // Count included activities (only those still selected)
-    const includedActivityCount = activities.filter(a => a.included_in_base && a.selected !== false).length;
+    // Same semantics as ClientView.calculateActivityDelta: included unless explicitly false
+    const isIncluded = a => a.included_in_base !== false;
+    const includedActivityCount = activities.filter(a => isIncluded(a) && a.selected !== false).length;
 
     // Removed included activities (deselected by client)
-    const removedIncludedActivities = activities.filter(a => a.included_in_base && a.selected === false);
+    const removedIncludedActivities = activities.filter(a => isIncluded(a) && a.selected === false);
     const removedIncludedTotal = removedIncludedActivities.reduce((sum, a) => {
       return sum - (parseCurrencyToNumber(a.base_price) || 0);
     }, 0);
@@ -65,7 +67,18 @@ const PriceBreakdownModal = ({
       }, 0);
 
     // Optional activities total (not included in base but selected)
-    const optionalActivities = activities.filter(a => !a.included_in_base && a.selected);
+    const optionalActivities = activities.filter(a => !isIncluded(a) && a.selected);
+
+    // Included activities kept but changed (e.g. pax count) — delta vs base price
+    const changedIncludedActivities = activities
+      .filter(a => isIncluded(a) && a.selected !== false)
+      .map(a => {
+        const current = applyDiscount(getActivityRawPrice(a), a.discount_type, a.discount_value);
+        const base = parseCurrencyToNumber(a.base_price) || 0;
+        return { activity: a, current, base, delta: current - base };
+      })
+      .filter(c => Math.abs(c.delta) >= 0.005);
+    const changedIncludedTotal = changedIncludedActivities.reduce((sum, c) => sum + c.delta, 0);
     const optionalActivitiesTotal = optionalActivities.reduce((sum, activity) => {
       const rawTotal = getActivityRawPrice(activity);
       const activityTotal = applyDiscount(rawTotal, activity.discount_type, activity.discount_value);
@@ -87,12 +100,16 @@ const PriceBreakdownModal = ({
     const transportAndFlightsHaveChanges = transportFlightTotal !== 0;
 
     // Final quote
-    const finalQuote = baseQuote + propertyTotal + optionalActivitiesTotal + transportFlightTotal + removedIncludedTotal;
+    const totalChanges = propertyTotal + optionalActivitiesTotal + transportFlightTotal + removedIncludedTotal + changedIncludedTotal;
+    const finalQuote = baseQuote + totalChanges;
 
     return {
       includedActivityCount,
       removedIncludedActivities,
       removedIncludedTotal,
+      changedIncludedActivities,
+      changedIncludedTotal,
+      totalChanges,
       propertyTotal,
       optionalActivities,
       optionalActivitiesTotal,
@@ -157,6 +174,45 @@ const PriceBreakdownModal = ({
                 <div className="text-sm text-gray-600 ml-4">All included activities kept</div>
               )}
             </div>
+
+            {/* Included Activities Changed Section (e.g. pax count changed) */}
+            {calculations.changedIncludedActivities.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900 text-base">INCLUDED ACTIVITIES CHANGED</h3>
+                {calculations.changedIncludedActivities.map(({ activity, current, base, delta }) => {
+                  const cur = getActivityPax(activity);
+                  const bp = getActivityBasePax(activity);
+                  const curPax = cur.adults + cur.children;
+                  const basePax = bp.adults + bp.children;
+                  const paxChanged = basePax > 0 && (cur.adults !== bp.adults || cur.children !== bp.children);
+                  return (
+                    <div key={activity.id} className="flex justify-between items-start text-sm ml-4">
+                      <div className="flex-1">
+                        <div className="flex items-start gap-2">
+                          <span className="text-amber-500 mt-0.5">↻</span>
+                          <div>
+                            <div className="font-medium text-gray-900">{activity.name}</div>
+                            <div className="text-gray-600 text-xs">
+                              {paxChanged ? `${basePax} → ${curPax} people · ` : ''}
+                              {`Package ${displayPrice(base)} → Now ${displayPrice(current)}`}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`font-semibold ml-4 ${delta < 0 ? 'text-green-600' : delta > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                        {delta !== 0 ? (delta > 0 ? '+' : '−') + displayPrice(Math.abs(delta)) : displayPrice(0)}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100 font-semibold">
+                  <span className="text-gray-700">Included Activity Changes Total</span>
+                  <span className={`${calculations.changedIncludedTotal < 0 ? 'text-green-600' : calculations.changedIncludedTotal > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    {calculations.changedIncludedTotal !== 0 ? (calculations.changedIncludedTotal > 0 ? '+' : '−') + displayPrice(Math.abs(calculations.changedIncludedTotal)) : displayPrice(0)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Property Changes Section */}
             <div className="space-y-4">
@@ -339,6 +395,14 @@ const PriceBreakdownModal = ({
               ) : (
                 <div className="text-sm text-gray-600 ml-4">Package options selected</div>
               )}
+            </div>
+
+            {/* Total of all changes — tallies with sidebar "Your Changes" */}
+            <div className="pt-4 border-t border-gray-200 flex justify-between items-center font-semibold">
+              <span className="text-gray-900">Total Changes</span>
+              <span className={`${calculations.totalChanges < 0 ? 'text-green-600' : calculations.totalChanges > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                {calculations.totalChanges !== 0 ? (calculations.totalChanges > 0 ? '+' : '−') + displayPrice(Math.abs(calculations.totalChanges)) : displayPrice(0)}
+              </span>
             </div>
 
             {/* Final Total Section */}
